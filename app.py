@@ -146,13 +146,13 @@ nav_choice = st.sidebar.radio(
     ]
 )
 
-#st.sidebar.divider()
-#st.sidebar.markdown("**Spesifikasi Model Aktif:**")
-#st.sidebar.markdown("""
-#- **Defect Model:** `YOLOv8-Seg (Polygon)`
-#- **Device Scaling:** `ArUco + Dynamic Homography`
-#- **Grading Engine:** `Random Forest (18 Features)`
-#- **Safety Rule:** `Fast-Fail Veto Safeguard`
+st.sidebar.divider()
+st.sidebar.markdown("**Spesifikasi Model Aktif:**")
+st.sidebar.markdown("""
+- **Defect Model:** `YOLOv8-Seg (Polygon)`
+- **Device Scaling:** `ArUco + Dynamic Homography`
+- **Grading Engine:** `Random Forest (18 Features)`
+- **Safety Rule:** `Fast-Fail Veto Safeguard`
 """)
 
 
