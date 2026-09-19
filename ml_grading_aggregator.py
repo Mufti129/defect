@@ -24,7 +24,7 @@ from sklearn.metrics import classification_report, confusion_matrix, f1_score, a
 
 MODEL_WEIGHTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights", "ml_grading_model.joblib")
 FEATURE_NAMES = [
-    "total_defects_count",
+    "total_defects",
     "scratch_count",
     "dent_count",
     "chip_count",
@@ -33,15 +33,15 @@ FEATURE_NAMES = [
     "total_area_mm2",
     "max_defect_length_mm",
     "max_defect_area_mm2",
-    "front_defect_count",
-    "front_area_mm2",
-    "front_max_length_mm",
-    "front_dpi",
-    "body_defect_count",
-    "body_area_mm2",
-    "body_dpi",
+    "frame_defect_count",
+    "frame_area_mm2",
+    "frame_max_length_mm",
+    "frame_dpi",
+    "bottom_back_defect_count",
+    "bottom_back_area_mm2",
+    "bottom_back_dpi",
     "total_dpi",
-    "screen_flawless_flag"
+    "flawless_flag"
 ]
 
 GRADES = ["A", "B", "C", "D"]
@@ -51,7 +51,7 @@ ID_TO_GRADE = {0: "A", 1: "B", 2: "C", 3: "D"}
 
 class MLGradingAggregator:
     """
-    Multivariate Machine Learning Classifier for Cosmetic Smartphone Grading.
+    Multivariate Machine Learning Classifier for Cosmetic Smartphone Grading (Housing-Only).
     """
     def __init__(self, model_path: Optional[str] = None):
         self.model_path = model_path or MODEL_WEIGHTS_PATH
@@ -79,26 +79,27 @@ class MLGradingAggregator:
         defects_detail: List[Dict],
         class_counts: Dict[str, int],
         total_dpi: float,
-        front_dpi: float,
-        body_dpi: float
+        frame_dpi: float,
+        bottom_back_dpi: float
     ) -> np.ndarray:
         """
-        Extracts an 18-dimensional feature vector from multi-view inspection results.
+        Extracts an 18-dimensional feature vector from housing/body multi-view inspection results (No Front).
         """
-        front_defects = [d for d in defects_detail if d.get("view_side") == "front"]
-        body_defects = [d for d in defects_detail if d.get("view_side") != "front"]
+        housing_defects = [d for d in defects_detail if d.get("view_side") != "front"]
+        frame_defects = [d for d in housing_defects if d.get("view_side") in ["left", "right", "top"]]
+        bottom_back_defects = [d for d in housing_defects if d.get("view_side") in ["bottom", "back"]]
 
-        total_area = sum(d.get("area_mm2", 0.0) for d in defects_detail)
-        max_len = max([d.get("length_mm", 0.0) for d in defects_detail], default=0.0)
-        max_area = max([d.get("area_mm2", 0.0) for d in defects_detail], default=0.0)
+        total_area = sum(d.get("area_mm2", 0.0) for d in housing_defects)
+        max_len = max([d.get("length_mm", 0.0) for d in housing_defects], default=0.0)
+        max_area = max([d.get("area_mm2", 0.0) for d in housing_defects], default=0.0)
 
-        front_area = sum(d.get("area_mm2", 0.0) for d in front_defects)
-        front_max_len = max([d.get("length_mm", 0.0) for d in front_defects], default=0.0)
+        frame_area = sum(d.get("area_mm2", 0.0) for d in frame_defects)
+        frame_max_len = max([d.get("length_mm", 0.0) for d in frame_defects], default=0.0)
 
-        body_area = sum(d.get("area_mm2", 0.0) for d in body_defects)
+        bottom_back_area = sum(d.get("area_mm2", 0.0) for d in bottom_back_defects)
 
         features = [
-            float(len(defects_detail)),
+            float(len(housing_defects)),
             float(class_counts.get("scratch", 0)),
             float(class_counts.get("dent", 0)),
             float(class_counts.get("chip", 0)),
@@ -107,15 +108,15 @@ class MLGradingAggregator:
             round(total_area, 3),
             round(max_len, 3),
             round(max_area, 3),
-            float(len(front_defects)),
-            round(front_area, 3),
-            round(front_max_len, 3),
-            round(front_dpi, 2),
-            float(len(body_defects)),
-            round(body_area, 3),
-            round(body_dpi, 2),
+            float(len(frame_defects)),
+            round(frame_area, 3),
+            round(frame_max_len, 3),
+            round(frame_dpi, 2),
+            float(len(bottom_back_defects)),
+            round(bottom_back_area, 3),
+            round(bottom_back_dpi, 2),
             round(total_dpi, 2),
-            1.0 if len(front_defects) == 0 else 0.0
+            1.0 if len(housing_defects) == 0 else 0.0
         ]
         return np.array(features, dtype=np.float32)
 
@@ -125,31 +126,25 @@ class MLGradingAggregator:
         class_counts: Dict[str, int]
     ) -> Tuple[str, float, Dict[str, float], List[str]]:
         """
-        Predicts cosmetic grade using ML with safety veto rules.
-        Returns:
-            predicted_grade: "A", "B", "C", or "D"
-            confidence: float (0.0 - 1.0)
-            probabilities: {"A": p, "B": p, "C": p, "D": p}
-            reasons: List of explanatory decision factors
+        Predicts cosmetic grade using ML with safety veto rules for housing-only.
         """
         reasons = []
 
-        # TIER 1: VETO RULES (Immediate Safety Catch to prevent Critical Inversion)
+        # TIER 1: VETO RULES
         if class_counts.get("broken", 0) > 0:
-            reasons.append(f"Veto Operasional: Ditemukan {class_counts['broken']} kerusakan fisik struktural/pecah.")
+            reasons.append(f"Veto Operasional: Ditemukan {class_counts['broken']} kerusakan fisik bodi/casing pecah.")
             return "D", 1.0, {"A": 0.0, "B": 0.0, "C": 0.0, "D": 1.0}, reasons
 
         crack_cnt = class_counts.get("crack", 0)
         max_len = features[7]
-        front_dpi = features[12]
         total_dpi = features[16]
 
-        if crack_cnt >= 2 or (crack_cnt == 1 and (max_len >= 8.0 or front_dpi >= 15.0)):
-            reasons.append(f"Veto Operasional: Ditemukan {crack_cnt} retakan signifikan (pjg max {max_len:.1f}mm).")
+        if crack_cnt >= 2 or (crack_cnt == 1 and max_len >= 8.0):
+            reasons.append(f"Veto Operasional: Ditemukan {crack_cnt} retakan bodi signifikan (pjg max {max_len:.1f}mm).")
             return "D", 1.0, {"A": 0.0, "B": 0.0, "C": 0.0, "D": 1.0}, reasons
 
-        if total_dpi >= 50.0:
-            reasons.append(f"Veto Operasional: Akumulasi penalti cacat melampaui batas toleransi (DPI {total_dpi:.1f} >= 50.0).")
+        if total_dpi >= 45.0:
+            reasons.append(f"Veto Operasional: Akumulasi penalti cacat bodi melampaui batas toleransi (DPI {total_dpi:.1f} >= 45.0).")
             return "D", 0.98, {"A": 0.0, "B": 0.0, "C": 0.05, "D": 0.95}, reasons
 
         # TIER 2: MACHINE LEARNING CLASSIFIER INFERENCE
@@ -162,32 +157,30 @@ class MLGradingAggregator:
 
             prob_dict = {ID_TO_GRADE[i]: float(probs[i]) for i in range(len(probs))}
 
-            # Explanatory feature factors
             if pred_grade == "A":
-                reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Kondisi fisik sangat mulus / Like New.")
+                reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Kondisi bodi sangat mulus / Like New.")
             elif pred_grade == "B":
-                reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Pemakaian sangat ringan (Grade B).")
+                reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Pemakaian bodi sangat wajar/ringan (Grade B).")
             elif pred_grade == "C":
-                reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Aus pemakaian wajar hingga berat (Grade C).")
+                reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Aus bodi pemakaian wajar hingga berat (Grade C).")
             else:
-                reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Cacat fisik akumulatif masuk kategori Grade D.")
+                reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Cacat fisik bodi akumulatif masuk kategori Grade D.")
 
             return pred_grade, confidence, prob_dict, reasons
 
         # FALLBACK: Calibrated Heuristic if ML model weights not yet trained
-        total_dpi = features[16]
-        front_dpi = features[12]
-        front_cnt = features[9]
+        total_def = features[0]
         dents = features[2]
+        total_dpi = features[16]
 
-        if front_cnt == 0 and dents == 0 and total_dpi < 3.5:
-            return "A", 0.95, {"A": 0.95, "B": 0.05, "C": 0.0, "D": 0.0}, ["Fallback: Layar mulus dan DPI < 3.5."]
-        elif front_dpi < 5.0 and total_dpi < 18.0 and dents <= 2:
-            return "B", 0.88, {"A": 0.05, "B": 0.88, "C": 0.07, "D": 0.0}, ["Fallback: Goresan mikro bodi/layar terkontrol (Grade B)."]
-        elif total_dpi < 45.0:
-            return "C", 0.85, {"A": 0.0, "B": 0.05, "C": 0.85, "D": 0.10}, ["Fallback: Penalti DPI akumulatif bodi sedang (Grade C)."]
+        if total_def == 0 or (total_dpi < 3.0 and dents == 0):
+            return "A", 0.95, {"A": 0.95, "B": 0.05, "C": 0.0, "D": 0.0}, ["Fallback: Bodi mulus dan DPI < 3.0."]
+        elif total_dpi < 18.0 and dents <= 2:
+            return "B", 0.88, {"A": 0.05, "B": 0.88, "C": 0.07, "D": 0.0}, ["Fallback: Goresan mikro bodi terkontrol (Grade B)."]
+        elif total_dpi < 40.0:
+            return "C", 0.85, {"A": 0.0, "B": 0.05, "C": 0.85, "D": 0.10}, ["Fallback: Penalti DPI bodi sedang (Grade C)."]
         else:
-            return "D", 0.92, {"A": 0.0, "B": 0.0, "C": 0.08, "D": 0.92}, ["Fallback: Penalti DPI melebihi ambang batas operasional."]
+            return "D", 0.92, {"A": 0.0, "B": 0.0, "C": 0.08, "D": 0.92}, ["Fallback: Penalti DPI bodi melebihi ambang batas operasional."]
 
     def train_on_data(
         self,

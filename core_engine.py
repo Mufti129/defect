@@ -101,8 +101,8 @@ class StreamlitInspectionEngine:
             cv2.putText(blank, "No Valid Views Loaded", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
             return blank
 
-        # Preferred order
-        order = ["front", "left", "right", "top", "bottom", "back"]
+        # Preferred order for housing inspection
+        order = ["back", "left", "right", "top", "bottom"]
         view_strip = []
         for side in order:
             if side in annotated_views:
@@ -144,7 +144,7 @@ class StreamlitInspectionEngine:
         confidence = report.get("grade_confidence", 0.0)
         cv2.putText(banner, f"UNIT: {unit_id} (Conf: {confidence*100:.1f}%)", (165, 42), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (255, 255, 255), 2)
 
-        stat_line = f"Total DPI: {report.get('total_dpi', 0.0)} | Front DPI: {report.get('front_dpi', 0.0)} | Defects Found: {report.get('total_defects_count', 0)}"
+        stat_line = f"Total DPI: {report.get('total_dpi', 0.0)} | Frame DPI: {report.get('frame_dpi', 0.0)} | Defects Found: {report.get('total_defects_count', 0)}"
         cv2.putText(banner, stat_line, (165, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (210, 210, 210), 1)
 
         breakdown = report.get("defect_breakdown", {})

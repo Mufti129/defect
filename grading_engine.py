@@ -33,14 +33,13 @@ DEFECT_CLASS_WEIGHTS = {
     "broken": 15.0
 }
 
-# Zone multiplier weights (Screen is most critical)
+# Zone multiplier weights for housing-only inspection
 ZONE_WEIGHTS = {
-    "front": 3.0,       # Display screen
-    "back": 1.5,        # Back glass / panel
+    "back": 2.0,        # Back glass / panel
+    "bottom": 1.2,      # Bottom frame & ports
     "left": 1.0,        # Side rail
     "right": 1.0,       # Side rail
     "top": 1.0,         # Top frame
-    "bottom": 1.0,      # Bottom frame & ports
 }
 
 # Grade color indicators (BGR for OpenCV visualization)
@@ -54,7 +53,7 @@ GRADE_COLORS = {
 
 class GradingEngine:
     """
-    Cosmetic Smartphone Grading Engine (A, B, C, D) based on multi-view defect inspection,
+    Cosmetic Smartphone Grading Engine (A, B, C, D) based on housing-only defect inspection (No Front),
     powered by a trained Machine Learning Aggregator with Fast-Fail Veto Safeguards.
     """
     def __init__(self, detector: Optional[DefectDetector] = None, ml_aggregator: Optional[MLGradingAggregator] = None):
@@ -63,16 +62,16 @@ class GradingEngine:
 
     def evaluate_phone_unit(self, unit_id: str, view_images: Dict[str, str]) -> Dict:
         """
-        Runs inspection across all available views of a single smartphone unit.
-        view_images: {"front": path, "left": path, ...}
+        Runs inspection across housing views of a single smartphone unit (skips front).
+        view_images: {"back": path, "left": path, ...}
         """
         start_time = time.time()
         detections_by_view = {}
         all_defects = []
 
-        # 1. Run detection on each view
+        # 1. Run detection on each view, skipping front
         for view_side, img_path in view_images.items():
-            if not os.path.exists(img_path):
+            if view_side == "front" or not os.path.exists(img_path):
                 continue
             defects = self.detector.detect_image(img_path, view_side=view_side)
             detections_by_view[view_side] = defects
@@ -84,14 +83,13 @@ class GradingEngine:
             if d.class_name in class_counts:
                 class_counts[d.class_name] += 1
 
-        front_defects = detections_by_view.get("front", [])
         back_defects = detections_by_view.get("back", [])
-        body_defects = [d for d in all_defects if d.view_side not in ["front", "back"]]
+        sides_defects = [d for d in all_defects if d.view_side != "back"]
 
         # 3. Calculate Defect Penalty Index (DPI)
         total_dpi = 0.0
-        front_dpi = 0.0
-        body_dpi = 0.0
+        frame_dpi = 0.0
+        bottom_back_dpi = 0.0
 
         for d in all_defects:
             cls_w = DEFECT_CLASS_WEIGHTS.get(d.class_name, 1.0)
@@ -100,10 +98,10 @@ class GradingEngine:
             penalty = cls_w * zone_w * size_factor
 
             total_dpi += penalty
-            if d.view_side == "front":
-                front_dpi += penalty
+            if d.view_side in ["left", "right", "top"]:
+                frame_dpi += penalty
             else:
-                body_dpi += penalty
+                bottom_back_dpi += penalty
 
         # 4. Predict cosmetic grade using Machine Learning Aggregator with Veto Safeguard
         defects_dict_list = [d.to_dict() for d in all_defects]
@@ -111,8 +109,8 @@ class GradingEngine:
             defects_dict_list,
             class_counts,
             total_dpi,
-            front_dpi,
-            body_dpi
+            frame_dpi,
+            bottom_back_dpi
         )
         grade, confidence, probs, reasons = self.ml_aggregator.predict_grade(
             feat_vector,
@@ -126,15 +124,15 @@ class GradingEngine:
             "final_grade": grade,
             "grade_confidence": round(confidence, 4),
             "grade_probabilities": probs,
-            "grading_method": "ML_AGGREGATOR_VETO_SAFEGUARD",
+            "grading_method": "ML_AGGREGATOR_VETO_HOUSING_ONLY",
             "total_dpi": round(total_dpi, 2),
-            "front_dpi": round(front_dpi, 2),
-            "body_dpi": round(body_dpi, 2),
+            "frame_dpi": round(frame_dpi, 2),
+            "bottom_back_dpi": round(bottom_back_dpi, 2),
             "total_defects_count": len(all_defects),
             "defect_breakdown": class_counts,
             "reasons": reasons,
             "inspection_time_sec": elapsed_sec,
-            "views_inspected": list(view_images.keys()),
+            "views_inspected": [v for v in view_images.keys() if v != "front"],
             "defects_detail": defects_dict_list
         }
         return report
@@ -235,8 +233,8 @@ class GradingEngine:
         if not annotated_views:
             return
 
-        # Arrange views: Front in center or standard row
-        order = ["front", "left", "right", "top", "bottom", "back"]
+        # Arrange housing views in standard row
+        order = ["back", "left", "right", "top", "bottom"]
         view_strip = []
         for side in order:
             if side in annotated_views:
@@ -275,7 +273,7 @@ class GradingEngine:
 
         # Phone Unit Info & Statistics
         cv2.putText(banner, f"UNIT ID: {unit_id}", (160, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
-        stat_line = f"Total DPI: {report['total_dpi']} | Front DPI: {report['front_dpi']} | Defects: {report['total_defects_count']}"
+        stat_line = f"Total DPI: {report['total_dpi']} | Frame DPI: {report.get('frame_dpi', 0.0)} | Bottom/Back DPI: {report.get('bottom_back_dpi', 0.0)} | Defects: {report['total_defects_count']}"
         cv2.putText(banner, stat_line, (160, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
 
         breakdown_str = f"Dent: {report['defect_breakdown']['dent']} | Broken: {report['defect_breakdown']['broken']} | Scratch: {report['defect_breakdown']['scratch']} | Chip: {report['defect_breakdown']['chip']} | Crack: {report['defect_breakdown']['crack']}"
