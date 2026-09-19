@@ -139,20 +139,20 @@ st.sidebar.caption("PGI Computer Vision & ML Grading Platform")
 nav_choice = st.sidebar.radio(
     "Navigasi Modul:",
     [
-        "🔍 Inspeksi Unit (Upload / Demo)",
-        "📂 Batch Folder Testing",
-        "📐 Standar Matras (Tray Marker)",
-        "ℹ️ Panduan SOP & Arsitektur"
+        "Inspeksi Unit (Upload / Demo)",
+        "Batch Folder Testing",
+        "Standar Matras (Tray Marker)",
+        "Panduan SOP & Arsitektur"
     ]
 )
 
 st.sidebar.divider()
 st.sidebar.markdown("**Spesifikasi Model Aktif:**")
 st.sidebar.markdown("""
-- **Defect Model:** `YOLOv8-Seg (Polygon)`
-- **Device Scaling:** `ArUco + Dynamic Homography`
-- **Grading Engine:** `Random Forest (18 Features)`
-- **Safety Rule:** `Fast-Fail Veto Safeguard`
+- **Defect Model:** 
+- **Device Scaling:** 
+- **Grading Engine:** 
+- **Safety Rule:** 
 """)
 
 
@@ -160,12 +160,12 @@ st.sidebar.markdown("""
 # Module 1: Single Unit Inspection (Upload or Demo)
 # ---------------------------------------------------------
 if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
-    st.markdown('<div class="main-header">📱 Inspeksi Cacat Fisik & Grading Smartphone</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Inspeksi Cacat Fisik & Grading Smartphone</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Analisis multi-sudut pandang dengan segmentasi poligon presisi sub-milimeter dan estimasi Grade otomatis.</div>', unsafe_allow_html=True)
 
     input_mode = st.radio(
         "Pilih Metode Masukan Foto:",
-        ["📁 Demo 1-Click (Gunakan Unit Riil Database)", "📤 Upload Foto 5 Sudut Pandang Sendiri"],
+        ["📁 Demo 1-Click (Gunakan Unit Riil Database)", " Upload Foto 5 Sudut Pandang Sendiri"],
         horizontal=True
     )
 
@@ -180,7 +180,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
     else:
         crop_base = APP_DIR
 
-    if input_mode == "📁 Demo 1-Click (Gunakan Unit Riil Database)":
+    if input_mode == "Demo 1-Click (Gunakan Unit Riil Database)":
         col_grade, col_unit = st.columns([1, 2])
 
         with col_grade:
@@ -257,13 +257,13 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
 
     # Trigger Inspection Button
     st.write("")
-    run_btn = st.button("🚀 Jalankan Inspeksi & Grading AI", type="primary", use_container_width=True)
+    run_btn = st.button("Jalankan Inspeksi & Grading AI", type="primary", use_container_width=True)
 
     if run_btn:
         if not view_files_dict:
             st.error("Harap pilih atau unggah minimal satu foto sudut pandang smartphone.")
         else:
-            with st.spinner("Menjalankan inferensi multi-view YOLOv8-Seg, estimasi spasial ArUco, dan evaluasi Machine Learning..."):
+            with st.spinner("Menjalankan inferensi multi-view dan evaluasi Machine Learning..."):
                 t0 = time.time()
                 report, card_bgr = engine.run_unit_inspection(unit_id_input, view_files_dict)
                 elapsed = time.time() - t0
@@ -353,9 +353,9 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
             # -----------------------------------------
             st.write("")
             tab1, tab2, tab3 = st.tabs([
-                "📊 Rincian Cacat Fisik (Breakdown)",
-                "🧠 Penjelasan Keputusan Model AI",
-                "📄 Dokumen Data JSON Lengkap"
+                "Rincian Cacat Fisik (Breakdown)",
+                "Penjelasan Keputusan Model AI",
+                "Dokumen Data JSON Lengkap"
             ])
 
             with tab1:
@@ -374,7 +374,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                         })
                     st.dataframe(pd.DataFrame(df_defects), use_container_width=True)
                 else:
-                    st.success("🎉 Tidak ditemukan cacat fisik terukur. Unit dalam kondisi mulus (Flawless / Grade A)!")
+                    st.success("Tidak ditemukan cacat fisik terukur. Unit dalam kondisi mulus (Flawless / Grade A)!")
 
                 # Breakdown counts
                 bd = report.get("defect_breakdown", {})
@@ -403,7 +403,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
             with tab3:
                 st.json(report)
                 st.download_button(
-                    label="📥 Unduh Laporan JSON",
+                    label=" Unduh Laporan JSON",
                     data=json.dumps(report, indent=2),
                     file_name=f"inspection_report_{unit_id_input}.json",
                     mime="application/json"
@@ -413,7 +413,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
 # ---------------------------------------------------------
 # Module 2: Batch Testing from Folder
 # ---------------------------------------------------------
-elif nav_choice == "📂 Batch Folder Testing":
+elif nav_choice == " Batch Folder Testing":
     st.markdown('<div class="main-header">📂 Batch Inspection & Pengujian Massal</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Jalankan pengujian grading otomatis pada puluhan unit smartphone sekaligus dari direktori lokal.</div>', unsafe_allow_html=True)
 
@@ -421,7 +421,7 @@ elif nav_choice == "📂 Batch Folder Testing":
     batch_dir_str = st.text_input("Path Folder Target Pengujian:", value=default_batch_path)
     limit_units = st.slider("Jumlah Unit yang Akan Diuji:", min_value=2, max_value=50, value=10)
 
-    start_batch = st.button("🚀 Mulai Batch Testing", type="primary")
+    start_batch = st.button(" Mulai Batch Testing", type="primary")
 
     if start_batch:
         b_path = Path(batch_dir_str)
@@ -484,7 +484,7 @@ elif nav_choice == "📂 Batch Folder Testing":
                 # Download CSV
                 csv_bytes = df_batch.to_csv(index=False).encode("utf-8")
                 st.download_button(
-                    label="📥 Unduh Ringkasan Hasil Pengujian (CSV)",
+                    label=" Unduh Ringkasan Hasil Pengujian (CSV)",
                     data=csv_bytes,
                     file_name="batch_inspection_results.csv",
                     mime="text/csv"
@@ -494,8 +494,8 @@ elif nav_choice == "📂 Batch Folder Testing":
 # ---------------------------------------------------------
 # Module 3: Tray Marker Standardization
 # ---------------------------------------------------------
-elif nav_choice == "📐 Standar Matras (Tray Marker)":
-    st.markdown('<div class="main-header">📐 Standar Matras Inspeksi (Tray Marker A4)</div>', unsafe_allow_html=True)
+elif nav_choice == " Standar Matras (Tray Marker)":
+    st.markdown('<div class="main-header"> Standar Matras Inspeksi (Tray Marker A4)</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Standarisasi pengambilan gambar untuk akurasi metrik fisik sub-milimeter dan eliminasi bayangan tangan.</div>', unsafe_allow_html=True)
 
     local_marker = APP_DIR / "static" / "tray_marker_template.png"
@@ -511,7 +511,7 @@ elif nav_choice == "📐 Standar Matras (Tray Marker)":
             st.image(str(marker_path), caption="Template Matras Inspeksi Resmi A4 300 DPI", use_container_width=True)
             with open(str(marker_path), "rb") as f:
                 btn = st.download_button(
-                    label="📥 Unduh Template Matras Cetak A4 (300 DPI PNG)",
+                    label=" Unduh Template Matras Cetak A4 (300 DPI PNG)",
                     data=f.read(),
                     file_name="tray_marker_template_A4_300DPI.png",
                     mime="image/png",
