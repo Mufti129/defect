@@ -203,7 +203,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                 unit_id_input = chosen_unit
                 unit_dir = selected_grade_path / chosen_unit
 
-                for side in ["back", "left", "right", "top", "bottom"]:
+                for side in ["top", "bottom", "left", "right"]:
                     p_jpg = unit_dir / f"{side}.jpg"
                     p_png = unit_dir / f"{side}.png"
                     if p_jpg.exists():
@@ -222,29 +222,26 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                     st.image(path, caption=side.upper(), use_container_width=True)
 
     else:
-        # Manual Upload Mode
-        unit_id_input = st.text_input("Unit ID / No. Seri Smartphone:", value="HP-HOUSING-TEST-001")
-        st.markdown("**Unggah Foto Sisi Bodi/Housing Smartphone (Tanpa Layar Depan):**")
+        # Manual Upload Mode (Strictly 4 Housing Sides)
+        unit_id_input = st.text_input("Unit ID / No. Seri Smartphone:", value="HP-HOUSING-001")
+        st.markdown("**Unggah Foto 4 Sisi Bodi Smartphone (Top, Bottom, Left, Right):**")
 
-        up_col1, up_col2, up_col3, up_col4, up_col5 = st.columns(5)
+        up_col1, up_col2, up_col3, up_col4 = st.columns(4)
         
         with up_col1:
-            f_back = st.file_uploader("1. Back (Kaca Belakang)", type=["jpg", "jpeg", "png"], key="up_back")
+            f_top = st.file_uploader("1. Top (Sisi Atas)", type=["jpg", "jpeg", "png"], key="up_top")
         with up_col2:
-            f_left = st.file_uploader("2. Left (Samping Kiri)", type=["jpg", "jpeg", "png"], key="up_left")
+            f_bottom = st.file_uploader("2. Bottom (Port & Bawah)", type=["jpg", "jpeg", "png"], key="up_bottom")
         with up_col3:
-            f_right = st.file_uploader("3. Right (Samping Kanan)", type=["jpg", "jpeg", "png"], key="up_right")
+            f_left = st.file_uploader("3. Left (Samping Kiri)", type=["jpg", "jpeg", "png"], key="up_left")
         with up_col4:
-            f_bottom = st.file_uploader("4. Bottom (Port & Speaker)", type=["jpg", "jpeg", "png"], key="up_bottom")
-        with up_col5:
-            f_top = st.file_uploader("5. Top (Sisi Atas)", type=["jpg", "jpeg", "png"], key="up_top")
+            f_right = st.file_uploader("4. Right (Samping Kanan)", type=["jpg", "jpeg", "png"], key="up_right")
 
         upload_map = {
-            "back": f_back,
-            "left": f_left,
-            "right": f_right,
+            "top": f_top,
             "bottom": f_bottom,
-            "top": f_top
+            "left": f_left,
+            "right": f_right
         }
 
         temp_dir = tempfile.mkdtemp(prefix="st_upload_")
@@ -271,8 +268,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
             grade = report.get("final_grade", "D")
             confidence = report.get("grade_confidence", 0.0)
             total_dpi = report.get("total_dpi", 0.0)
-            frame_dpi = report.get("frame_dpi", 0.0)
-            bottom_back_dpi = report.get("bottom_back_dpi", 0.0)
+            front_dpi = report.get("front_dpi", 0.0)
             defects_count = report.get("total_defects_count", 0)
 
             st.success(f"Analisis selesai dalam {elapsed:.2f} detik!")
@@ -314,9 +310,9 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
             with m_col4:
                 st.markdown(f"""
                 <div class="metric-card">
-                    <div class="metric-label">Frame DPI</div>
-                    <div class="metric-value">{frame_dpi:.1f}</div>
-                    <div style="font-size: 0.75rem; color: #94A3B8;">Sisi Casing</div>
+                    <div class="metric-label">Front DPI</div>
+                    <div class="metric-value">{front_dpi:.1f}</div>
+                    <div style="font-size: 0.75rem; color: #94A3B8;">Layar Depan</div>
                 </div>
                 """, unsafe_allow_html=True)
 

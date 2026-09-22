@@ -202,18 +202,30 @@ class GradingEngine:
         unit_id: str,
         view_images: Dict[str, str],
         report: Dict,
-        output_card_path: str
-    ):
+        output_card_path: str,
+        save_annotated_dir: Optional[str] = None
+    ) -> Dict[str, str]:
         """
         Generates a consolidated Multi-View Inspection Collage image with defect overlays,
         grade badge, and quantitative metric table.
+        Optionally saves individual annotated views to save_annotated_dir.
+        Returns dict of {view_side: annotated_image_path}.
         """
-        # Load and annotate individual views
         annotated_views = {}
-        target_height = 400
+        annotated_paths = {}
+        target_height = 420
+
+        # Count defects per view side for header labels
+        defects_per_view = {}
+        for d in report.get("defects_detail", []):
+            side = d.get("view_side", "unknown")
+            defects_per_view[side] = defects_per_view.get(side, 0) + 1
+
+        if save_annotated_dir:
+            os.makedirs(save_annotated_dir, exist_ok=True)
 
         for view_side, img_path in view_images.items():
-            if not os.path.exists(img_path):
+            if view_side == "front" or not os.path.exists(img_path):
                 continue
             img = cv2.imread(img_path)
             if img is None:
@@ -224,27 +236,61 @@ class GradingEngine:
             defects = self.detector.detect_image(img_path, view_side=view_side, filter_hands=True)
             ann = self.detector.draw_defects_on_image(img, defects, hand_mask=hand_mask)
 
+            # Save full-res annotated view if directory provided
+            if save_annotated_dir:
+                single_path = os.path.join(save_annotated_dir, f"{unit_id}_{view_side}_annotated.jpg")
+                cv2.imwrite(single_path, ann)
+                annotated_paths[view_side] = single_path
+
             # Resize while preserving aspect ratio for collage
             h, w = ann.shape[:2]
-            scale = target_height / h
-            resized = cv2.resize(ann, (int(w * scale), target_height))
+            scale = target_height / max(h, 1)
+            resized = cv2.resize(ann, (max(int(w * scale), 10), target_height))
             annotated_views[view_side] = resized
 
         if not annotated_views:
-            return
+            return annotated_paths
 
-        # Arrange housing views in standard row
-        order = ["back", "left", "right", "top", "bottom"]
+        # Arrange housing views in intuitive 4-view order
+        preferred_order = ["top", "bottom", "left", "right"]
+        order = [v for v in preferred_order if v in annotated_views]
+        for v in annotated_views:
+            if v not in order:
+                order.append(v)
+
         view_strip = []
         for side in order:
-            if side in annotated_views:
-                img_v = annotated_views[side]
-                # Add side label header
-                header = np.zeros((35, img_v.shape[1], 3), dtype=np.uint8)
-                header[:] = (40, 40, 40)
-                cv2.putText(header, side.upper(), (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-                combined = np.vstack([header, img_v])
-                view_strip.append(combined)
+            img_v = annotated_views[side]
+            n_def = defects_per_view.get(side, 0)
+            def_text = f" ({n_def} DEFECTS)" if n_def > 0 else " (CLEAN)"
+
+            # Ensure minimum width of 190px so header labels fit comfortably
+            if img_v.shape[1] < 190:
+                diff = 190 - img_v.shape[1]
+                pad_l = diff // 2
+                pad_r = diff - pad_l
+                left_pad = np.zeros((img_v.shape[0], pad_l, 3), dtype=np.uint8)
+                right_pad = np.zeros((img_v.shape[0], pad_r, 3), dtype=np.uint8)
+                left_pad[:] = (18, 20, 26)
+                right_pad[:] = (18, 20, 26)
+                img_v = np.hstack([left_pad, img_v, right_pad])
+
+            # Side label header
+            header = np.zeros((38, img_v.shape[1], 3), dtype=np.uint8)
+            header[:] = (28, 32, 42)
+            # Accent left strip
+            cv2.rectangle(header, (0, 0), (6, 38), (37, 99, 235), -1)
+            
+            label_text = f"{side.upper()}{def_text}"
+            color = (80, 200, 120) if n_def == 0 else (60, 100, 240)
+            cv2.putText(header, label_text, (14, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.52, color, 2)
+            
+            # Subtle separator on right border
+            bordered_v = img_v.copy()
+            cv2.line(bordered_v, (bordered_v.shape[1] - 1, 0), (bordered_v.shape[1] - 1, bordered_v.shape[0]), (50, 60, 75), 2)
+            
+            combined = np.vstack([header, bordered_v])
+            view_strip.append(combined)
 
         # Concatenate horizontally
         max_h = max(v.shape[0] for v in view_strip)
@@ -258,26 +304,43 @@ class GradingEngine:
         collage_row = np.hstack(padded_strip)
 
         # Build Top Banner (Inspection Header & Grade Badge)
-        banner_h = 120
-        banner_w = collage_row.shape[1]
+        banner_h = 135
+        banner_w = max(collage_row.shape[1], 1200)
+
+        # If collage is narrower than minimum banner width, pad collage
+        if collage_row.shape[1] < banner_w:
+            diff_w = banner_w - collage_row.shape[1]
+            pad_side = np.zeros((collage_row.shape[0], diff_w, 3), dtype=np.uint8)
+            collage_row = np.hstack([collage_row, pad_side])
+        else:
+            banner_w = collage_row.shape[1]
+
         banner = np.zeros((banner_h, banner_w, 3), dtype=np.uint8)
-        banner[:] = (25, 25, 25)
+        banner[:] = (16, 20, 28)
 
         grade = report["final_grade"]
         grade_color = GRADE_COLORS.get(grade, (128, 128, 128))
+        conf_pct = report.get("grade_confidence", 0.0) * 100
 
         # Grade Badge Box
-        cv2.rectangle(banner, (20, 15), (140, 105), grade_color, -1)
-        cv2.putText(banner, f"GRADE", (35, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
-        cv2.putText(banner, f"{grade}", (50, 95), cv2.FONT_HERSHEY_SIMPLEX, 1.8, (255, 255, 255), 4)
+        cv2.rectangle(banner, (20, 18), (145, 118), grade_color, -1)
+        cv2.putText(banner, f"GRADE", (36, 48), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
+        cv2.putText(banner, f"{grade}", (50, 106), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (255, 255, 255), 4)
+
+        # Brand / Sub-header
+        cv2.putText(banner, "PUSAT GADAI INDONESIA | DEFECT INSPECTION AI (V3 HOUSING-ONLY)", (170, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (37, 180, 240), 1)
 
         # Phone Unit Info & Statistics
-        cv2.putText(banner, f"UNIT ID: {unit_id}", (160, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
-        stat_line = f"Total DPI: {report['total_dpi']} | Frame DPI: {report.get('frame_dpi', 0.0)} | Bottom/Back DPI: {report.get('bottom_back_dpi', 0.0)} | Defects: {report['total_defects_count']}"
-        cv2.putText(banner, stat_line, (160, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1)
+        cv2.putText(banner, f"UNIT ID: {unit_id}", (170, 64), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (255, 255, 255), 2)
+        stat_line = f"Confidence: {conf_pct:.1f}% | Total DPI: {report['total_dpi']} | Frame DPI: {report.get('frame_dpi', 0.0)} | Bottom DPI: {report.get('bottom_back_dpi', 0.0)} | Defects: {report['total_defects_count']}"
+        cv2.putText(banner, stat_line, (170, 92), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (200, 210, 225), 1)
 
-        breakdown_str = f"Dent: {report['defect_breakdown']['dent']} | Broken: {report['defect_breakdown']['broken']} | Scratch: {report['defect_breakdown']['scratch']} | Chip: {report['defect_breakdown']['chip']} | Crack: {report['defect_breakdown']['crack']}"
-        cv2.putText(banner, breakdown_str, (160, 98), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
+        bd = report.get("defect_breakdown", {})
+        breakdown_str = f"Dent: {bd.get('dent', 0)} | Broken: {bd.get('broken', 0)} | Scratch: {bd.get('scratch', 0)} | Chip: {bd.get('chip', 0)} | Crack: {bd.get('crack', 0)}"
+        cv2.putText(banner, breakdown_str, (170, 118), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (160, 175, 195), 1)
+
+        # Separator line between banner and images
+        cv2.line(banner, (0, banner_h - 1), (banner_w, banner_h - 1), (45, 55, 75), 2)
 
         # Combine banner and images
         final_card = np.vstack([banner, collage_row])
@@ -285,6 +348,8 @@ class GradingEngine:
         os.makedirs(os.path.dirname(output_card_path), exist_ok=True)
         cv2.imwrite(output_card_path, final_card)
         print(f"[GradingEngine] Inspection card saved: {output_card_path}")
+
+        return annotated_paths
 
 
 if __name__ == "__main__":

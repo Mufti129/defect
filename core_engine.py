@@ -101,8 +101,8 @@ class StreamlitInspectionEngine:
             cv2.putText(blank, "No Valid Views Loaded", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
             return blank
 
-        # Preferred order for housing inspection
-        order = ["back", "left", "right", "top", "bottom"]
+        # Preferred order for 4-side housing inspection
+        order = ["top", "bottom", "left", "right", "back"]
         view_strip = []
         for side in order:
             if side in annotated_views:
