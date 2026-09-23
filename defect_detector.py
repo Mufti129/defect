@@ -294,6 +294,11 @@ class DefectDetector:
             blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 6
         )
 
+        # Extract phone body mask and dilated boundary edge
+        phone_mask = self.hand_filter.detect_phone_body_mask(img, view_side)
+        phone_edge = cv2.Canny(phone_mask, 50, 150)
+        phone_edge_dilated = cv2.dilate(phone_edge, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (30, 30)))
+
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         defects = []
 
@@ -314,29 +319,35 @@ class DefectDetector:
             if bx < 15 or by < 15 or (bx + bw) > (w - 15) or (by + bh) > (h - 15):
                 continue
 
-            # 3. Hardware Feature Filter: Drop standard USB charging ports / speaker grills on top/bottom
+            # 3. Hardware Feature Filter: Drop standard USB charging ports on bottom view only
             rel_cx = (bx + bw / 2.0) / w
             rel_cy = (by + bh / 2.0) / h
-            if view_side in ["bottom", "top"]:
-                if 0.35 <= rel_cx <= 0.65 and 0.30 <= rel_cy <= 0.70:
+            if view_side == "bottom":
+                if 0.40 <= rel_cx <= 0.60 and 0.35 <= rel_cy <= 0.65:
                     continue
 
             # 4. Glare / Reflection Band Filter (narrow vertical/horizontal specular reflections)
-            if (bw <= 12 and bh > 35) or (bh <= 12 and bw > 35):
+            if (bw <= 10 and bh > 35) or (bh <= 10 and bw > 35):
                 continue
 
             patch = gray[by:by+bh, bx:bx+bw]
             if patch.size == 0 or np.mean(patch) > 215:
                 continue
 
+            # Check if defect lies along the physical phone edge/boundary
+            cx, cy = int(bx + bw / 2), int(by + bh / 2)
+            is_on_phone_edge = (phone_edge_dilated[cy, cx] > 0)
+
             # 5. Eliminate candidates that lie on human fingers or outside phone body
             poly_pts = [(int(p[0][0]), int(p[0][1])) for p in cnt]
-            if hand_mask is not None and self.hand_filter.is_defect_on_hand(poly_pts, hand_mask, threshold_ratio=0.15):
+            hand_thresh = 0.40 if is_on_phone_edge else 0.15
+            if hand_mask is not None and self.hand_filter.is_defect_on_hand(poly_pts, hand_mask, threshold_ratio=hand_thresh):
                 continue
 
+            min_insp = 40 if is_on_phone_edge else 80
             if inspection_mask is not None:
                 crop_mask = inspection_mask[by:by+bh, bx:bx+bw]
-                if crop_mask.size > 0 and np.mean(crop_mask) < 80:
+                if crop_mask.size > 0 and np.mean(crop_mask) < min_insp:
                     continue
 
             # 6. Local Contrast & Stroke Width Filter
@@ -347,7 +358,7 @@ class DefectDetector:
             bg_crop = gray[max(0, by-bg_margin):min(h, by+bh+bg_margin), max(0, bx-bg_margin):min(w, bx+bw+bg_margin)]
             local_contrast = abs(float(np.mean(patch)) - float(np.mean(bg_crop)))
 
-            if local_contrast < 13.0:
+            if local_contrast < 9.0:
                 continue
 
             metrics = self.spatial_scaler.measure_polygon_metrics(poly_pts, scale_mm)
@@ -358,21 +369,25 @@ class DefectDetector:
             conf = 0.70
 
             # Classification heuristics with physical metric gates:
-            # A. Scratch: Hairline thin (stroke_w <= 3.5px), elongated (aspect_ratio > 3.5), length >= 1.8mm
-            if aspect_ratio > 3.5 and 35 < peri < 500 and stroke_w <= 3.5:
+            # A. Scratch: Hairline thin (stroke_w <= 3.5px), elongated (aspect_ratio > 3.2), length >= 1.8mm
+            if aspect_ratio > 3.2 and 35 < peri < 500 and stroke_w <= 3.5:
                 # Differentiate crack from scratch: cracks are long (>8mm), high std deviation, jagged, on glass surfaces only
                 if view_side in ["front", "back"] and peri > 120 and np.std(patch) > 35.0 and len_mm >= 8.0:
                     cls_name = "crack"
-                    conf = 0.75
+                    conf = 0.78
                 elif len_mm >= 1.8:
                     cls_name = "scratch"
                     conf = 0.68
-            # B. Chip: Localized notch at the peripheral margin (length >= 1.2mm, area >= 1.2mm²)
-            elif (bx < w * 0.12 or bx + bw > w * 0.88 or by < h * 0.08 or by + bh > h * 0.92) and area_mm2 >= 1.2 and len_mm >= 1.2:
-                cls_name = "chip"
-                conf = 0.65
-            # C. Dent: Rounded indentation (aspect_ratio < 1.8, area >= 2.5mm², length >= 1.8mm)
-            elif aspect_ratio < 1.8 and area_mm2 >= 2.5 and len_mm >= 1.8:
+            # B. Chip / Broken: Localized notch or physical defect at the peripheral phone margin
+            elif is_on_phone_edge and area_mm2 >= 0.3 and len_mm >= 1.2:
+                if len_mm >= 4.0 or area_mm2 >= 1.0:
+                    cls_name = "broken"
+                    conf = 0.85  # Severe sompal / housing fracture
+                else:
+                    cls_name = "chip"
+                    conf = 0.72  # Minor cuil / corner chip
+            # C. Dent: Rounded indentation (aspect_ratio < 1.8, area >= 2.0mm², length >= 1.8mm)
+            elif aspect_ratio < 1.8 and area_mm2 >= 2.0 and len_mm >= 1.8:
                 cls_name = "dent"
                 conf = 0.62
 

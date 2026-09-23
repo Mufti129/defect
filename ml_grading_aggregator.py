@@ -143,6 +143,12 @@ class MLGradingAggregator:
             reasons.append(f"Veto Operasional: Ditemukan {crack_cnt} retakan bodi signifikan (pjg max {max_len:.1f}mm).")
             return "D", 1.0, {"A": 0.0, "B": 0.0, "C": 0.0, "D": 1.0}, reasons
 
+        chip_cnt = class_counts.get("chip", 0)
+        max_area = features[8]
+        if chip_cnt >= 4 or (chip_cnt >= 1 and (max_len >= 4.5 or max_area >= 1.0)):
+            reasons.append(f"Veto Operasional: Ditemukan {chip_cnt} cacat cuil/sompal bodi berat (pjg max {max_len:.1f}mm, luas {max_area:.1f}mm2).")
+            return "D", 1.0, {"A": 0.0, "B": 0.0, "C": 0.0, "D": 1.0}, reasons
+
         if total_dpi >= 45.0:
             reasons.append(f"Veto Operasional: Akumulasi penalti cacat bodi melampaui batas toleransi (DPI {total_dpi:.1f} >= 45.0).")
             return "D", 0.98, {"A": 0.0, "B": 0.0, "C": 0.05, "D": 0.95}, reasons
@@ -171,11 +177,12 @@ class MLGradingAggregator:
         # FALLBACK: Calibrated Heuristic if ML model weights not yet trained
         total_def = features[0]
         dents = features[2]
+        chips = features[3]
         total_dpi = features[16]
 
-        if total_def == 0 or (total_dpi < 3.0 and dents == 0):
+        if total_def == 0 or (total_dpi < 3.0 and dents == 0 and chips == 0):
             return "A", 0.95, {"A": 0.95, "B": 0.05, "C": 0.0, "D": 0.0}, ["Fallback: Bodi mulus dan DPI < 3.0."]
-        elif total_dpi < 18.0 and dents <= 2:
+        elif total_dpi < 18.0 and dents <= 2 and chips == 0:
             return "B", 0.88, {"A": 0.05, "B": 0.88, "C": 0.07, "D": 0.0}, ["Fallback: Goresan mikro bodi terkontrol (Grade B)."]
         elif total_dpi < 40.0:
             return "C", 0.85, {"A": 0.0, "B": 0.05, "C": 0.85, "D": 0.10}, ["Fallback: Penalti DPI bodi sedang (Grade C)."]
