@@ -32,13 +32,13 @@ CLASS_COLORS = {
     "crack": (0, 0, 200),       # Dark Red / Crimson
 }
 
-# Per-class confidence thresholds to optimize precision
+# Per-class confidence thresholds to optimize precision and recall
 DEFAULT_CONF_THRESHOLDS = {
-    "scratch": 0.45,  # Higher threshold to filter dust/lint fibers
-    "crack": 0.35,    # Lower threshold: critical defect that cannot be missed
-    "chip": 0.40,
-    "dent": 0.40,
-    "broken": 0.35,
+    "scratch": 0.15,  # Calibrated for micro hairline scratches
+    "crack": 0.15,    # Critical structural defect
+    "chip": 0.15,     # Corner notch & rim chip
+    "dent": 0.18,     # Metal body dent
+    "broken": 0.15,   # Structural fractures / heavy chips
 }
 
 # Standard phone dimension reference for pixel-to-millimeter scaling
@@ -165,7 +165,8 @@ class DefectDetector:
         self,
         img_path: str,
         view_side: str = "front",
-        filter_hands: bool = True
+        filter_hands: bool = True,
+        conf_threshold: Optional[float] = None
     ) -> List[DefectInstance]:
         """
         Runs defect detection on a single image.
@@ -184,9 +185,9 @@ class DefectDetector:
             inspection_mask, hand_mask = self.hand_filter.generate_inspection_mask(img, view_side)
 
         all_defects = []
-        # 1. Detect with custom YOLO segmentation model (if available)
+        # 1. Detect with custom YOLO segmentation or detection model
         if self.model is not None and self.is_custom_defect_model:
-            yolo_defs = self._detect_with_yolo(img, view_side, scale_mm, inspection_mask, hand_mask)
+            yolo_defs = self._detect_with_yolo(img, view_side, scale_mm, inspection_mask, hand_mask, conf_threshold=conf_threshold)
             all_defects.extend(yolo_defs)
 
         # 2. Geometric anomaly detection for fine micro-scratches, chips, and housing defects
@@ -201,10 +202,11 @@ class DefectDetector:
         view_side: str,
         scale_mm: float,
         inspection_mask: Optional[np.ndarray] = None,
-        hand_mask: Optional[np.ndarray] = None
+        hand_mask: Optional[np.ndarray] = None,
+        conf_threshold: Optional[float] = None
     ) -> List[DefectInstance]:
         """
-        Fast high-resolution inference using trained YOLO segmentation model with hand exclusion.
+        Fast high-resolution inference supporting both YOLO segmentation masks and detection boxes.
         """
         h, w = img.shape[:2]
         # For tall images, inspect in two overlapping halves (top and bottom) for high detail
@@ -218,15 +220,31 @@ class DefectDetector:
         else:
             sub_regions = [(0, 0, w, h)]
 
+        # Determine active thresholds
+        if conf_threshold is not None:
+            active_conf = {c: float(conf_threshold) for c in DEFECT_CLASSES}
+        else:
+            active_conf = self.conf_thresholds or DEFAULT_CONF_THRESHOLDS
+
+        min_conf = max(0.04, min(active_conf.values()))
+
+        # Determine inference resolution
+        is_detect = (self.model is not None and getattr(self.model, "task", None) == "detect")
+        imgsz = 1024 if (is_detect and max(h, w) >= 1200) else 640
+
         all_defects = []
         for x1, y1, x2, y2 in sub_regions:
             sub_img = img[y1:y2, x1:x2]
-            results = self.model.predict(sub_img, imgsz=640, conf=0.20, verbose=False, device="cpu")
+            results = self.model.predict(sub_img, imgsz=imgsz, conf=min_conf, verbose=False, device=self.device)
             for res in results:
-                if res.masks is None or len(res.masks) == 0:
+                # Support both instance segmentation (masks) and object detection (boxes)
+                has_masks = (res.masks is not None and len(res.masks) > 0)
+                has_boxes = (res.boxes is not None and len(res.boxes) > 0)
+                if not has_masks and not has_boxes:
                     continue
 
-                for i, mask in enumerate(res.masks.xy):
+                num_items = len(res.masks.xy) if has_masks else len(res.boxes)
+                for i in range(num_items):
                     cls_id = int(res.boxes.cls[i].item())
                     conf = float(res.boxes.conf[i].item())
                     if cls_id not in range(len(DEFECT_CLASSES)):
@@ -234,25 +252,40 @@ class DefectDetector:
                     cls_name = DEFECT_CLASSES[cls_id]
 
                     # Filter by per-class confidence threshold
-                    if conf < self.conf_thresholds.get(cls_name, 0.35):
+                    if conf < active_conf.get(cls_name, 0.15):
                         continue
 
-                    # Transform local crop polygon back to global image coordinates
-                    global_polygon = [(int(pt[0] + x1), int(pt[1] + y1)) for pt in mask]
-                    if len(global_polygon) < 3:
+                    if has_masks:
+                        mask = res.masks.xy[i]
+                        global_polygon = [(int(pt[0] + x1), int(pt[1] + y1)) for pt in mask]
+                        if len(global_polygon) < 3:
+                            continue
+                        pts_np = np.array(global_polygon, dtype=np.int32)
+                        bx1, by1, bw, bh = cv2.boundingRect(pts_np)
+                    else:
+                        box = res.boxes.xyxy[i].cpu().numpy()
+                        bx1 = int(box[0] + x1)
+                        by1 = int(box[1] + y1)
+                        bx2 = int(box[2] + x1)
+                        by2 = int(box[3] + y1)
+                        bw = max(1, bx2 - bx1)
+                        bh = max(1, by2 - by1)
+                        global_polygon = [(bx1, by1), (bx2, by1), (bx2, by2), (bx1, by2)]
+
+                    # Hardware Feature Filter: Drop standard USB charging port at bottom view center
+                    rel_cx = (bx1 + bw / 2.0) / max(w, 1)
+                    rel_cy = (by1 + bh / 2.0) / max(h, 1)
+                    if view_side == "bottom" and 0.40 <= rel_cx <= 0.60 and 0.30 <= rel_cy <= 0.70:
                         continue
 
                     # Filter out candidate if it falls on human hands/fingers
-                    if hand_mask is not None and self.hand_filter.is_defect_on_hand(global_polygon, hand_mask, threshold_ratio=0.15):
+                    if hand_mask is not None and self.hand_filter.is_defect_on_hand(global_polygon, hand_mask, threshold_ratio=0.25):
                         continue
 
-                    pts_np = np.array(global_polygon, dtype=np.int32)
-                    bx1, by1, bw, bh = cv2.boundingRect(pts_np)
-
-                    # Filter out if outside inspectable phone surface
+                    # Filter out if completely outside phone body
                     if inspection_mask is not None:
                         crop_mask = inspection_mask[by1:by1+bh, bx1:bx1+bw]
-                        if crop_mask.size > 0 and np.mean(crop_mask) < 80:
+                        if crop_mask.size > 0 and np.mean(crop_mask) < 35:
                             continue
 
                     metrics = self.spatial_scaler.measure_polygon_metrics(global_polygon, scale_mm)
@@ -497,9 +530,16 @@ class DefectDetector:
     ) -> np.ndarray:
         """
         Draws visual annotations (polygons, labels, and bounding boxes) on image.
-        If hand_mask is provided, shades the excluded hand/finger area.
+        Dynamically scales line thickness and text size to image resolution so defects
+        remain crystal clear at any zoom level without clipping off-screen.
         """
         annotated = img.copy()
+        h, w = img.shape[:2]
+
+        scale_factor = max(0.65, min(2.2, max(h, w) / 1000.0))
+        box_thickness = max(2, int(round(2.6 * scale_factor)))
+        font_scale = max(0.48, 0.52 * scale_factor)
+        font_thick = max(1, int(round(1.6 * scale_factor)))
 
         # Render subtle hand exclusion zone
         if hand_mask is not None and np.sum(hand_mask > 0) > 0:
@@ -508,35 +548,63 @@ class DefectDetector:
             cv2.addWeighted(hand_overlay, 0.35, annotated, 0.65, 0, annotated)
             # Outline hands
             h_contours, _ = cv2.findContours(hand_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            cv2.polylines(annotated, h_contours, isClosed=True, color=(140, 140, 140), thickness=1)
+            cv2.polylines(annotated, h_contours, isClosed=True, color=(140, 140, 140), thickness=max(1, int(scale_factor)))
 
         for d in defects:
             color = CLASS_COLORS.get(d.class_name, (0, 255, 0))
 
-            # Draw polygon mask with alpha blend
+            # 1. Draw polygon mask with alpha blend
             if len(d.polygon) >= 3:
                 pts = np.array(d.polygon, dtype=np.int32)
                 overlay = annotated.copy()
                 cv2.fillPoly(overlay, [pts], color)
-                cv2.addWeighted(overlay, 0.4, annotated, 0.6, 0, annotated)
-                cv2.polylines(annotated, [pts], isClosed=True, color=color, thickness=2)
+                cv2.addWeighted(overlay, 0.38, annotated, 0.62, 0, annotated)
+                cv2.polylines(annotated, [pts], isClosed=True, color=color, thickness=box_thickness)
 
-            # Draw Bounding Box
+            # 2. Draw Bounding Box with Corner Accents
             x1, y1, x2, y2 = d.bbox
-            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 1)
+            cv2.rectangle(annotated, (x1, y1), (x2, y2), color, box_thickness)
 
-            # Draw Label Tag
+            c_len = max(6, int(min(x2 - x1, y2 - y1) * 0.28))
+            c_thick = box_thickness + 1
+            cv2.line(annotated, (x1, y1), (x1 + c_len, y1), color, c_thick)
+            cv2.line(annotated, (x1, y1), (x1, y1 + c_len), color, c_thick)
+            cv2.line(annotated, (x2, y2), (x2 - c_len, y2), color, c_thick)
+            cv2.line(annotated, (x2, y2), (x2, y2 - c_len), color, c_thick)
+
+            # 3. Draw Label Tag Pill (Anti-clipping positioning)
             label = f"{d.class_name.upper()} {d.confidence:.2f} ({d.length_mm:.1f}mm)"
-            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            cv2.rectangle(annotated, (x1, max(0, y1 - th - 6)), (x1 + tw + 6, max(0, y1)), color, -1)
+            (tw, th), baseline = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thick)
+
+            pad_x = int(6 * scale_factor)
+            pad_y = int(5 * scale_factor)
+
+            if y1 - th - pad_y * 2 < 0:
+                by1 = y2
+                by2 = min(h - 1, y2 + th + pad_y * 2)
+                text_y = by1 + th + pad_y
+            else:
+                by1 = max(0, y1 - th - pad_y * 2)
+                by2 = y1
+                text_y = by2 - pad_y
+
+            bx1 = max(0, x1)
+            bx2 = min(w - 1, x1 + tw + pad_x * 2)
+
+            # Solid badge background with dark contrast border
+            cv2.rectangle(annotated, (bx1, by1), (bx2, by2), color, -1)
+            cv2.rectangle(annotated, (bx1, by1), (bx2, by2), (20, 20, 20), 1)
+
+            text_color = (255, 255, 255) if d.class_name in ["crack", "broken", "dent"] else (15, 15, 15)
             cv2.putText(
                 annotated,
                 label,
-                (x1 + 3, max(0, y1 - 4)),
+                (bx1 + pad_x, text_y),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 0, 0),
-                1,
+                font_scale,
+                text_color,
+                font_thick,
                 cv2.LINE_AA
             )
+
         return annotated

@@ -4,7 +4,8 @@ STREAMLIT INSPECTION WEB APPLICATION
 ====================================
 Interactive multi-view smartphone defect detection, physical measurement,
 cosmetic grading, and inspection card generation.
-Version: 3.3 - Multi-Model Edition (V1, V2, V3, V4, and V5 Live Checkpoint)
+Version: 4.0 - Flutter Belajarku White & Purple Edition
+Multi-Model Engine (V1, V2, V3, V4, and V5 Live Checkpoint)
 """
 
 import os
@@ -34,120 +35,232 @@ if str(APP_DIR) not in sys.path:
 from core_engine import StreamlitInspectionEngine, MODEL_REGISTRY
 
 # ---------------------------------------------------------
-# Page Configuration & Modern Styling
+# Page Configuration & Flutter "Belajarku" Styling
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="AI Smartphone Inspection & Grading System",
+    page_title="Sistem Taksiran AI Smartphone",
     page_icon="📱",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for styling cards, grade badges, alerts, and clean UI
+# Custom CSS for Flutter Belajarku White & Purple Theme
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2.1rem;
-        font-weight: 700;
-        color: #1E293B;
-        margin-bottom: 0.2rem;
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
-    .sub-header {
-        font-size: 1.02rem;
-        color: #64748B;
-        margin-bottom: 1.2rem;
+
+    /* Flutter App Bar / Hero Header */
+    .flutter-appbar {
+        background: linear-gradient(135deg, #6D28D9 0%, #7C3AED 55%, #8B5CF6 100%);
+        border-radius: 20px;
+        padding: 24px 28px;
+        color: #FFFFFF;
+        box-shadow: 0 10px 30px -5px rgba(109, 40, 217, 0.35);
+        margin-bottom: 22px;
+        position: relative;
+        overflow: hidden;
     }
+    .flutter-appbar::after {
+        content: "";
+        position: absolute;
+        top: -35px;
+        right: -35px;
+        width: 160px;
+        height: 160px;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .appbar-title {
+        font-size: 1.85rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin: 0;
+        color: #FFFFFF !important;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .appbar-subtitle {
+        font-size: 0.95rem;
+        color: #EDE9FE;
+        margin-top: 6px;
+        font-weight: 400;
+        line-height: 1.45;
+    }
+    .appbar-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+    }
+    .appbar-tag-pill {
+        background: rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(8px);
+        padding: 5px 12px;
+        border-radius: 30px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: #FFFFFF;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+
+    /* Flutter Modern Card Container */
+    .flutter-card {
+        background: #FFFFFF;
+        border: 1px solid #EDE9FE;
+        border-radius: 18px;
+        padding: 22px;
+        box-shadow: 0 4px 20px -2px rgba(109, 40, 217, 0.06);
+        margin-bottom: 18px;
+        transition: all 0.25s ease-in-out;
+    }
+    .flutter-card:hover {
+        box-shadow: 0 10px 25px -4px rgba(109, 40, 217, 0.12);
+        border-color: #DDD6FE;
+    }
+
+    /* Grade Badges */
     .grade-badge-A {
-        background: linear-gradient(135deg, #10B981, #059669);
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%);
         color: white;
-        padding: 18px 24px;
-        border-radius: 12px;
+        padding: 22px 18px;
+        border-radius: 18px;
         text-align: center;
         font-weight: 800;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+        box-shadow: 0 8px 24px -2px rgba(16, 185, 129, 0.35);
     }
     .grade-badge-B {
-        background: linear-gradient(135deg, #F59E0B, #D97706);
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
         color: white;
-        padding: 18px 24px;
-        border-radius: 12px;
+        padding: 22px 18px;
+        border-radius: 18px;
         text-align: center;
         font-weight: 800;
-        box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+        box-shadow: 0 8px 24px -2px rgba(245, 158, 11, 0.35);
     }
     .grade-badge-C {
-        background: linear-gradient(135deg, #F97316, #EA580C);
+        background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
         color: white;
-        padding: 18px 24px;
-        border-radius: 12px;
+        padding: 22px 18px;
+        border-radius: 18px;
         text-align: center;
         font-weight: 800;
-        box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
+        box-shadow: 0 8px 24px -2px rgba(249, 115, 22, 0.35);
     }
     .grade-badge-D {
-        background: linear-gradient(135deg, #EF4444, #DC2626);
+        background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
         color: white;
-        padding: 18px 24px;
-        border-radius: 12px;
+        padding: 22px 18px;
+        border-radius: 18px;
         text-align: center;
         font-weight: 800;
-        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+        box-shadow: 0 8px 24px -2px rgba(239, 68, 68, 0.35);
     }
-    .metric-card {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
-        border-radius: 10px;
-        padding: 14px;
+
+    /* Metric Card */
+    .flutter-metric-card {
+        background: #FFFFFF;
+        border: 1px solid #EDE9FE;
+        border-radius: 16px;
+        padding: 16px 14px;
         text-align: center;
+        box-shadow: 0 2px 12px rgba(109, 40, 217, 0.05);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
-    .metric-value {
-        font-size: 1.55rem;
+    .flutter-metric-val {
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: #6D28D9;
+        line-height: 1.2;
+    }
+    .flutter-metric-label {
+        font-size: 0.78rem;
         font-weight: 700;
-        color: #0F172A;
-    }
-    .metric-label {
-        font-size: 0.82rem;
         color: #64748B;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        margin-top: 4px;
     }
+    .flutter-metric-sub {
+        font-size: 0.72rem;
+        color: #94A3B8;
+        margin-top: 2px;
+    }
+
+    /* Defect Pill Tags */
+    .defect-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 30px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        margin: 4px 6px 4px 0;
+    }
+    .defect-chip-scratch { background: #ECFEFF; color: #0891B2; border: 1px solid #A5F3FC; }
+    .defect-chip-dent { background: #FFF7ED; color: #EA580C; border: 1px solid #FFEDD5; }
+    .defect-chip-chip { background: #FDF4FF; color: #C026D3; border: 1px solid #F5D0FE; }
+    .defect-chip-crack { background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; }
+    .defect-chip-broken { background: #FEF2F2; color: #DC2626; border: 1px solid #FEE2E2; }
+
+    /* Model Active Banner */
+    .model-active-banner {
+        background: linear-gradient(90deg, #FAF5FF 0%, #F5F3FF 100%);
+        border: 1px solid #DDD6FE;
+        border-left: 5px solid #7C3AED;
+        padding: 14px 20px;
+        border-radius: 14px;
+        margin-bottom: 22px;
+        box-shadow: 0 2px 10px rgba(109, 40, 217, 0.04);
+    }
+
+    /* Report Knowledge Box */
     .report-box {
-        background-color: #F1F5F9;
-        border-left: 5px solid #3B82F6;
-        padding: 14px 18px;
-        border-radius: 0 8px 8px 0;
-        margin-bottom: 1rem;
+        background-color: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-left: 5px solid #7C3AED;
+        padding: 16px 20px;
+        border-radius: 0 14px 14px 0;
+        margin-bottom: 1.2rem;
     }
     .report-title {
         font-weight: 700;
-        color: #1E3A8A;
-        font-size: 1.1rem;
-        margin-bottom: 0.4rem;
-    }
-    .model-card-box {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        color: #5B21B6;
+        font-size: 1.12rem;
+        margin-bottom: 0.5rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
-# Sidebar Navigation & Model Version Selection
+# Sidebar Navigation & Settings (Flutter Belajarku Style)
 # ---------------------------------------------------------
-st.sidebar.image("https://img.icons8.com/fluency/96/phone.png", width=64)
-st.sidebar.title("Sistem Taksiran AI")
-st.sidebar.caption("PGI Computer Vision & ML Grading Platform")
+st.sidebar.image("https://img.icons8.com/fluency/96/phone.png", width=60)
+st.sidebar.markdown("""
+<div style="font-size: 1.35rem; font-weight: 800; color: #5B21B6; margin-top: 4px;">
+    Sistem Taksiran AI
+</div>
+<div style="font-size: 0.82rem; color: #6D28D9; font-weight: 600; margin-bottom: 14px;">
+    PGI Computer Vision Platform
+</div>
+""", unsafe_allow_html=True)
 
 # 1. Module Selector
 nav_choice = st.sidebar.radio(
-    "Navigasi Modul:",
+    "🧭 Menu Navigasi:",
     [
-        "🔍 Inspeksi Unit (Upload / Demo)",
+        "🔍 Inspeksi Unit (Interactive Studio)",
         "📂 Batch Folder Testing",
         "📐 Standar Matras (Tray Marker)",
         "📑 Laporan Investigasi & Evaluasi Empiris",
@@ -174,6 +287,22 @@ selected_version = st.sidebar.selectbox(
     index=0
 )
 
+# 3. Interactive Sensitivity Slider
+st.sidebar.markdown("### 🎚️ Sensitivitas Deteksi AI:")
+conf_thresh_slider = st.sidebar.slider(
+    "Ambang Batas Keyakinan (Confidence):",
+    min_value=0.05,
+    max_value=0.50,
+    value=0.15,
+    step=0.01,
+    help="Nilai 0.15 direkomendasikan untuk menyeimbangkan deteksi cacat halus (hairline) dan presisi. Turunkan ke 0.10 jika ingin mendeteksi lecet mikro yang sangat halus."
+)
+st.sidebar.caption(
+    "💡 **Panduan Sensitivitas:**\n"
+    "• `0.05 - 0.12`: Sangat Peka (Tangkap lecet mikro & goresan tipis)\n"
+    "• `0.15`: Seimbang (Default Standar PGI)\n"
+    "• `0.20 - 0.50`: Ketat (Hanya cacat kontras tinggi/berat)"
+)
 
 # ---------------------------------------------------------
 # Cached Engine Initialization for Selected Version
@@ -193,7 +322,7 @@ active_cfg = engine.config
 
 # Display Active Model Specs in Sidebar
 st.sidebar.markdown(f"""
-<div style="background-color: {active_cfg['badge_color']}; color: white; padding: 6px 12px; border-radius: 6px; font-weight: 700; text-align: center; font-size: 0.85rem; margin-top: 6px; margin-bottom: 10px;">
+<div style="background-color: {active_cfg['badge_color']}; color: white; padding: 7px 12px; border-radius: 8px; font-weight: 700; text-align: center; font-size: 0.82rem; margin-top: 10px; margin-bottom: 12px; letter-spacing: 0.03em;">
     {active_cfg['badge']}
 </div>
 """, unsafe_allow_html=True)
@@ -205,7 +334,7 @@ st.sidebar.markdown(f"""
 - **Status:** `{active_cfg['status']}`
 """)
 
-# Special Live Training Box for V5
+# Special Live Training Box for V5 (White & Purple Flutter Style)
 if selected_version == "v5":
     v5_status_file = APP_DIR / "weights" / "training_live_status_v5.json"
     if not v5_status_file.exists():
@@ -219,12 +348,16 @@ if selected_version == "v5":
             tot_ep = v5_data.get("total_epochs", 30)
             prog_pct = v5_data.get("overall_progress_percent", 35.5)
             st.sidebar.markdown(f"""
-            <div style="background-color: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 8px; padding: 10px; font-size: 0.82rem; margin-top: 8px;">
-                <b style="color: #6D28D9;">🚧 Live Training Progress:</b><br>
-                • <b>Epoch:</b> {cur_ep} / {tot_ep}<br>
-                • <b>Progress:</b> {prog_pct:.1f}%<br>
-                • <b>Bobot Aktif:</b> Checkpoint Terbaik (Epoch 10 mAP50: 30.6%, Recall: 57.1%)<br>
-                <i style="color: #4B5563; font-size: 0.78rem;">Bobot final akan otomatis diperbarui setelah 30 epoch selesai.</i>
+            <div style="background: linear-gradient(135deg, #FAF5FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(109, 40, 217, 0.08);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <b style="color: #6D28D9; font-size: 0.86rem;">🚧 Live Training Progress</b>
+                    <span style="background: #EDE9FE; color: #6D28D9; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">Epoch {cur_ep}/{tot_ep}</span>
+                </div>
+                <div style="color: #4C1D95; font-size: 0.80rem; margin-bottom: 6px;">
+                    • <b>Progress:</b> {prog_pct:.1f}%<br>
+                    • <b>Bobot Aktif:</b> Checkpoint Terbaik (Epoch 10 mAP50: 30.6%, Recall: 57.1%)
+                </div>
+                <i style="color: #6B7280; font-size: 0.74rem;">Bobot final diperbarui otomatis setelah 30 epoch tuntas.</i>
             </div>
             """, unsafe_allow_html=True)
             st.sidebar.progress(float(prog_pct) / 100.0)
@@ -237,35 +370,58 @@ if selected_version == "v5":
 # ---------------------------------------------------------
 def render_model_banner():
     st.markdown(f"""
-    <div style="background: linear-gradient(90deg, #F8FAFC 0%, #EFF6FF 100%); border-left: 4px solid {active_cfg['badge_color']}; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px;">
+    <div class="model-active-banner">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div>
-                <span style="background: {active_cfg['badge_color']}; color: white; font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">{active_cfg['badge']}</span>
-                <span style="font-weight: 700; font-size: 1.05rem; color: #1E293B; margin-left: 8px;">{active_cfg['name']}</span>
+                <span style="background: {active_cfg['badge_color']}; color: white; font-size: 0.75rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; letter-spacing: 0.04em;">{active_cfg['badge']}</span>
+                <span style="font-weight: 800; font-size: 1.08rem; color: #2E1065; margin-left: 10px;">{active_cfg['name']}</span>
             </div>
-            <div style="font-size: 0.82rem; color: #64748B;">Arsitektur: <b>{active_cfg['arch']}</b> | Status: <b>{active_cfg['status']}</b></div>
+            <div style="font-size: 0.82rem; color: #6B7280;">
+                Arsitektur: <b style="color: #4C1D95;">{active_cfg['arch']}</b> | Sensitivitas Aktif: <b style="color: #7C3AED;">{conf_thresh_slider:.2f}</b>
+            </div>
         </div>
-        <div style="font-size: 0.85rem; color: #475569; margin-top: 6px;">{active_cfg['description']}</div>
+        <div style="font-size: 0.85rem; color: #4B5563; margin-top: 8px; line-height: 1.4;">
+            {active_cfg['description']}
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
-# Module 1: Single Unit Inspection (Upload or Demo)
+# Module 1: Single Unit Inspection (Interactive Studio)
 # ---------------------------------------------------------
-if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
-    st.markdown('<div class="main-header">📱 Inspeksi Cacat Fisik & Grading Smartphone</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Analisis bodi smartphone dengan segmentasi poligon presisi sub-milimeter, isolasi pantulan cahaya, dan estimasi Grade otomatis.</div>', unsafe_allow_html=True)
+if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
+    # Flutter Belajarku App Bar
+    st.markdown("""
+    <div class="flutter-appbar">
+        <div class="appbar-title">
+            <span>📱</span> Inspeksi Cacat Fisik & Grading Smartphone
+        </div>
+        <div class="appbar-subtitle">
+            Platform taksiran bodi smartphone terstandarisasi sub-milimeter, isolasi pantulan cahaya (glare filter), dan prediksi Grade kosmetik cerdas berbasis AI.
+        </div>
+        <div class="appbar-tags">
+            <span class="appbar-tag-pill">⚡ Multi-Model AI (V1 - V5)</span>
+            <span class="appbar-tag-pill">📐 Skala Fisik Sub-Milimeter (mm)</span>
+            <span class="appbar-tag-pill">🛡️ Fast-Fail Veto Safeguard</span>
+            <span class="appbar-tag-pill">🔍 Zoom Penampang 4 Sisi</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     render_model_banner()
 
     if selected_version == "v5":
-        st.info("💡 **Catatan Model Versi 5:** Model ini menggunakan bobot **checkpoint terbaik sementara** dari pelatihan 30 epoch yang sedang berjalan (Epoch 10 mAP50 30.6% & Recall 57.1%). Anda juga dapat membandingkan hasilnya dengan **Model Versi 3** (Rekomendasi Produksi) atau **Model Versi 4** melalui pilihan model di sidebar kiri.")
+        st.info("💡 **Catatan Model Versi 5:** Menggunakan bobot **checkpoint terbaik sementara** dari pelatihan 30 epoch (Epoch 10 mAP50 30.6% & Recall 57.1%). Anda juga dapat membandingkan hasilnya dengan **Model Versi 3** (Rekomendasi Produksi) atau **Model Versi 4** melalui pilihan model di panel kiri.")
 
+    # Flutter-style Input Container
+    st.markdown('<div class="flutter-card">', unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #4C1D95; margin-top:0;'>📥 Pilih Metode Masukan Citra</h4>", unsafe_allow_html=True)
     input_mode = st.radio(
-        "Pilih Metode Masukan Foto:",
-        ["📁 Demo 1-Click (Gunakan Unit Riil Database)", "📤 Upload Foto Bodi Smartphone Sendiri"],
-        horizontal=True
+        "Metode Input:",
+        ["📁 Demo 1-Click (Gunakan Unit Riil Database)", "📤 Upload Foto Bodi Smartphone Sendiri (4 Sisi)"],
+        horizontal=True,
+        label_visibility="collapsed"
     )
 
     unit_id_input = "demo-unit"
@@ -280,7 +436,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
         crop_base = APP_DIR
 
     if input_mode == "📁 Demo 1-Click (Gunakan Unit Riil Database)":
-        st.markdown("**⭐ Sampel Khusus Investigasi & Evaluasi Lapangan:**")
+        st.markdown("<p style='font-size:0.9rem; font-weight:600; color:#5B21B6; margin-top:8px;'>⭐ Sampel Unggulan Investigasi & Evaluasi Lapangan:</p>", unsafe_allow_html=True)
         audit_cases = {
             "Pilih Sampel Bebas (Gunakan Dropdown di Bawah)": None,
             "⚡ Kasus 2: Oppo A5i (Grade D Riil - Cacat Sompal Sudut Top)": ("grade_D", "1-00013e-13__oppo__oppo-a5i-4-128"),
@@ -347,7 +503,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                     st.warning(f"Direktori {selected_grade_path} tidak ditemukan.")
 
         if view_files_dict:
-            st.info(f"Unit terpilih: **{unit_id_input}** ({len(view_files_dict)} sudut foto terdeteksi: {', '.join(view_files_dict.keys())})")
+            st.markdown(f"<p style='font-size:0.85rem; color:#4C1D95; margin-top:12px;'>📸 <b>Unit Terpilih:</b> <code>{unit_id_input}</code> ({len(view_files_dict)} sudut foto terdeteksi: <i>{', '.join(view_files_dict.keys())}</i>)</p>", unsafe_allow_html=True)
             t_cols = st.columns(len(view_files_dict))
             for i, (side, path) in enumerate(view_files_dict.items()):
                 with t_cols[i]:
@@ -359,7 +515,6 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
         st.markdown("**Unggah Foto Sisi Bodi Smartphone (Top, Bottom, Left, Right):**")
 
         up_col1, up_col2, up_col3, up_col4 = st.columns(4)
-
         with up_col1:
             f_top = st.file_uploader("1. Top (Sisi Atas)", type=["jpg", "jpeg", "png"], key="up_top")
         with up_col2:
@@ -384,18 +539,23 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                     f.write(file_obj.getbuffer())
                 view_files_dict[side] = save_path
 
+    st.markdown('</div>', unsafe_allow_html=True)
+
     # Trigger Inspection Button
-    st.write("")
-    btn_label = f"🚀 Jalankan Inspeksi & Grading dengan {active_cfg['short_name']}"
+    btn_label = f"🚀 Jalankan Inspeksi & Grading dengan {active_cfg['short_name']} (Sensitivitas: {conf_thresh_slider:.2f})"
     run_btn = st.button(btn_label, type="primary", use_container_width=True)
 
     if run_btn:
         if not view_files_dict:
             st.error("Harap pilih atau unggah minimal satu foto sudut pandang bodi smartphone.")
         else:
-            with st.spinner(f"Menjalankan inferensi dengan {active_cfg['name']}..."):
+            with st.spinner(f"Menjalankan inferensi dengan {active_cfg['name']} (Ambang Sensitivitas: {conf_thresh_slider:.2f})..."):
                 t0 = time.time()
-                report, card_bgr = engine.run_unit_inspection(unit_id_input, view_files_dict)
+                report, card_bgr, annotated_views = engine.run_unit_inspection(
+                    unit_id_input,
+                    view_files_dict,
+                    conf_threshold=conf_thresh_slider
+                )
                 elapsed = time.time() - t0
 
             grade = report.get("final_grade", "D")
@@ -405,88 +565,140 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
             bottom_back_dpi = report.get("bottom_back_dpi", 0.0)
             defects_count = report.get("total_defects_count", 0)
 
-            st.success(f"Analisis dengan **{active_cfg['short_name']}** selesai dalam {elapsed:.2f} detik!")
-
             # -----------------------------------------
-            # Top Summary Metrics & Grade Hero
+            # Top Summary Metrics & Grade Hero (Flutter Grid)
             # -----------------------------------------
-            st.divider()
-            m_col1, m_col2, m_col3, m_col4, m_col5, m_col6 = st.columns([1.5, 1, 1, 1, 1, 1])
+            st.write("")
+            m_col1, m_col2, m_col3, m_col4, m_col5, m_col6 = st.columns([1.6, 1, 1, 1, 1, 1])
 
             with m_col1:
                 badge_html = f"""
                 <div class="grade-badge-{grade}">
-                    <div style="font-size: 0.82rem; letter-spacing: 0.1em;">HASIL GRADED AI</div>
-                    <div style="font-size: 2.8rem; line-height: 1.1;">GRADE {grade}</div>
-                    <div style="font-size: 0.82rem; margin-top: 4px;">Keyakinan: {confidence*100:.1f}%</div>
+                    <div style="font-size: 0.80rem; letter-spacing: 0.12em; text-transform: uppercase;">Hasil Graded AI</div>
+                    <div style="font-size: 2.85rem; line-height: 1.1; margin: 4px 0;">GRADE {grade}</div>
+                    <div style="font-size: 0.82rem; font-weight: 600;">Keyakinan: {confidence*100:.1f}%</div>
                 </div>
                 """
                 st.markdown(badge_html, unsafe_allow_html=True)
 
             with m_col2:
                 st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Total Cacat</div>
-                    <div class="metric-value">{defects_count}</div>
-                    <div style="font-size: 0.75rem; color: #94A3B8;">titik terdeteksi</div>
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val">{defects_count}</div>
+                    <div class="flutter-metric-label">Total Cacat</div>
+                    <div class="flutter-metric-sub">titik terdeteksi</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with m_col3:
                 st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Total DPI</div>
-                    <div class="metric-value">{total_dpi:.1f}</div>
-                    <div style="font-size: 0.75rem; color: #94A3B8;">Defect Penalty</div>
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val">{total_dpi:.1f}</div>
+                    <div class="flutter-metric-label">Total DPI</div>
+                    <div class="flutter-metric-sub">Defect Penalty</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with m_col4:
                 st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Frame DPI</div>
-                    <div class="metric-value">{frame_dpi:.1f}</div>
-                    <div style="font-size: 0.75rem; color: #94A3B8;">Top/Left/Right</div>
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val">{frame_dpi:.1f}</div>
+                    <div class="flutter-metric-label">Frame DPI</div>
+                    <div class="flutter-metric-sub">Top / Left / Right</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with m_col5:
                 st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Bottom DPI</div>
-                    <div class="metric-value">{bottom_back_dpi:.1f}</div>
-                    <div style="font-size: 0.75rem; color: #94A3B8;">Port & Speaker</div>
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val">{bottom_back_dpi:.1f}</div>
+                    <div class="flutter-metric-label">Bottom DPI</div>
+                    <div class="flutter-metric-sub">Port & Speaker</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             with m_col6:
                 st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Kecepatan</div>
-                    <div class="metric-value">{elapsed:.2f}s</div>
-                    <div style="font-size: 0.75rem; color: #94A3B8;">{len(view_files_dict)} sisi bodi</div>
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val">{elapsed:.2f}s</div>
+                    <div class="flutter-metric-label">Kecepatan</div>
+                    <div class="flutter-metric-sub">{len(view_files_dict)} sisi bodi</div>
                 </div>
                 """, unsafe_allow_html=True)
 
             # -----------------------------------------
-            # Inspection Collage Card Visual Display
+            # Interactive Per-View Inspection Gallery
             # -----------------------------------------
-            st.subheader("🖼️ Kartu Hasil Inspeksi Visual (Inspection Card)")
-            card_rgb = cv2.cvtColor(card_bgr, cv2.COLOR_BGR2RGB)
-            st.image(card_rgb, use_container_width=True, caption=f"Inspection Card - Unit: {unit_id_input} - Model: {active_cfg['short_name']}")
+            st.write("")
+            st.markdown('<div class="flutter-card">', unsafe_allow_html=True)
+            st.markdown("""
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h4 style="color: #4C1D95; margin: 0;">🖼️ Galeri Visual Anotasi Cacat Fisik Per-Sudut Pandang</h4>
+                <span style="font-size: 0.82rem; color: #6D28D9; background: #F5F3FF; padding: 4px 10px; border-radius: 8px; font-weight: 600;">Klik Tab di Bawah untuk Zoom Resolusi Tinggi</span>
+            </div>
+            """, unsafe_allow_html=True)
 
-            is_success, buffer = cv2.imencode(".jpg", card_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
-            if is_success:
-                st.download_button(
-                    label="📥 Unduh Kartu Hasil Inspeksi (High-Res JPG)",
-                    data=buffer.tobytes(),
-                    file_name=f"inspection_card_{unit_id_input}_{selected_version}_{grade}.jpg",
-                    mime="image/jpeg",
-                    use_container_width=True
-                )
+            gallery_tabs = ["🖼️ Kartu Hasil Komposit"]
+            tab_view_keys = [None]
+            view_labels = {
+                "top": "🔝 Sisi Top (Atas)",
+                "bottom": "🔘 Sisi Bottom (Port & Speaker)",
+                "left": "⬅️ Sisi Left (Samping Kiri)",
+                "right": "➡️ Sisi Right (Samping Kanan)",
+                "back": "📱 Sisi Back (Bodi Belakang)",
+                "front": "📱 Sisi Front (Layar Depan)"
+            }
+            for side in ["top", "bottom", "left", "right", "back", "front"]:
+                if side in annotated_views:
+                    gallery_tabs.append(view_labels.get(side, side.upper()))
+                    tab_view_keys.append(side)
+
+            rendered_tabs = st.tabs(gallery_tabs)
+
+            # Tab 0: Composite Collage Card
+            with rendered_tabs[0]:
+                card_rgb = cv2.cvtColor(card_bgr, cv2.COLOR_BGR2RGB)
+                st.image(card_rgb, use_container_width=True, caption=f"Inspection Collage Card - Unit: {unit_id_input} - Model: {active_cfg['short_name']}")
+                is_success, buffer = cv2.imencode(".jpg", card_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
+                if is_success:
+                    st.download_button(
+                        label="📥 Unduh Kartu Hasil Inspeksi Komposit (High-Res JPG)",
+                        data=buffer.tobytes(),
+                        file_name=f"inspection_card_{unit_id_input}_{selected_version}_{grade}.jpg",
+                        mime="image/jpeg",
+                        use_container_width=True
+                    )
+
+            # Individual Per-View Tabs with Full Zoom and Defect Pills
+            detections_by_view = report.get("detections_by_view", {})
+            for i in range(1, len(gallery_tabs)):
+                side = tab_view_keys[i]
+                with rendered_tabs[i]:
+                    col_img, col_info = st.columns([2.2, 1])
+                    with col_img:
+                        side_img_rgb = cv2.cvtColor(annotated_views[side], cv2.COLOR_BGR2RGB)
+                        st.image(side_img_rgb, use_container_width=True, caption=f"Penampang Resolusi Penuh: {side.upper()} (Kotak Cacat & Tag Anotasi)")
+                    with col_info:
+                        side_defs = detections_by_view.get(side, [])
+                        st.markdown(f"#### 🔎 Status Sisi {side.upper()}:\n")
+                        if side_defs:
+                            st.markdown(f"Ditemukan **{len(side_defs)} titik cacat fisik**:")
+                            for d in side_defs:
+                                c_name = d.get("class_name", "scratch")
+                                st.markdown(f"""
+                                <div class="defect-chip defect-chip-{c_name}">
+                                    <span>● {c_name.upper()}</span>
+                                    <span>| {d.get('length_mm', 0.0):.2f} mm ({d.get('confidence', 0.0)*100:.0f}%)</span>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                st.caption(f"Luas: {d.get('area_mm2', 0.0):.2f} mm² • BBox: `{d.get('bbox', [])}`")
+                        else:
+                            st.success("✅ **Sisi Mulus (Clean)**\nTidak ditemukan cacat fisik terukur.")
+
+            st.markdown('</div>', unsafe_allow_html=True)
 
             # -----------------------------------------
-            # Detailed Analysis Tabs
+            # Detailed Analysis Tabs (Flutter Style)
             # -----------------------------------------
             st.write("")
             tab1, tab2, tab3 = st.tabs([
@@ -541,13 +753,14 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                 with col_mod:
                     st.markdown("#### Informasi Model Aktif:")
                     st.markdown(f"""
-                    <div class="model-card-box">
+                    <div style="background: #FAF5FF; border: 1px solid #DDD6FE; border-radius: 12px; padding: 16px;">
                         <b style="color: {active_cfg['badge_color']};">{active_cfg['badge']}</b><br>
                         <b>Model:</b> {active_cfg['name']}<br>
                         <b>Arsitektur:</b> {active_cfg['arch']}<br>
                         <b>Dataset:</b> {active_cfg['dataset']}<br>
                         <b>Status:</b> {active_cfg['status']}<br>
                         <b>Fokus Deteksi:</b> {active_cfg['focus']}<br>
+                        <b>Sensitivitas Dipakai:</b> {conf_thresh_slider:.2f}<br>
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -565,8 +778,16 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
 # Module 2: Batch Testing from Folder
 # ---------------------------------------------------------
 elif nav_choice == "📂 Batch Folder Testing":
-    st.markdown('<div class="main-header">📂 Batch Inspection & Pengujian Massal</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Jalankan pengujian grading otomatis pada puluhan unit smartphone sekaligus dari direktori lokal.</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="flutter-appbar">
+        <div class="appbar-title">
+            <span>📂</span> Batch Inspection & Pengujian Massal
+        </div>
+        <div class="appbar-subtitle">
+            Jalankan pengujian grading otomatis pada puluhan unit smartphone sekaligus dari direktori penyimpanan lokal.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     render_model_banner()
 
@@ -585,7 +806,7 @@ elif nav_choice == "📂 Batch Folder Testing":
             if not unit_dirs:
                 st.warning("Tidak ada sub-folder unit ditemukan dalam direktori tersebut.")
             else:
-                st.info(f"Memulai evaluasi pada {len(unit_dirs)} unit menggunakan **{active_cfg['short_name']}**...")
+                st.info(f"Memulai evaluasi pada {len(unit_dirs)} unit menggunakan **{active_cfg['short_name']}** (Sensitivitas: {conf_thresh_slider:.2f})...")
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
@@ -605,7 +826,11 @@ elif nav_choice == "📂 Batch Folder Testing":
 
                     if v_dict:
                         t_u0 = time.time()
-                        report = engine.grading_engine.evaluate_phone_unit(u_dir.name, v_dict)
+                        report = engine.grading_engine.evaluate_phone_unit(
+                            u_dir.name,
+                            v_dict,
+                            conf_threshold=conf_thresh_slider
+                        )
                         lat = time.time() - t_u0
 
                         batch_results.append({
@@ -648,8 +873,16 @@ elif nav_choice == "📂 Batch Folder Testing":
 # Module 3: Tray Marker Standardization
 # ---------------------------------------------------------
 elif nav_choice == "📐 Standar Matras (Tray Marker)":
-    st.markdown('<div class="main-header">📐 Standar Matras Inspeksi (Tray Marker A4)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Standarisasi pengambilan gambar untuk akurasi metrik fisik sub-milimeter dan eliminasi bayangan tangan.</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="flutter-appbar">
+        <div class="appbar-title">
+            <span>📐</span> Standar Matras Inspeksi (Tray Marker A4)
+        </div>
+        <div class="appbar-subtitle">
+            Standarisasi pengambilan foto smartphone untuk akurasi metrik fisik sub-milimeter dan eliminasi bayangan jari operator.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     render_model_banner()
 
@@ -665,7 +898,7 @@ elif nav_choice == "📐 Standar Matras (Tray Marker)":
         if marker_path.exists():
             st.image(str(marker_path), caption="Template Matras Inspeksi Resmi A4 300 DPI", use_container_width=True)
             with open(str(marker_path), "rb") as f:
-                btn = st.download_button(
+                st.download_button(
                     label="📥 Unduh Template Matras Cetak A4 (300 DPI PNG)",
                     data=f.read(),
                     file_name="tray_marker_template_A4_300DPI.png",
@@ -697,8 +930,16 @@ elif nav_choice == "📐 Standar Matras (Tray Marker)":
 # Module 4: Laporan Investigasi & Evaluasi Empiris (Knowledge Hub)
 # ---------------------------------------------------------
 elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
-    st.markdown('<div class="main-header">📑 Laporan Investigasi Teknis, Evaluasi Empiris & Perbandingan Model</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Dokumentasi audit presisi pipeline cropping, eliminasi false-positive, analisis penghapusan background, dan komparasi 5 versi model AI (V1 s/d V5).</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="flutter-appbar">
+        <div class="appbar-title">
+            <span>📑</span> Laporan Investigasi Teknis & Evaluasi Empiris
+        </div>
+        <div class="appbar-subtitle">
+            Dokumentasi audit presisi pipeline cropping bodi, eliminasi false-positive, analisis penghapusan background, dan komparasi 5 versi model AI.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     render_model_banner()
 
@@ -962,7 +1203,16 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
 # Module 5: Guidelines & Architecture
 # ---------------------------------------------------------
 elif nav_choice == "ℹ️ Panduan SOP & Arsitektur":
-    st.markdown('<div class="main-header">ℹ️ Arsitektur Sistem & Rekomendasi SOP PGI</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="flutter-appbar">
+        <div class="appbar-title">
+            <span>ℹ️</span> Arsitektur Sistem & Rekomendasi SOP PGI
+        </div>
+        <div class="appbar-subtitle">
+            Standar operasional prosedur pemeriksaan 2 tahap dan ambang batas metrik fisik grading bodi smartphone.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     render_model_banner()
 
@@ -983,7 +1233,7 @@ elif nav_choice == "ℹ️ Panduan SOP & Arsitektur":
                          ▼
     [Tahap 2: AI Computer Vision & ML Grading]
       └─ Foto 4 sisi bodi (Top, Bottom, Left, Right) pada Matras ArUco Standar
-      └─ Deteksi Cacat Poligon (YOLOv8-Seg)
+      └─ Deteksi Cacat Poligon & Bounding Box (YOLO)
       └─ Eliminasi Pantulan Cahaya (Specular Glare Filter) & Hand Filter
       └─ ML Grading Aggregator (Random Forest 18 Fitur)
       └─ HASIL: GRADE A, B, atau C Otomatis

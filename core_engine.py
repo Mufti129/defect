@@ -155,33 +155,59 @@ class StreamlitInspectionEngine:
         self.ml_aggregator = MLGradingAggregator(model_path=ml_path)
         self.grading_engine = GradingEngine(detector=self.detector, ml_aggregator=self.ml_aggregator)
 
-    def run_unit_inspection(self, unit_id: str, view_images: Dict[str, str]) -> Tuple[Dict[str, Any], np.ndarray]:
+    def run_unit_inspection(
+        self,
+        unit_id: str,
+        view_images: Dict[str, str],
+        conf_threshold: Optional[float] = None
+    ) -> Tuple[Dict[str, Any], np.ndarray, Dict[str, np.ndarray]]:
         """
         Runs complete evaluation across all provided views and generates the visual inspection card.
 
         Returns:
             report: Full inspection JSON dictionary with active model metadata.
             card_bgr: OpenCV BGR image of the generated collage card.
+            annotated_views: Dictionary of high-res annotated OpenCV images per view.
         """
         # Run grading
-        report = self.grading_engine.evaluate_phone_unit(unit_id, view_images)
+        report = self.grading_engine.evaluate_phone_unit(
+            unit_id,
+            view_images,
+            conf_threshold=conf_threshold
+        )
 
         # Inject model metadata
         report["model_version"] = self.version
         report["model_name"] = self.config["name"]
         report["model_arch"] = self.config["arch"]
         report["model_status"] = self.config["status"]
+        if conf_threshold is not None:
+            report["conf_threshold_used"] = conf_threshold
 
-        # Generate collage card in memory
-        card_bgr = self.generate_card_image(report, view_images)
-        return report, card_bgr
+        # Generate collage card in memory reusing precomputed defects
+        card_bgr, annotated_views = self.generate_card_image(
+            report,
+            view_images,
+            conf_threshold=conf_threshold
+        )
+        return report, card_bgr, annotated_views
 
-    def generate_card_image(self, report: Dict[str, Any], view_images: Dict[str, str], target_height: int = 500) -> np.ndarray:
+    def generate_card_image(
+        self,
+        report: Dict[str, Any],
+        view_images: Dict[str, str],
+        target_height: int = 500,
+        conf_threshold: Optional[float] = None
+    ) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
         """
         Renders the high-resolution inspection card image with Grade Badge, metadata,
-        and defect bounding boxes/masks across all inspected views.
+        and defect bounding boxes/masks across all inspected views. Reuses precomputed
+        detections to ensure 100% visual fidelity without redundant inference passes.
         """
-        annotated_views = {}
+        annotated_views_resized = {}
+        annotated_views_full = {}
+
+        precomputed_by_view = report.get("_defect_instances_by_view", {})
 
         for view_side, img_path in view_images.items():
             if not os.path.exists(img_path):
@@ -191,30 +217,38 @@ class StreamlitInspectionEngine:
             if img is None:
                 continue
 
-            # Run detection on image with hand masking
-            _, hand_mask = self.detector.hand_filter.generate_inspection_mask(img, view_side)
-            defects = self.detector.detect_image(img_path, view_side=view_side, filter_hands=True)
-            ann = self.detector.draw_defects_on_image(img, defects, hand_mask=hand_mask)
+            # Obtain precomputed defects or fallback to dynamic detect
+            if view_side in precomputed_by_view:
+                defects = precomputed_by_view[view_side]
+            else:
+                defects = self.detector.detect_image(
+                    img_path,
+                    view_side=view_side,
+                    filter_hands=True,
+                    conf_threshold=conf_threshold
+                )
 
-            # Resize preserving aspect ratio
+            _, hand_mask = self.detector.hand_filter.generate_inspection_mask(img, view_side)
+            ann = self.detector.draw_defects_on_image(img, defects, hand_mask=hand_mask)
+            annotated_views_full[view_side] = ann
+
+            # Resize preserving aspect ratio for the composite card
             h, w = ann.shape[:2]
             scale = target_height / max(1, h)
             resized = cv2.resize(ann, (int(w * scale), target_height))
-            annotated_views[view_side] = resized
+            annotated_views_resized[view_side] = resized
 
-        if not annotated_views:
-            # Fallback blank image
+        if not annotated_views_resized:
             blank = np.zeros((300, 600, 3), dtype=np.uint8)
             cv2.putText(blank, "No Valid Views Loaded", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
-            return blank
+            return blank, {}
 
         # Preferred order for 4-side housing inspection (or 5-side if front/back included)
         order = ["top", "bottom", "left", "right", "back", "front"]
         view_strip = []
         for side in order:
-            if side in annotated_views:
-                img_v = annotated_views[side]
-                # Side label header
+            if side in annotated_views_resized:
+                img_v = annotated_views_resized[side]
                 header = np.zeros((40, img_v.shape[1], 3), dtype=np.uint8)
                 header[:] = (35, 35, 35)
                 cv2.putText(header, side.upper(), (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
@@ -266,4 +300,4 @@ class StreamlitInspectionEngine:
 
         # Combine banner and collage
         final_card = np.vstack([banner, collage_row])
-        return final_card
+        return final_card, annotated_views_full

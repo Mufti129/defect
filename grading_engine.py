@@ -60,7 +60,12 @@ class GradingEngine:
         self.detector = detector or DefectDetector()
         self.ml_aggregator = ml_aggregator or MLGradingAggregator()
 
-    def evaluate_phone_unit(self, unit_id: str, view_images: Dict[str, str]) -> Dict:
+    def evaluate_phone_unit(
+        self,
+        unit_id: str,
+        view_images: Dict[str, str],
+        conf_threshold: Optional[float] = None
+    ) -> Dict:
         """
         Runs inspection across housing views of a single smartphone unit (skips front).
         view_images: {"back": path, "left": path, ...}
@@ -73,7 +78,11 @@ class GradingEngine:
         for view_side, img_path in view_images.items():
             if view_side == "front" or not os.path.exists(img_path):
                 continue
-            defects = self.detector.detect_image(img_path, view_side=view_side)
+            defects = self.detector.detect_image(
+                img_path,
+                view_side=view_side,
+                conf_threshold=conf_threshold
+            )
             detections_by_view[view_side] = defects
             all_defects.extend(defects)
 
@@ -133,7 +142,9 @@ class GradingEngine:
             "reasons": reasons,
             "inspection_time_sec": elapsed_sec,
             "views_inspected": [v for v in view_images.keys() if v != "front"],
-            "defects_detail": defects_dict_list
+            "defects_detail": defects_dict_list,
+            "detections_by_view": {v: [d.to_dict() for d in defs] for v, defs in detections_by_view.items()},
+            "_defect_instances_by_view": detections_by_view
         }
         return report
 
