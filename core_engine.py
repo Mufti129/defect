@@ -36,7 +36,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "id": "v5",
         "name": "Model Versi 5 (Housing-Only YOLOv8s 1024px - Checkpoint Terbaik/Sementara)",
         "short_name": "Versi 5 (YOLOv8s 1024px)",
-        "badge": "⚡ TERBARU (CHECKPOINT TERBAIK)",
+        "badge": "TERBARU (CHECKPOINT TERBAIK)",
         "badge_color": "#8B5CF6",
         "yolo_file": "phone_defect_model_v5_best.pt",
         "ml_file": "ml_grading_model_v3.joblib",
@@ -50,7 +50,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "id": "v4",
         "name": "Model Versi 4 (Real Annotated Defect Detector - YOLOv8n)",
         "short_name": "Versi 4 (YOLOv8n Real)",
-        "badge": "🎯 REAL ANNOTATED",
+        "badge": "REAL ANNOTATED",
         "badge_color": "#0284C7",
         "yolo_file": "phone_defect_model_v4.pt",
         "ml_file": "ml_grading_model_v3.joblib",
@@ -64,7 +64,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "id": "v3",
         "name": "Model Versi 3 (Housing-Only Skala Penuh 1.918 Unit - Random Forest 18 Fitur)",
         "short_name": "Versi 3 (Housing 1.918 Unit)",
-        "badge": "⭐ REKOMENDASI PRODUKSI",
+        "badge": "REKOMENDASI PRODUKSI",
         "badge_color": "#10B981",
         "yolo_file": "phone_defect_model.pt",
         "ml_file": "ml_grading_model_v3.joblib",
@@ -78,7 +78,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "id": "v2",
         "name": "Model Versi 2 (Multi-View 5-Sudut Skala Besar - Front & Body)",
         "short_name": "Versi 2 (Multi-View 5 Sisi)",
-        "badge": "🔄 MULTI-VIEW 5-SISI",
+        "badge": "MULTI-VIEW 5-SISI",
         "badge_color": "#F59E0B",
         "yolo_file": "phone_defect_model.pt",
         "ml_file": "ml_grading_model_v2.joblib",
@@ -92,7 +92,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "id": "v1",
         "name": "Model Versi 1 (Baseline Segmentation & Synthetic Heuristics)",
         "short_name": "Versi 1 (Baseline Prototipe)",
-        "badge": "📦 BASELINE V1",
+        "badge": "BASELINE V1",
         "badge_color": "#64748B",
         "yolo_file": "phone_defect_model.pt",
         "ml_file": "ml_grading_model.joblib",
@@ -190,6 +190,8 @@ class StreamlitInspectionEngine:
             view_images,
             conf_threshold=conf_threshold
         )
+        # Clean internal objects to ensure JSON serializability
+        report.pop("_defect_instances_by_view", None)
         return report, card_bgr, annotated_views
 
     def generate_card_image(

@@ -23,6 +23,11 @@ import numpy as np
 import cv2
 import pandas as pd
 from PIL import Image
+import torch
+
+# Fast execution thread optimizations
+torch.set_num_threads(2)
+cv2.setNumThreads(1)
 
 # Setup paths
 APP_DIR = Path(__file__).resolve().parent
@@ -39,7 +44,7 @@ from core_engine import StreamlitInspectionEngine, MODEL_REGISTRY
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="Sistem Taksiran AI Smartphone",
-    page_icon="📱",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -50,7 +55,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
     html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Plus Jakarta Sans", sans-serif;
     }
 
     /* Flutter App Bar / Hero Header */
@@ -244,40 +249,47 @@ st.markdown("""
 
 
 # ---------------------------------------------------------
-# Sidebar Navigation & Settings (Flutter Belajarku Style)
+# Sidebar Navigation & Settings (Corporate Flutter Style)
 # ---------------------------------------------------------
-st.sidebar.image("https://img.icons8.com/fluency/96/phone.png", width=60)
 st.sidebar.markdown("""
-<div style="font-size: 1.35rem; font-weight: 800; color: #5B21B6; margin-top: 4px;">
-    Sistem Taksiran AI
-</div>
-<div style="font-size: 0.82rem; color: #6D28D9; font-weight: 600; margin-bottom: 14px;">
-    PGI Computer Vision Platform
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 4px 0;">
+    <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #6D28D9 0%, #7C3AED 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(109, 40, 217, 0.25); flex-shrink: 0;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="5" y="2" width="14" height="20" rx="3" stroke="white" stroke-width="2"/>
+            <circle cx="12" cy="18" r="1.2" fill="white"/>
+            <line x1="9" y1="5" x2="15" y2="5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+    </div>
+    <div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: #4C1D95; letter-spacing: -0.01em; line-height: 1.2;">Sistem Taksiran AI</div>
+        <div style="font-size: 0.72rem; color: #7C3AED; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;">PGI Computer Vision</div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
 # 1. Module Selector
 nav_choice = st.sidebar.radio(
-    "🧭 Menu Navigasi:",
+    "Menu Navigasi:",
     [
-        "🔍 Inspeksi Unit (Interactive Studio)",
-        "📂 Batch Folder Testing",
-        "📐 Standar Matras (Tray Marker)",
-        "📑 Laporan Investigasi & Evaluasi Empiris",
-        "ℹ️ Panduan SOP & Arsitektur"
+        "Inspeksi Unit (Studio Interaktif)",
+        "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)",
+        "Pengujian Massal (Batch Inspection)",
+        "Standar Kalibrasi Matras (ArUco Tray)",
+        "Laporan Investigasi & Evaluasi Empiris",
+        "Panduan SOP & Arsitektur Sistem"
     ]
 )
 
 st.sidebar.divider()
 
 # 2. Dynamic Model Version Selector
-st.sidebar.markdown("### 🤖 Pilihan Model AI:")
+st.sidebar.markdown("### Pilihan Model AI:")
 model_options = {
-    "v5": "⚡ Model V5 (YOLOv8s 1024px - Checkpoint Terbaik/Sementara)",
-    "v3": "⭐ Model V3 (Housing Skala Penuh 1.918 Unit - Rekomendasi)",
-    "v4": "🎯 Model V4 (Real Annotated Defect Detector - YOLOv8n)",
-    "v2": "🔄 Model V2 (Multi-View 5-Sudut - Front & Body)",
-    "v1": "📦 Model V1 (Baseline Segmentation & Synthetic Heuristics)"
+    "v5": "Model V5 (YOLOv8s 1024px - Checkpoint Pelatihan)",
+    "v3": "Model V3 (Housing 1.918 Unit - Rekomendasi Produksi)",
+    "v4": "Model V4 (Real Annotated Defect Detector - YOLOv8n)",
+    "v2": "Model V2 (Multi-View 5-Sudut - Front & Body)",
+    "v1": "Model V1 (Baseline Segmentation & Heuristics)"
 }
 
 selected_version = st.sidebar.selectbox(
@@ -288,7 +300,7 @@ selected_version = st.sidebar.selectbox(
 )
 
 # 3. Interactive Sensitivity Slider
-st.sidebar.markdown("### 🎚️ Sensitivitas Deteksi AI:")
+st.sidebar.markdown("### Sensitivitas Deteksi AI:")
 conf_thresh_slider = st.sidebar.slider(
     "Ambang Batas Keyakinan (Confidence):",
     min_value=0.05,
@@ -298,10 +310,10 @@ conf_thresh_slider = st.sidebar.slider(
     help="Nilai 0.15 direkomendasikan untuk menyeimbangkan deteksi cacat halus (hairline) dan presisi. Turunkan ke 0.10 jika ingin mendeteksi lecet mikro yang sangat halus."
 )
 st.sidebar.caption(
-    "💡 **Panduan Sensitivitas:**\n"
+    "**Panduan Sensitivitas:**\n"
     "• `0.05 - 0.12`: Sangat Peka (Tangkap lecet mikro & goresan tipis)\n"
     "• `0.15`: Seimbang (Default Standar PGI)\n"
-    "• `0.20 - 0.50`: Ketat (Hanya cacat kontras tinggi/berat)"
+    "• `0.20 - 0.50`: Ketat (Hanya cacat kontras tinggi & terisolasi)"
 )
 
 # ---------------------------------------------------------
@@ -350,7 +362,7 @@ if selected_version == "v5":
             st.sidebar.markdown(f"""
             <div style="background: linear-gradient(135deg, #FAF5FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(109, 40, 217, 0.08);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                    <b style="color: #6D28D9; font-size: 0.86rem;">🚧 Live Training Progress</b>
+                    <b style="color: #6D28D9; font-size: 0.86rem;">Live Training Progress</b>
                     <span style="background: #EDE9FE; color: #6D28D9; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">Epoch {cur_ep}/{tot_ep}</span>
                 </div>
                 <div style="color: #4C1D95; font-size: 0.80rem; margin-bottom: 6px;">
@@ -390,21 +402,21 @@ def render_model_banner():
 # ---------------------------------------------------------
 # Module 1: Single Unit Inspection (Interactive Studio)
 # ---------------------------------------------------------
-if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
+if nav_choice == "Inspeksi Unit (Studio Interaktif)":
     # Flutter Belajarku App Bar
     st.markdown("""
     <div class="flutter-appbar">
         <div class="appbar-title">
-            <span>📱</span> Inspeksi Cacat Fisik & Grading Smartphone
+            Inspeksi Cacat Fisik & Grading Smartphone
         </div>
         <div class="appbar-subtitle">
             Platform taksiran bodi smartphone terstandarisasi sub-milimeter, isolasi pantulan cahaya (glare filter), dan prediksi Grade kosmetik cerdas berbasis AI.
         </div>
         <div class="appbar-tags">
-            <span class="appbar-tag-pill">⚡ Multi-Model AI (V1 - V5)</span>
-            <span class="appbar-tag-pill">📐 Skala Fisik Sub-Milimeter (mm)</span>
-            <span class="appbar-tag-pill">🛡️ Fast-Fail Veto Safeguard</span>
-            <span class="appbar-tag-pill">🔍 Zoom Penampang 4 Sisi</span>
+            <span class="appbar-tag-pill">Multi-Model AI (V1 - V5)</span>
+            <span class="appbar-tag-pill">Skala Fisik Sub-Milimeter (mm)</span>
+            <span class="appbar-tag-pill">Fast-Fail Veto Safeguard</span>
+            <span class="appbar-tag-pill">Zoom Penampang 4 Sisi</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -412,14 +424,14 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
     render_model_banner()
 
     if selected_version == "v5":
-        st.info("💡 **Catatan Model Versi 5:** Menggunakan bobot **checkpoint terbaik sementara** dari pelatihan 30 epoch (Epoch 10 mAP50 30.6% & Recall 57.1%). Anda juga dapat membandingkan hasilnya dengan **Model Versi 3** (Rekomendasi Produksi) atau **Model Versi 4** melalui pilihan model di panel kiri.")
+        st.info("**Catatan Model Versi 5:** Menggunakan bobot **checkpoint terbaik sementara** dari pelatihan 30 epoch (Epoch 10 mAP50 30.6% & Recall 57.1%). Anda juga dapat membandingkan hasilnya dengan **Model Versi 3** (Rekomendasi Produksi) atau **Model Versi 4** melalui pilihan model di panel navigasi.")
 
     # Flutter-style Input Container
     st.markdown('<div class="flutter-card">', unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #4C1D95; margin-top:0;'>📥 Pilih Metode Masukan Citra</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #4C1D95; margin-top:0;'>Pilih Metode Masukan Citra</h4>", unsafe_allow_html=True)
     input_mode = st.radio(
         "Metode Input:",
-        ["📁 Demo 1-Click (Gunakan Unit Riil Database)", "📤 Upload Foto Bodi Smartphone Sendiri (4 Sisi)"],
+        ["Pilih Koleksi Sampel Emas (Representatif)", "Unggah Foto 4-Sisi Mandiri"],
         horizontal=True,
         label_visibility="collapsed"
     )
@@ -435,11 +447,11 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
     else:
         crop_base = APP_DIR
 
-    if input_mode == "📁 Demo 1-Click (Gunakan Unit Riil Database)":
+    if input_mode == "Pilih Koleksi Sampel Emas (Representatif)":
         st.markdown("""
         <div style="background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px;">
             <div style="font-weight: 700; color: #5B21B6; font-size: 0.95rem; margin-bottom: 3px;">
-                ✨ Koleksi Sampel Representatif Emas (Visual Defect Bergaransi Tiap Grade)
+                Koleksi Sampel Representatif Emas (Visual Defect Bergaransi Tiap Grade)
             </div>
             <div style="font-size: 0.82rem; color: #6D28D9; line-height: 1.45;">
                 Pilihan sampel di bawah ini telah dikurasi khusus untuk menghasilkan anotasi visual riil (bounding box cacat, chip kelas, dan estimasi ukuran mm) yang akurat merepresentasikan karakteristik masing-masing Grade (A, B, C, dan D).
@@ -448,64 +460,64 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
         """, unsafe_allow_html=True)
 
         golden_cases = {
-            "🔴 Grade D (Cacat Berat / Sompal / Pecah)": {
-                "⚡ D1: Oppo A5i — Sompal Sudut Casing Atas (Broken 4.8mm, DPI 23.9)": {
+            "Grade D (Cacat Berat / Sompal / Pecah)": {
+                "D1: Oppo A5i — Sompal Sudut Casing Atas (Broken 4.8mm)": {
                     "grade": "grade_D",
                     "unit": "1-00013e-13__oppo__oppo-a5i-4-128",
                     "desc": "Menghasilkan polygon & bounding box cacat pecah/sompal bodi pada sudut atas (Top). Memicu Veto Operasional Grade D."
                 },
-                "⚡ D2: iPhone X — Pecah Bodi Ekstrem & Retak (4 Broken, 1 Crack, 1 Chip, DPI 329.6)": {
+                "D2: iPhone X — Bodi Pecah Berat & Retak (4 Broken, 1 Crack, 1 Chip)": {
                     "grade": "grade_D",
                     "unit": "1-00033e-13__apple__iphone-x-64gb",
                     "desc": "Menghasilkan anotasi masif kerusakan fisik bodi pada sisi kiri & kanan. Memicu Veto Operasional Grade D."
                 }
             },
-            "🟠 Grade C (Aus Nyata Jamak / DPI Tinggi)": {
-                "⚡ C1: Oppo A5s — Bodi Baret Jamak Merata (14 Titik Goresan Terukur, DPI 19.3)": {
+            "Grade C (Aus Nyata Jamak / DPI Tinggi)": {
+                "C1: Oppo A5s — Bodi Baret Jamak Merata (14 Titik Goresan Terukur)": {
                     "grade": "grade_C",
                     "unit": "1-00033e-13__oppo__oppo-a5s-3-32",
                     "desc": "Menghasilkan visualisasi 14 goresan bodi merata di frame samping & bawah. Terklasifikasi Grade C secara akurat."
                 },
-                "⚡ C2: Samsung A07 — Cacat Bodi Jamak (5 Goresan & 2 Sompal Cat/Chip, DPI 18.4)": {
+                "C2: Samsung A07 — Cacat Bodi Jamak (5 Goresan & 2 Sompal Cat/Chip)": {
                     "grade": "grade_C",
                     "unit": "1-00033e-13__samsung__samsung-a07-4-64",
                     "desc": "Menghasilkan kombinasi bounding box goresan bodi dan cat terkelupas (chip). Terklasifikasi Grade C."
                 },
-                "⚡ C3: Oppo A15 — Aus Pemakaian Moderat (Goresan Bodi Samping, DPI 3.9)": {
+                "C3: Oppo A15 — Aus Pemakaian Moderat (Goresan Bodi Samping)": {
                     "grade": "grade_C",
                     "unit": "1-00013e-13__oppo__oppo-a15-3-32",
                     "desc": "Menghasilkan deteksi goresan nyata pada bodi samping dengan penalti DPI sedang."
                 }
             },
-            "🟡 Grade B (Aus Wajar / Pemakaian Normal)": {
-                "⚡ B1: Oppo A78 5G — Aus Wajar Pemakaian Normal (5 Baret Halus + 1 Dent, DPI 10.1)": {
+            "Grade B (Aus Wajar / Pemakaian Normal)": {
+                "B1: Oppo A78 5G — Aus Wajar Pemakaian Normal (5 Baret Halus + 1 Dent)": {
                     "grade": "grade_B",
                     "unit": "1-00023e-13__oppo__oppo-a78-8-256-5g",
                     "desc": "Menghasilkan visualisasi baret halus dan 1 penyok mikro pada housing samping. Sesuai toleransi Grade B."
                 },
-                "⚡ B2: Oppo A16 — Baret Samping Ringan (3 Baret Halus + 1 Dent, DPI 8.1)": {
+                "B2: Oppo A16 — Baret Samping Ringan (3 Baret Halus + 1 Dent)": {
                     "grade": "grade_B",
                     "unit": "1-00033e-13__oppo__oppo-a16-4-64",
                     "desc": "Menghasilkan 3 baret pemakaian normal dan 1 penyok bodi ringan. Terklasifikasi Grade B."
                 },
-                "⚡ B3: iPhone 13 Pro Max — Goresan Bezel Stainless (5 Baret Halus + 1 Dent, DPI 10.5)": {
+                "B3: iPhone 13 Pro Max — Goresan Bezel Stainless (5 Baret Halus + 1 Dent)": {
                     "grade": "grade_B",
                     "unit": "1-00023e-13__apple__iphone-13-pro-max-128gb",
                     "desc": "Menghasilkan deteksi baret pemakaian normal pada bezel samping kanan dan bawah. Terklasifikasi Grade B."
                 }
             },
-            "🟢 Grade A (Like New / Mint / Zero Cacat)": {
-                "⚡ A1: iPhone 16e — Like New Flawless (Bodi Bersih Sempurna / DPI 0.0 / Zero FP)": {
+            "Grade A (Like New / Mint / Bebas Cacat)": {
+                "A1: iPhone 16e — Like New Flawless (Bodi Bersih Sempurna / Zero False Positive)": {
                     "grade": "grade_A",
                     "unit": "1-00023e-13__apple__iphone-16e-128gb",
                     "desc": "Kondisi bodi sangat mulus Like New. Membuktikan eliminasi glare bekerja sempurna tanpa false positive (0 cacat, DPI 0.0)."
                 },
-                "⚡ A2: iPhone 7 Plus — Kondisi Mint Terawat (Zero Defect / DPI 0.0)": {
+                "A2: iPhone 7 Plus — Kondisi Mint Terawat (Zero Defect)": {
                     "grade": "grade_A",
                     "unit": "1-00043e-13__apple__iphone-7-plus-32gb",
                     "desc": "Bodi housing bersih mulus, terklasifikasi Grade A murni dengan keyakinan tinggi."
                 },
-                "⚡ A3: Oppo A18 — Toleransi Lecet Mikro (< 2.0 mm / DPI 1.2 / Grade A)": {
+                "A3: Oppo A18 — Toleransi Lecet Mikro (< 2.0 mm / Lolos Grade A)": {
                     "grade": "grade_A",
                     "unit": "1-00023e-13__oppo__oppo-a18-4-128",
                     "desc": "Menghasilkan deteksi 1 goresan mikro tipis (< 2mm). Terbukti tetap lolos Grade A sesuai batas toleransi fisik SOP."
@@ -532,7 +544,7 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
             c_grade = case_data["grade"]
             st.markdown(f"""
             <div style="background: #FAF5FF; border-left: 4px solid #7C3AED; padding: 8px 14px; border-radius: 6px; margin-top: 6px; font-size: 0.82rem; color: #4C1D95;">
-                👁️ <b>Karakteristik Visual & Target Evaluasi:</b><br>{case_data['desc']}
+                <b>Karakteristik Visual & Target Evaluasi:</b><br>{case_data['desc']}
             </div>
             """, unsafe_allow_html=True)
 
@@ -558,7 +570,7 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
             st.warning(f"Direktori sampel untuk unit {unit_id_input} tidak ditemukan.")
 
         if view_files_dict:
-            st.markdown(f"<p style='font-size:0.85rem; color:#4C1D95; margin-top:14px; margin-bottom:8px;'>📸 <b>Pratinjau Foto 4 Sisi Housing:</b> <code>{unit_id_input}</code></p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='font-size:0.85rem; color:#4C1D95; margin-top:14px; margin-bottom:8px;'><b>Pratinjau Foto 4 Sisi Housing:</b> <code>{unit_id_input}</code></p>", unsafe_allow_html=True)
             t_cols = st.columns(len(view_files_dict))
             for i, (side, path) in enumerate(view_files_dict.items()):
                 with t_cols[i]:
@@ -597,7 +609,7 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Trigger Inspection Button
-    btn_label = f"🚀 Jalankan Inspeksi & Grading dengan {active_cfg['short_name']} (Sensitivitas: {conf_thresh_slider:.2f})"
+    btn_label = f"Jalankan Inspeksi & Grading dengan {active_cfg['short_name']} (Sensitivitas: {conf_thresh_slider:.2f})"
     run_btn = st.button(btn_label, type="primary", use_container_width=True)
 
     if run_btn:
@@ -687,6 +699,29 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
                 </div>
                 """, unsafe_allow_html=True)
 
+            # Quick Rule of Thumb Explanation Expander
+            rule_thumb_desc = {
+                "A": "Bodi memenuhi kriteria **Grade A (Like New / Mint)**: Kondisi sangat mulus, bebas dari retak, sompal, dan penyok struktural, dengan akumulasi cacat mikro sangat minimal (Total DPI < 3.0).",
+                "B": "Bodi memenuhi kriteria **Grade B (Very Good / Pemakaian Normal)**: Terdapat tanda pemakaian normal wajar (goresan halus bodi / penyok mikro <= 2 titik) dengan Total DPI < 18.0 tanpa kerusakan struktural.",
+                "C": "Bodi memenuhi kriteria **Grade C (Good / Aus Nyata Jamak)**: Ditemukan keausan bodi nyata, baret jamak merata, atau cat bezel terkelupas (Total DPI 18.0 s/d 44.9) tanpa kerusakan patah bodi.",
+                "D": "Bodi memenuhi kriteria **Grade D (Faulty / Cacat Berat)**: Terpicu oleh Veto Operasional Cacat Struktural (bodi pecah/broken, retak signifikan, sompal berat, atau Total DPI >= 45.0)."
+            }
+            with st.expander(f"Pedoman Rule of Thumb: Mengapa Unit Ini Terklasifikasi GRADE {grade}?"):
+                st.markdown(f"""
+                <div style="background: #FAF5FF; border-left: 4px solid #7C3AED; padding: 12px 16px; border-radius: 8px; margin-bottom: 10px;">
+                    <div style="font-weight: 700; color: #4C1D95; font-size: 0.95rem; margin-bottom: 4px;">
+                        Ringkasan Klasifikasi: GRADE {grade}
+                    </div>
+                    <div style="font-size: 0.85rem; color: #374151; line-height: 1.5;">
+                        {rule_thumb_desc.get(grade, '')}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                st.markdown("**Faktor Analisis Sistem:**")
+                for r in report.get("reasons", []):
+                    st.markdown(f"- {r}")
+                st.caption("Pelajari matriks klasifikasi lengkap, batas toleransi milimeter, dan simulasi interaktif pada menu **Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)**.")
+
             # -----------------------------------------
             # Interactive Per-View Inspection Gallery
             # -----------------------------------------
@@ -694,20 +729,20 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
             st.markdown('<div class="flutter-card">', unsafe_allow_html=True)
             st.markdown("""
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h4 style="color: #4C1D95; margin: 0;">🖼️ Galeri Visual Anotasi Cacat Fisik Per-Sudut Pandang</h4>
+                <h4 style="color: #4C1D95; margin: 0;">Galeri Visual Anotasi Cacat Fisik Per-Sudut Pandang</h4>
                 <span style="font-size: 0.82rem; color: #6D28D9; background: #F5F3FF; padding: 4px 10px; border-radius: 8px; font-weight: 600;">Klik Tab di Bawah untuk Zoom Resolusi Tinggi</span>
             </div>
             """, unsafe_allow_html=True)
 
-            gallery_tabs = ["🖼️ Kartu Hasil Komposit"]
+            gallery_tabs = ["Kartu Komposit Lengkap"]
             tab_view_keys = [None]
             view_labels = {
-                "top": "🔝 Sisi Top (Atas)",
-                "bottom": "🔘 Sisi Bottom (Port & Speaker)",
-                "left": "⬅️ Sisi Left (Samping Kiri)",
-                "right": "➡️ Sisi Right (Samping Kanan)",
-                "back": "📱 Sisi Back (Bodi Belakang)",
-                "front": "📱 Sisi Front (Layar Depan)"
+                "top": "Sisi Top (Atas)",
+                "bottom": "Sisi Bottom (Port & Speaker)",
+                "left": "Sisi Left (Samping Kiri)",
+                "right": "Sisi Right (Samping Kanan)",
+                "back": "Sisi Back (Belakang)",
+                "front": "Sisi Front (Depan)"
             }
             for side in ["top", "bottom", "left", "right", "back", "front"]:
                 if side in annotated_views:
@@ -723,7 +758,7 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
                 is_success, buffer = cv2.imencode(".jpg", card_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
                 if is_success:
                     st.download_button(
-                        label="📥 Unduh Kartu Hasil Inspeksi Komposit (High-Res JPG)",
+                        label="Unduh Kartu Hasil Inspeksi Komposit (High-Res JPG)",
                         data=buffer.tobytes(),
                         file_name=f"inspection_card_{unit_id_input}_{selected_version}_{grade}.jpg",
                         mime="image/jpeg",
@@ -741,7 +776,7 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
                         st.image(side_img_rgb, use_container_width=True, caption=f"Penampang Resolusi Penuh: {side.upper()} (Kotak Cacat & Tag Anotasi)")
                     with col_info:
                         side_defs = detections_by_view.get(side, [])
-                        st.markdown(f"#### 🔎 Status Sisi {side.upper()}:\n")
+                        st.markdown(f"#### Status Sisi {side.upper()}:\n")
                         if side_defs:
                             st.markdown(f"Ditemukan **{len(side_defs)} titik cacat fisik**:")
                             for d in side_defs:
@@ -754,7 +789,7 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
                                 """, unsafe_allow_html=True)
                                 st.caption(f"Luas: {d.get('area_mm2', 0.0):.2f} mm² • BBox: `{d.get('bbox', [])}`")
                         else:
-                            st.success("✅ **Sisi Mulus (Clean)**\nTidak ditemukan cacat fisik terukur.")
+                            st.success("**Sisi Mulus (Clean)**\nTidak ditemukan cacat fisik terukur.")
 
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -763,9 +798,9 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
             # -----------------------------------------
             st.write("")
             tab1, tab2, tab3 = st.tabs([
-                "📊 Rincian Cacat Fisik (Breakdown)",
-                "🧠 Penjelasan Keputusan Model AI",
-                "📄 Dokumen Data JSON Lengkap"
+                "Rincian Cacat Fisik (Breakdown)",
+                "Penjelasan Keputusan Model AI",
+                "Dokumen Data JSON Lengkap"
             ])
 
             with tab1:
@@ -784,7 +819,7 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
                         })
                     st.dataframe(pd.DataFrame(df_defects), use_container_width=True)
                 else:
-                    st.success("🎉 Tidak ditemukan cacat fisik terukur. Unit dalam kondisi mulus (Flawless / Grade A)!")
+                    st.success("Tidak ditemukan cacat fisik terukur. Unit dalam kondisi mulus (Flawless / Grade A)!")
 
                 bd = report.get("defect_breakdown", {})
                 b_cols = st.columns(5)
@@ -800,7 +835,7 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
                     st.markdown("#### Faktor Penentu Keputusan:")
                     reasons = report.get("reasons", [])
                     for r in reasons:
-                        st.markdown(f"- 📌 **{r}**")
+                        st.markdown(f"- **{r}**")
 
                     st.markdown("#### Distribusi Probabilitas Grade:")
                     probs = report.get("grade_probabilities", {})
@@ -826,23 +861,363 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
                     """, unsafe_allow_html=True)
 
             with tab3:
-                st.json(report)
+                def sanitize_json_obj(obj):
+                    if isinstance(obj, dict):
+                        return {k: sanitize_json_obj(v) for k, v in obj.items() if not k.startswith("_")}
+                    elif isinstance(obj, (list, tuple)):
+                        return [sanitize_json_obj(x) for x in obj]
+                    elif isinstance(obj, (np.integer, int)):
+                        return int(obj)
+                    elif isinstance(obj, (np.floating, float)):
+                        return float(obj)
+                    elif isinstance(obj, np.ndarray):
+                        return obj.tolist()
+                    elif hasattr(obj, "to_dict"):
+                        return sanitize_json_obj(obj.to_dict())
+                    elif hasattr(obj, "__dict__"):
+                        return sanitize_json_obj(obj.__dict__)
+                    return obj
+
+                json_clean = sanitize_json_obj(report)
+                st.json(json_clean)
                 st.download_button(
-                    label="📥 Unduh Laporan JSON",
-                    data=json.dumps(report, indent=2),
+                    label="Unduh Laporan JSON",
+                    data=json.dumps(json_clean, indent=2),
                     file_name=f"inspection_report_{unit_id_input}_{selected_version}.json",
                     mime="application/json"
                 )
 
 
 # ---------------------------------------------------------
-# Module 2: Batch Testing from Folder
+# Module: Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)
 # ---------------------------------------------------------
-elif nav_choice == "📂 Batch Folder Testing":
+elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
     st.markdown("""
     <div class="flutter-appbar">
         <div class="appbar-title">
-            <span>📂</span> Batch Inspection & Pengujian Massal
+            Rule of Thumb & Logika Klasifikasi Grade AI
+        </div>
+        <div class="appbar-subtitle">
+            Pedoman resmi, arsitektur keputusan 2-tier (Fast-Fail Safety Veto & Machine Learning 18 Fitur), serta batas toleransi metrik fisik sub-milimeter untuk taksiran kosmetik smartphone.
+        </div>
+        <div class="appbar-tags">
+            <span class="appbar-tag-pill">Standar PGI Computer Vision</span>
+            <span class="appbar-tag-pill">Fast-Fail Safety Veto</span>
+            <span class="appbar-tag-pill">Hierarki Keputusan 2-Tier</span>
+            <span class="appbar-tag-pill">Toleransi Sub-Milimeter (mm)</span>
+            <span class="appbar-tag-pill">Defect Penalty Index (DPI)</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    render_model_banner()
+
+    rule_tab1, rule_tab2, rule_tab3, rule_tab4 = st.tabs([
+        "Arsitektur & Hierarki Keputusan 2-Tier",
+        "Kriteria Rule of Thumb Tiap Grade (A, B, C, D)",
+        "Matriks Perbandingan & Formula DPI",
+        "Kalkulator Simulasi Grading Interaktif"
+    ])
+
+    with rule_tab1:
+        st.markdown("""
+        ### Prinsip Dasar & Filosofi Penilaian Kosmetik PGI
+        Sistem Computer Vision PGI dirancang untuk menghilangkan subjektivitas penaksir di cabang pegadaian dengan menerapkan **standar metrik fisik terukur sub-milimeter** ($mm$ dan $mm^2$) pada 4 sisi housing bodi smartphone (*Top, Bottom, Left, Right*).
+        
+        Sistem menggunakan pendekatan **Hierarki Keputusan 2-Tahap (*Two-Tier Decision Pipeline*)**:
+        """)
+
+        st.markdown("""
+        ```
+        [Tahap Input: Citra 4 Sisi Housing (Top, Bottom, Left, Right) pada Matras ArUco]
+                                     │
+                                     ▼
+        [Deteksi Cacat Bounding Box & Poligon YOLO]
+        (Specular Glare Suppression & Isolasi Tangan / Hand Filter)
+                                     │
+                                     ▼
+        ┌────────────────────────────────────────────────────────────────────────┐
+        │ TIER 1: FAST-FAIL SAFETY VETO RULES (Aturan Gugur Mutlak)             │
+        │ • Casing sompal / patah struktural (broken > 0)?                      │
+        │ • Retak bodi signifikan (crack >= 2 atau crack == 1 panjang >= 8mm)?  │
+        │ • Sompal / cuil cat berat (chip >= 4 atau chip >= 2 dengan DPI >= 25)?│
+        │ • Akumulasi cacat melampaui batas toleransi (Total DPI >= 45.0)?      │
+        └───────────────────────────────────┬────────────────────────────────────┘
+                                            │
+                    ┌───────────────────────┴───────────────────────┐
+                    │ YA                                            │ TIDAK
+                    ▼                                               ▼
+        [LANGSUNG VONIS GRADE D]                   ┌───────────────────────────────────┐
+        (Veto Keamanan Finansial                   │ TIER 2: MACHINE LEARNING &        │
+         Mencegah Risiko Over-Valuasi)             │ PHYSICAL COSMETIC SAFEGUARDS      │
+                                                   └─────────────────┬─────────────────┘
+                                                                     │
+                                                                     ▼
+                                                   [Ekstraksi 18 Fitur Dimensi Fisik]
+                                                   (Total cacat, luas mm², panjang mm,
+                                                    sebaran frame vs bottom, DPI)
+                                                                     │
+                                                                     ▼
+                                                   [Inferensi Random Forest (1.918 Unit)]
+                                                                     │
+                                                                     ▼
+                                                   [Penyelarasan Batas Fisik Kosmetik]:
+                                                   • Total DPI < 3.0 & lecet < 2mm  ──> GRADE A
+                                                   • Total DPI < 18.0 & dent <= 2   ──> GRADE B
+                                                   • Total DPI 18.0 s/d 44.9        ──> GRADE C
+                                                   • Total DPI >= 45.0              ──> GRADE D
+        ```
+        """)
+
+        st.markdown("""
+        #### Mengapa Diperlukan Arsitektur 2-Tier?
+        1. **Fast-Fail Safety Veto (Tier 1):**  
+           Machine Learning berbasis probabilitas murni kadang dapat tertipu oleh unit yang sebagian besar mulus namun memiliki satu sudut casing sompal patah 5mm. Veto Tier 1 menjamin keamanan finansial bisnis dengan **menggugurkan langsung unit tersebut ke Grade D**, melindungi perusahaan dari kerugian membeli barang rusak dengan harga taksiran tinggi (*over-grading*).
+        2. **Cosmetic Physical Safeguards (Tier 2):**  
+           Mencegah noise label fungsional cabang (misalnya unit mulus namun mati mesin yang di database diberi label Grade D) agar tidak merusak penilaian kosmetik kamera AI. Unit bodi bersih mulus dijamin mendapatkan haknya sebagai **Grade A**.
+        """)
+
+    with rule_tab2:
+        st.markdown("### Spesifikasi & Karakteristik Rule of Thumb Tiap Grade")
+
+        g_col1, g_col2 = st.columns(2)
+
+        with g_col1:
+            st.markdown("""
+            <div class="flutter-card" style="border-left: 5px solid #10B981;">
+                <div style="font-size: 1.15rem; font-weight: 800; color: #047857; margin-bottom: 6px;">
+                    GRADE A — Like New / Mint (Mulus Terawat)
+                </div>
+                <div style="font-size: 0.85rem; color: #374151; line-height: 1.5; margin-bottom: 12px;">
+                    Kondisi bodi smartphone sangat prima seperti unit baru keluar dari kotak atau unit terawat sempurna menggunakan pelindung casing dan tempered glass sejak hari pertama.
+                </div>
+                <b>Rule of Thumb & Batas Toleransi Fisik:</b>
+                <ul style="font-size: 0.84rem; color: #1F2937; margin-top: 6px;">
+                    <li><b>Goresan (Scratch):</b> Maksimal 2 titik lecet mikro halus (hairline) dengan panjang &lt; 2.0 mm dan luas &lt; 0.8 mm².</li>
+                    <li><b>Penyok (Dent):</b> 0 titik (Dilarang keras ada penyok).</li>
+                    <li><b>Cat Cuil (Chip):</b> 0 titik (Cat bezel harus utuh sempurna).</li>
+                    <li><b>Retak / Pecah:</b> 0 titik (100% bebas retak).</li>
+                    <li><b>Ambang Batas DPI:</b> <b>Total DPI &lt; 3.0</b>.</li>
+                </ul>
+                <div style="background: #ECFDF5; border-radius: 8px; padding: 8px 12px; font-size: 0.80rem; color: #065F46; font-weight: 600;">
+                    Contoh Unit Teruji: iPhone 16e (DPI 0.0), iPhone 7 Plus (DPI 0.0), Oppo A18 (1 lecet 1.2mm, DPI 1.2).
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("""
+            <div class="flutter-card" style="border-left: 5px solid #F59E0B;">
+                <div style="font-size: 1.15rem; font-weight: 800; color: #B45309; margin-bottom: 6px;">
+                    GRADE B — Very Good / Wajar Normal (Pemakaian Terawat)
+                </div>
+                <div style="font-size: 0.85rem; color: #374151; line-height: 1.5; margin-bottom: 12px;">
+                    Kondisi ponsel bekas pemakaian normal sehari-hari tanpa casing tebal. Terdapat goresan halus gesekan kantong atau meja, namun bodi kokoh tanpa sompal tajam.
+                </div>
+                <b>Rule of Thumb & Batas Toleransi Fisik:</b>
+                <ul style="font-size: 0.84rem; color: #1F2937; margin-top: 6px;">
+                    <li><b>Goresan (Scratch):</b> Goresan pemakaian normal ditoleransi hingga 8 titik (panjang &ge; 1.8 mm diperbolehkan).</li>
+                    <li><b>Penyok (Dent):</b> Maksimal 2 titik penyok mikro samping (&lt; 3.5 mm²).</li>
+                    <li><b>Cat Cuil (Chip):</b> Maksimal 2 bintik cuil cat mikro di tepi port charger / tombol.</li>
+                    <li><b>Retak / Pecah:</b> 0 titik (Bebas dari retak kaca bodi dan sompal struktural).</li>
+                    <li><b>Ambang Batas DPI:</b> <b>Total DPI &lt; 18.0</b>.</li>
+                </ul>
+                <div style="background: #FEF3C7; border-radius: 8px; padding: 8px 12px; font-size: 0.80rem; color: #92400E; font-weight: 600;">
+                    Contoh Unit Teruji: Oppo A78 5G (DPI 10.1), Oppo A16 (DPI 8.1), iPhone 13 Pro Max (DPI 10.5).
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with g_col2:
+            st.markdown("""
+            <div class="flutter-card" style="border-left: 5px solid #EA580C;">
+                <div style="font-size: 1.15rem; font-weight: 800; color: #C2410C; margin-bottom: 6px;">
+                    GRADE C — Good / Aus Nyata Jamak (Pemakaian Berat)
+                </div>
+                <div style="font-size: 0.85rem; color: #374151; line-height: 1.5; margin-bottom: 12px;">
+                    Kondisi bodi smartphone mengalami keausan nyata akibat pemakaian aktif jangka panjang. Banyak baret kasar merata di sekeliling bodi atau cat bezel mengelupas, namun kaca bodi tidak patah/pecah.
+                </div>
+                <b>Rule of Thumb & Batas Toleransi Fisik:</b>
+                <ul style="font-size: 0.84rem; color: #1F2937; margin-top: 6px;">
+                    <li><b>Goresan (Scratch):</b> Goresan bodi jamak merata (bisa mencapai 10 hingga 25 titik baret).</li>
+                    <li><b>Penyok (Dent):</b> Penyok samping multipel (> 2 titik) namun tidak merusak fungsi tombol.</li>
+                    <li><b>Cat Cuil (Chip):</b> Cat mengelupas (chips) multipel 2 hingga 4 titik di bezel.</li>
+                    <li><b>Retak / Pecah:</b> 0 titik (Bebas dari retakan tembus dan pecahan casing).</li>
+                    <li><b>Ambang Batas DPI:</b> <b>18.0 &le; Total DPI &lt; 45.0</b>.</li>
+                </ul>
+                <div style="background: #FFEDD5; border-radius: 8px; padding: 8px 12px; font-size: 0.80rem; color: #9A3412; font-weight: 600;">
+                    Contoh Unit Teruji: Oppo A5s (14 baret, DPI 19.3), Samsung A07 (5 baret + 2 chip, DPI 18.4), Oppo A15 (DPI 3.9).
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("""
+            <div class="flutter-card" style="border-left: 5px solid #DC2626;">
+                <div style="font-size: 1.15rem; font-weight: 800; color: #B91C1C; margin-bottom: 6px;">
+                    GRADE D — Faulty / Cacat Berat (Kerusakan Struktural)
+                </div>
+                <div style="font-size: 0.85rem; color: #374151; line-height: 1.5; margin-bottom: 12px;">
+                    Unit mengalami insiden fisik benturan keras atau jatuh parah yang menyebabkan integritas fisik bodi rusak, sompal, retak, atau pecah.
+                </div>
+                <b>Rule of Thumb & Batas Veto Gugur Mutlak:</b>
+                <ul style="font-size: 0.84rem; color: #1F2937; margin-top: 6px;">
+                    <li><b>Pecah / Sompal Sudut (Broken):</b> &ge; 1 titik terdeteksi &rarr; <b>VETO MUTLAK GRADE D</b>.</li>
+                    <li><b>Retak Signifikan (Crack):</b> &ge; 2 retakan bodi atau 1 retakan dengan panjang &ge; 8.0 mm &rarr; <b>VETO MUTLAK GRADE D</b>.</li>
+                    <li><b>Sompal / Cat Mengelupas Parah (Chip):</b> &ge; 4 titik atau sompal sudut tajam dengan DPI &ge; 25.0 &rarr; <b>VETO MUTLAK GRADE D</b>.</li>
+                    <li><b>Ambang Batas DPI:</b> <b>Total DPI &ge; 45.0</b> &rarr; <b>VETO MUTLAK GRADE D</b>.</li>
+                </ul>
+                <div style="background: #FEE2E2; border-radius: 8px; padding: 8px 12px; font-size: 0.80rem; color: #991B1B; font-weight: 600;">
+                    Contoh Unit Teruji: Oppo A5i (Sompal sudut atas 4.8mm, DPI 23.9), iPhone X (4 Broken + 1 Crack + 1 Chip, DPI 329.6).
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    with rule_tab3:
+        st.markdown("### Matriks Perbandingan Parameter & Formula Defect Penalty Index (DPI)")
+
+        matrix_data = {
+            "Parameter Penilaian": [
+                "Deskripsi Kondisi",
+                "Toleransi Goresan (Scratch)",
+                "Toleransi Penyok (Dent)",
+                "Toleransi Sompal Cat (Chip)",
+                "Retakan Bodi (Crack)",
+                "Pecahan / Sompal Sudut (Broken)",
+                "Rentang Total DPI",
+                "Hak Nasabah / Nilai Valuasi"
+            ],
+            "Grade A (Like New)": [
+                "Mulus Bersih Tanpa Cacat",
+                "Maks 2 titik lecet mikro (< 2.0 mm)",
+                "0 titik (Dilarang)",
+                "0 titik (Dilarang)",
+                "0 titik (Dilarang)",
+                "0 titik (Dilarang)",
+                "< 3.0",
+                "Maksimal (Nilai Taksiran Tertinggi)"
+            ],
+            "Grade B (Very Good)": [
+                "Aus Pemakaian Normal Wajar",
+                "Toleransi hingga 8 titik (≥ 1.8 mm)",
+                "Maks 2 titik kecil (< 3.5 mm²)",
+                "Maks 2 bintik mikro tepi bezel",
+                "0 titik (Dilarang)",
+                "0 titik (Dilarang)",
+                "< 18.0",
+                "Standar Pasar (Valuasi Normal)"
+            ],
+            "Grade C (Good)": [
+                "Aus Nyata Jamak / Baret Merata",
+                "Baret jamak merata (10 - 25 titik)",
+                "Penyok jamak multipel (> 2 titik)",
+                "Cat terkelupas 2 - 4 titik",
+                "0 titik (Dilarang)",
+                "0 titik (Dilarang)",
+                "18.0 s/d 44.9",
+                "Penalti Harga (Valuasi Menengah)"
+            ],
+            "Grade D (Faulty)": [
+                "Kerusakan Fisik Berat / Rusak",
+                "Bebas (Tidak berpengaruh)",
+                "Penyok parah / merusak casing",
+                "Sompal bodi tajam ≥ 4 titik",
+                "≥ 1 titik signifikan (VETO)",
+                "≥ 1 titik patah/pecah (VETO)",
+                "≥ 45.0 (VETO)",
+                "Harga Dasar / Risiko Mesin Rusak"
+            ]
+        }
+        df_matrix = pd.DataFrame(matrix_data)
+        st.dataframe(df_matrix.set_index("Parameter Penilaian"), use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("### Formula Matematis Defect Penalty Index (DPI)")
+        st.markdown(r"""
+        Nilai **Defect Penalty Index (DPI)** dihitung secara proporsional berdasarkan jenis cacat, lokasi sudut pandang foto, serta dimensi fisik panjang ($L$) dan luas area ($A$) dalam satuan sub-milimeter:
+
+        $$
+        \text{DPI}_{\text{total}} = \sum_{i=1}^{N} \left( W_{\text{class}}(c_i) \times W_{\text{view}}(v_i) \times \left(1 + \frac{L_i}{5.0}\right) \times \left(1 + \frac{A_i}{10.0}\right) \right)
+        $$
+
+        **Tabel Bobot Kelas ($W_{\text{class}}$):**
+        - **Broken (Pecah / Casing Sompal Patah):** Bobot **25.0** (Tingkat bahaya struktural tinggi).
+        - **Crack (Retakan Kaca Bodi):** Bobot **12.0** (Tingkat degradasi integritas bodi tinggi).
+        - **Chip (Sompal Cat Bezel / Gompel):** Bobot **4.0** (Cacat kosmetik nyata terlihat mata).
+        - **Dent (Penyok Casing Logam):** Bobot **2.5** (Deformasi bodi akibat benturan tumpul).
+        - **Scratch (Goresan / Baret Garis):** Bobot **1.0** (Keausan gesekan normal).
+
+        **Tabel Bobot Sudut Pandang ($W_{\text{view}}$):**
+        - **Sisi Kanan / Kiri (Frame Utama):** Bobot **1.0**
+        - **Sisi Atas / Bawah (Port USB & Speaker):** Bobot **1.1** (Area lebih sensitif terhadap keausan colokan charger dan benturan sudut meja).
+        """)
+
+    with rule_tab4:
+        st.markdown("### Kalkulator Simulasi Rule of Thumb Interaktif")
+        st.markdown("Gunakan kalkulator di bawah ini untuk mensimulasikan bagaimana kombinasi cacat fisik pada bodi smartphone akan dinilai dan diklasifikasikan oleh sistem AI:")
+
+        sim_col1, sim_col2 = st.columns([1.2, 1])
+
+        with sim_col1:
+            sim_scratches = st.slider("Jumlah Goresan Bodi (Scratch):", min_value=0, max_value=30, value=3)
+            sim_dents = st.slider("Jumlah Penyok Casing (Dent):", min_value=0, max_value=5, value=1)
+            sim_chips = st.slider("Jumlah Cat Cuil / Sompal Cat (Chip):", min_value=0, max_value=6, value=0)
+            sim_cracks = st.slider("Jumlah Retakan Bodi (Crack):", min_value=0, max_value=3, value=0)
+            sim_broken = st.slider("Jumlah Pecah / Sompal Casing Patah (Broken):", min_value=0, max_value=2, value=0)
+
+        with sim_col2:
+            # Calculate simulated DPI
+            est_dpi = (
+                sim_scratches * 1.5 +
+                sim_dents * 3.5 +
+                sim_chips * 5.0 +
+                sim_cracks * 18.0 +
+                sim_broken * 35.0
+            )
+
+            # Determine grade based on Rule of Thumb
+            sim_reasons = []
+            if sim_broken > 0:
+                sim_grade = "D"
+                sim_reasons.append(f"Veto Operasional: Ditemukan {sim_broken} kerusakan fisik casing pecah / sompal patah.")
+            elif sim_cracks >= 1:
+                sim_grade = "D"
+                sim_reasons.append(f"Veto Operasional: Ditemukan {sim_cracks} retakan bodi tembus.")
+            elif sim_chips >= 4 or (sim_chips >= 2 and est_dpi >= 25.0):
+                sim_grade = "D"
+                sim_reasons.append(f"Veto Operasional: Sompal cat bodi berat ({sim_chips} titik chip dengan DPI >= 25.0).")
+            elif est_dpi >= 45.0:
+                sim_grade = "D"
+                sim_reasons.append(f"Veto Operasional: Akumulasi penalti cacat melampaui batas industri (DPI {est_dpi:.1f} >= 45.0).")
+            elif (sim_scratches + sim_dents + sim_chips) == 0 or (est_dpi < 3.0 and sim_dents == 0 and sim_chips == 0):
+                sim_grade = "A"
+                sim_reasons.append(f"Safeguard Kosmetik: Bodi mulus Like New dengan penalti DPI sangat minim ({est_dpi:.1f} < 3.0).")
+            elif est_dpi < 18.0 and sim_dents <= 2 and sim_chips <= 2:
+                sim_grade = "B"
+                sim_reasons.append(f"Safeguard Kosmetik: Pemakaian bodi normal wajar (DPI {est_dpi:.1f} < 18.0, dent <= 2).")
+            else:
+                sim_grade = "C"
+                sim_reasons.append(f"Safeguard Kosmetik: Keausan bodi nyata jamak (DPI {est_dpi:.1f} < 45.0).")
+
+            st.markdown(f"""
+            <div class="grade-badge-{sim_grade}" style="margin-bottom: 14px;">
+                <div style="font-size: 0.80rem; letter-spacing: 0.10em; text-transform: uppercase;">Hasil Vonis Rule of Thumb</div>
+                <div style="font-size: 2.6rem; line-height: 1.1; margin: 4px 0;">GRADE {sim_grade}</div>
+                <div style="font-size: 0.85rem; font-weight: 600;">Estimasi Penalti: DPI {est_dpi:.1f}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("**Analisis Alasan Keputusan:**")
+            for r in sim_reasons:
+                st.markdown(f"- {r}")
+
+
+# ---------------------------------------------------------
+# Module 2: Batch Testing from Folder
+# ---------------------------------------------------------
+elif nav_choice == "Pengujian Massal (Batch Inspection)":
+    st.markdown("""
+    <div class="flutter-appbar">
+        <div class="appbar-title">
+            Batch Inspection & Pengujian Massal
         </div>
         <div class="appbar-subtitle">
             Jalankan pengujian grading otomatis pada puluhan unit smartphone sekaligus dari direktori penyimpanan lokal.
@@ -856,7 +1231,7 @@ elif nav_choice == "📂 Batch Folder Testing":
     batch_dir_str = st.text_input("Path Folder Target Pengujian:", value=default_batch_path)
     limit_units = st.slider("Jumlah Unit yang Akan Diuji:", min_value=2, max_value=50, value=10)
 
-    start_batch = st.button(f"🚀 Mulai Batch Testing ({active_cfg['short_name']})", type="primary")
+    start_batch = st.button(f"Mulai Batch Testing ({active_cfg['short_name']})", type="primary")
 
     if start_batch:
         b_path = Path(batch_dir_str)
@@ -923,7 +1298,7 @@ elif nav_choice == "📂 Batch Folder Testing":
 
                 csv_bytes = df_batch.to_csv(index=False).encode("utf-8")
                 st.download_button(
-                    label="📥 Unduh Ringkasan Hasil Pengujian (CSV)",
+                    label="Unduh Ringkasan Hasil Pengujian (CSV)",
                     data=csv_bytes,
                     file_name=f"batch_inspection_results_{selected_version}.csv",
                     mime="text/csv"
@@ -933,11 +1308,11 @@ elif nav_choice == "📂 Batch Folder Testing":
 # ---------------------------------------------------------
 # Module 3: Tray Marker Standardization
 # ---------------------------------------------------------
-elif nav_choice == "📐 Standar Matras (Tray Marker)":
+elif nav_choice == "Standar Kalibrasi Matras (ArUco Tray)":
     st.markdown("""
     <div class="flutter-appbar">
         <div class="appbar-title">
-            <span>📐</span> Standar Matras Inspeksi (Tray Marker A4)
+            Standar Kalibrasi Matras Inspeksi (ArUco Tray A4)
         </div>
         <div class="appbar-subtitle">
             Standarisasi pengambilan foto smartphone untuk akurasi metrik fisik sub-milimeter dan eliminasi bayangan jari operator.
@@ -960,7 +1335,7 @@ elif nav_choice == "📐 Standar Matras (Tray Marker)":
             st.image(str(marker_path), caption="Template Matras Inspeksi Resmi A4 300 DPI", use_container_width=True)
             with open(str(marker_path), "rb") as f:
                 st.download_button(
-                    label="📥 Unduh Template Matras Cetak A4 (300 DPI PNG)",
+                    label="Unduh Template Matras Cetak A4 (300 DPI PNG)",
                     data=f.read(),
                     file_name="tray_marker_template_A4_300DPI.png",
                     mime="image/png",
@@ -990,11 +1365,11 @@ elif nav_choice == "📐 Standar Matras (Tray Marker)":
 # ---------------------------------------------------------
 # Module 4: Laporan Investigasi & Evaluasi Empiris (Knowledge Hub)
 # ---------------------------------------------------------
-elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
+elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
     st.markdown("""
     <div class="flutter-appbar">
         <div class="appbar-title">
-            <span>📑</span> Laporan Investigasi Teknis & Evaluasi Empiris
+            Laporan Investigasi Teknis & Evaluasi Empiris
         </div>
         <div class="appbar-subtitle">
             Dokumentasi audit presisi pipeline cropping bodi, eliminasi false-positive, analisis penghapusan background, dan komparasi 5 versi model AI.
@@ -1005,27 +1380,27 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
     render_model_banner()
 
     rep_tab1, rep_tab2, rep_tab3, rep_tab4, rep_tab5, rep_tab6 = st.tabs([
-        "🤖 Komparasi 5 Versi Model AI",
-        "🔍 Audit 2 Kasus Kritis Lapangan",
-        "⚖️ Analisis Background Removal vs Soft ROI",
-        "📊 Tabel Verifikasi Uji Lapangan",
-        "📈 Evaluasi Model Skala Penuh (1.918 Unit)",
-        "🛡️ SOP 2-Tahap & Audit Risiko Finansial"
+        "Komparasi 5 Versi Model AI",
+        "Audit 2 Kasus Kritis Lapangan",
+        "Analisis Background Removal vs Soft ROI",
+        "Tabel Verifikasi Uji Lapangan",
+        "Evaluasi Model Skala Penuh (1.918 Unit)",
+        "SOP 2-Tahap & Audit Risiko Finansial"
     ])
 
     with rep_tab1:
         st.markdown("""
-        ### 🤖 Komparasi Komprehensif 5 Versi Model AI
+        ### Komparasi Komprehensif 5 Versi Model AI
         Sistem inspeksi telah mengalami 5 fase evolusi arsitektur dan peningkatan data latih:
         """)
 
         models_comp_data = {
             "Versi Model": [
-                "⚡ Versi 5 (Terbaru - In Training)",
-                "⭐ Versi 3 (Rekomendasi Produksi)",
-                "🎯 Versi 4 (Real Annotated)",
-                "🔄 Versi 2 (Multi-View 5-Sisi)",
-                "📦 Versi 1 (Baseline Prototipe)"
+                "Versi 5 (Terbaru - In Training)",
+                "Versi 3 (Rekomendasi Produksi)",
+                "Versi 4 (Real Annotated)",
+                "Versi 2 (Multi-View 5-Sisi)",
+                "Versi 1 (Baseline Prototipe)"
             ],
             "Arsitektur Detector": [
                 "YOLOv8s Detect (1024x1024, 11M Params)",
@@ -1065,7 +1440,7 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
         }
         st.dataframe(pd.DataFrame(models_comp_data), use_container_width=True)
 
-        st.markdown("#### 📈 Progres Training Model Versi 5 (Epoch 1 s/d 10):")
+        st.markdown("#### Progres Training Model Versi 5 (Epoch 1 s/d 10):")
         st.caption("Pencatatan metrik performa berkala dari file training `runs_v5_training/real_defects_v5-4/results.csv`:")
 
         v5_history = {
@@ -1153,7 +1528,7 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
         }
         st.table(pd.DataFrame(bg_comp_data))
 
-        st.info("💡 **Rekomendasi Arsitektur Definitif:** **JANGAN MENGHAPUS BACKGROUND SECARA DESTRUKTIF**. Pertahankan piksel asli citra secara utuh, dan gunakan *phone boundary distance map* untuk membatasi ruang deteksi hanya pada bodi smartphone.")
+        st.info("**Rekomendasi Arsitektur Definitif:** **JANGAN MENGHAPUS BACKGROUND SECARA DESTRUKTIF**. Pertahankan piksel asli citra secara utuh, dan gunakan *phone boundary distance map* untuk membatasi ruang deteksi hanya pada bodi smartphone.")
 
     with rep_tab4:
         st.markdown("""
@@ -1167,28 +1542,28 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
                 "True Grade": "Grade D",
                 "Prediksi Sebelum Perbaikan": "Grade A (False Pass / DPI 0.0)",
                 "Prediksi Sesudah Perbaikan": "Grade D (Veto Sompal / 1 Broken 4.8mm)",
-                "Status Validasi": "✅ SUKSES SEMPURNA"
+                "Status Validasi": "SUKSES SEMPURNA (Tervalidasi)"
             },
             {
                 "ID Unit & Model Smartphone": "1-00023e-13__apple__iphone-13-pro-max-128gb",
                 "True Grade": "Grade B",
                 "Prediksi Sebelum Perbaikan": "Crop Meja Kosong (False Crop)",
                 "Prediksi Sesudah Perbaikan": "Bodi Presisi (Terkunci di Tengah)",
-                "Status Validasi": "✅ SUKSES SEMPURNA"
+                "Status Validasi": "SUKSES SEMPURNA (Tervalidasi)"
             },
             {
                 "ID Unit & Model Smartphone": "1-00023e-13__apple__iphone-16-128gb",
                 "True Grade": "Grade A",
                 "Prediksi Sebelum Perbaikan": "0 Cacat Layar",
                 "Prediksi Sesudah Perbaikan": "0 Cacat Layar (Bersih Mulus)",
-                "Status Validasi": "✅ STABIL (Zero FP)"
+                "Status Validasi": "STABIL (Zero FP)"
             },
             {
                 "ID Unit & Model Smartphone": "1-00023e-13__apple__iphone-15-pro-max-256gb",
                 "True Grade": "Grade A",
                 "Prediksi Sebelum Perbaikan": "0 Cacat Layar",
                 "Prediksi Sesudah Perbaikan": "0 Cacat Layar (Bersih Mulus)",
-                "Status Validasi": "✅ STABIL (Zero FP)"
+                "Status Validasi": "STABIL (Zero FP)"
             }
         ]
         st.dataframe(pd.DataFrame(verif_data), use_container_width=True)
@@ -1263,11 +1638,11 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
 # ---------------------------------------------------------
 # Module 5: Guidelines & Architecture
 # ---------------------------------------------------------
-elif nav_choice == "ℹ️ Panduan SOP & Arsitektur":
+elif nav_choice == "Panduan SOP & Arsitektur Sistem":
     st.markdown("""
     <div class="flutter-appbar">
         <div class="appbar-title">
-            <span>ℹ️</span> Arsitektur Sistem & Rekomendasi SOP PGI
+            Arsitektur Sistem & Rekomendasi SOP PGI
         </div>
         <div class="appbar-subtitle">
             Standar operasional prosedur pemeriksaan 2 tahap dan ambang batas metrik fisik grading bodi smartphone.
