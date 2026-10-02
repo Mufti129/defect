@@ -27,6 +27,8 @@ if str(CURRENT_DIR) not in sys.path:
 from defect_detector import DefectDetector, DefectInstance, CLASS_COLORS
 from ml_grading_aggregator import MLGradingAggregator
 from grading_engine import GradingEngine, GRADE_COLORS, DEFECT_CLASS_WEIGHTS, ZONE_WEIGHTS
+from phone_localizer import PhoneBodyLocalizer
+import tempfile
 
 # -------------------------------------------------------------------------
 # MODEL REGISTRY: Definisi 5 Versi Model AI Smartphone Defect Detection
@@ -154,45 +156,78 @@ class StreamlitInspectionEngine:
         self.detector = DefectDetector(weights_path=yolo_path, device="cpu")
         self.ml_aggregator = MLGradingAggregator(model_path=ml_path)
         self.grading_engine = GradingEngine(detector=self.detector, ml_aggregator=self.ml_aggregator)
+        self.phone_localizer = PhoneBodyLocalizer()
+        self.last_stage1_previews = {}
 
     def run_unit_inspection(
         self,
         unit_id: str,
         view_images: Dict[str, str],
-        conf_threshold: Optional[float] = None
-    ) -> Tuple[Dict[str, Any], np.ndarray, Dict[str, np.ndarray]]:
+        conf_threshold: Optional[float] = None,
+        use_stage1_crop: bool = True
+    ) -> Tuple[Dict[str, Any], np.ndarray, Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """
         Runs complete evaluation across all provided views and generates the visual inspection card.
+        Integrates Stage 1 (Phone Body Localizer & Auto-Crop) to eliminate background noise.
 
         Returns:
             report: Full inspection JSON dictionary with active model metadata.
             card_bgr: OpenCV BGR image of the generated collage card.
             annotated_views: Dictionary of high-res annotated OpenCV images per view.
+            stage1_previews: Dictionary of Stage 1 verification comparison images per view.
         """
-        # Run grading
+        stage1_previews = {}
+        stage1_meta = {}
+        inspected_views = {}
+
+        if use_stage1_crop:
+            stage1_temp_dir = tempfile.mkdtemp(prefix="stage1_crop_")
+            for side, p in view_images.items():
+                if not os.path.exists(p):
+                    continue
+                img = cv2.imread(p)
+                if img is None:
+                    continue
+                crop_res = self.phone_localizer.localize_and_crop(img, side)
+                crop_path = os.path.join(stage1_temp_dir, f"{side}.jpg")
+                cv2.imwrite(crop_path, crop_res["cropped_img"])
+                inspected_views[side] = crop_path
+                stage1_previews[side] = crop_res["preview_img"]
+                stage1_meta[side] = {
+                    "bbox": list(crop_res["bbox"]),
+                    "tilt_angle": float(round(crop_res["tilt_angle"], 2)),
+                    "confidence": str(crop_res["confidence"])
+                }
+        else:
+            inspected_views = view_images
+
+        # Run grading on clean inspected views
         report = self.grading_engine.evaluate_phone_unit(
             unit_id,
-            view_images,
+            inspected_views,
             conf_threshold=conf_threshold
         )
 
-        # Inject model metadata
+        # Inject model metadata & Stage 1 results
         report["model_version"] = self.version
         report["model_name"] = self.config["name"]
         report["model_arch"] = self.config["arch"]
         report["model_status"] = self.config["status"]
+        report["stage1_enabled"] = use_stage1_crop
+        report["stage1_meta"] = stage1_meta
         if conf_threshold is not None:
             report["conf_threshold_used"] = conf_threshold
 
         # Generate collage card in memory reusing precomputed defects
         card_bgr, annotated_views = self.generate_card_image(
             report,
-            view_images,
+            inspected_views,
             conf_threshold=conf_threshold
         )
         # Clean internal objects to ensure JSON serializability
         report.pop("_defect_instances_by_view", None)
-        return report, card_bgr, annotated_views
+        self.last_stage1_previews = stage1_previews
+        return report, card_bgr, annotated_views, stage1_previews
 
     def generate_card_image(
         self,

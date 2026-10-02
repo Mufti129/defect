@@ -608,6 +608,22 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Stage 1 Preprocessing Toggle (Flutter Card Style)
+    st.markdown("""
+    <div style="background: #F5F3FF; border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 16px; margin-top: 14px; margin-bottom: 12px;">
+        <b style="color: #5B21B6; font-size: 0.90rem;">Pipeline Stage 1: Phone Body Localizer & Auto-Crop</b>
+        <div style="font-size: 0.80rem; color: #6D28D9; margin-top: 3px; line-height: 1.4;">
+            Mendeteksi kotak pembungkus bodi HP secara cerdas, mengoreksi sudut kemiringan kamera (*tilt alignment*), dan memotong (*auto-crop*) bodi ponsel untuk mengeliminasi gangguan meja kantor, celana operator, dan ruangan sebelum analisis cacat fisik dilakukan.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    stage1_toggle = st.checkbox(
+        "Aktifkan Stage 1: Phone Body Localizer & Auto-Crop (Sangat Dianjurkan untuk Foto Mentah Kamera)",
+        value=True,
+        help="Sistem akan mendeteksi kotak hijau pembungkus bodi HP dan memotong bodi ponsel secara presisi sebelum inferensi cacat dilakukan, membuang meja dan celana operator 100%."
+    )
+
     # Trigger Inspection Button
     btn_label = f"Jalankan Inspeksi & Grading dengan {active_cfg['short_name']} (Sensitivitas: {conf_thresh_slider:.2f})"
     run_btn = st.button(btn_label, type="primary", use_container_width=True)
@@ -619,17 +635,24 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
             with st.spinner(f"Menjalankan inferensi dengan {active_cfg['name']} (Ambang Sensitivitas: {conf_thresh_slider:.2f})..."):
                 t0 = time.time()
                 try:
-                    report, card_bgr, annotated_views = engine.run_unit_inspection(
+                    res_tuple = engine.run_unit_inspection(
                         unit_id_input,
                         view_files_dict,
-                        conf_threshold=conf_thresh_slider
+                        conf_threshold=conf_thresh_slider,
+                        use_stage1_crop=stage1_toggle
                     )
                 except TypeError:
-                    report, card_bgr, annotated_views = engine.run_unit_inspection(
+                    res_tuple = engine.run_unit_inspection(
                         unit_id_input,
                         view_files_dict
                     )
                 elapsed = time.time() - t0
+
+                if isinstance(res_tuple, tuple) and len(res_tuple) == 4:
+                    report, card_bgr, annotated_views, stage1_previews = res_tuple
+                else:
+                    report, card_bgr, annotated_views = res_tuple
+                    stage1_previews = getattr(engine, "last_stage1_previews", {})
 
             grade = report.get("final_grade", "D")
             confidence = report.get("grade_confidence", 0.0)
@@ -721,6 +744,25 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                 for r in report.get("reasons", []):
                     st.markdown(f"- {r}")
                 st.caption("Pelajari matriks klasifikasi lengkap, batas toleransi milimeter, dan simulasi interaktif pada menu **Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)**.")
+
+            # -----------------------------------------
+            # Stage 1 Verification Preview Section (Phone Localizer & Auto-Crop)
+            # -----------------------------------------
+            if stage1_previews and report.get("stage1_enabled"):
+                st.write("")
+                with st.expander("Hasil Stage 1: Phone Body Localizer & Auto-Crop (Sebelum vs Sesudah)", expanded=False):
+                    st.markdown("""
+                    <div style="font-size: 0.85rem; color: #374151; margin-bottom: 12px; line-height: 1.5;">
+                        <b>Verifikasi Pipeline Stage 1:</b> Garis hijau menunjukkan kotak pembungkus bodi ponsel yang berhasil dilokalisasi. Latar belakang meja kantor, celana operator, dan ruangan di luar kotak hijau telah <b>dieliminasi 100%</b> sebelum analisis cacat fisik (Stage 2) dimulai.
+                    </div>
+                    """, unsafe_allow_html=True)
+                    s1_tabs = st.tabs([f"Sisi {s.upper()}" for s in stage1_previews.keys()])
+                    for idx, (s_name, prev_bgr) in enumerate(stage1_previews.items()):
+                        with s1_tabs[idx]:
+                            meta = report.get("stage1_meta", {}).get(s_name, {})
+                            st.caption(f"Kotak Bounding Box: `{meta.get('bbox')}` • Koreksi Kemiringan: `{meta.get('tilt_angle', 0.0)}°` • Status: `{meta.get('confidence', 'HIGH_CONFIDENCE')}`")
+                            prev_rgb = cv2.cvtColor(prev_bgr, cv2.COLOR_BGR2RGB)
+                            st.image(prev_rgb, use_container_width=True, caption=f"Verifikasi Stage 1 Sisi {s_name.upper()}: Kiri (Kotak Hijau Bodi HP) vs Kanan (Hasil Potong Bersih)")
 
             # -----------------------------------------
             # Interactive Per-View Inspection Gallery
