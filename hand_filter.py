@@ -85,16 +85,35 @@ class HandFilter:
         if np.mean(gray[:20, :20]) > 180:
             thresh = cv2.bitwise_not(thresh)
 
-        # Find largest convex contour representing the phone
+        # Find contours representing phone body or central object
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        phone_mask = np.ones((h, w), dtype=np.uint8) * 255
+        
+        # Adaptive area threshold: side views (thin phone profile) have much smaller pixel footprint
+        min_ratio = 0.03 if view_side in ["left", "right", "top", "bottom"] else 0.15
+        phone_mask = np.zeros((h, w), dtype=np.uint8)
+        found = False
 
         if contours:
-            largest_cnt = max(contours, key=cv2.contourArea)
-            if cv2.contourArea(largest_cnt) > (h * w * 0.25):
-                hull = cv2.convexHull(largest_cnt)
-                phone_mask = np.zeros((h, w), dtype=np.uint8)
-                cv2.drawContours(phone_mask, [hull], -1, 255, -1)
+            sorted_cnts = sorted(contours, key=cv2.contourArea, reverse=True)
+            for cnt in sorted_cnts:
+                area = cv2.contourArea(cnt)
+                if area > (h * w * min_ratio):
+                    hull = cv2.convexHull(cnt)
+                    cv2.drawContours(phone_mask, [hull], -1, 255, -1)
+                    found = True
+                    break
+
+        if not found:
+            # Fallback for uncropped wide photos: focus on central corridor and exclude outer background margins
+            phone_mask = np.ones((h, w), dtype=np.uint8) * 255
+            if view_side in ["left", "right"]:
+                # Exclude far background (tables/pants on left/right edges)
+                margin_x = int(w * 0.15)
+                phone_mask[:, :margin_x] = 0
+                phone_mask[:, -margin_x:] = 0
+            margin_y = int(h * 0.06)
+            phone_mask[:margin_y, :] = 0
+            phone_mask[-margin_y:, :] = 0
 
         return phone_mask
 

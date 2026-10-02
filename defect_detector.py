@@ -278,6 +278,11 @@ class DefectDetector:
                     if view_side == "bottom" and 0.40 <= rel_cx <= 0.60 and 0.30 <= rel_cy <= 0.70:
                         continue
 
+                    # Spatial Background Filter for raw/uncropped photos:
+                    # In side view (left/right), the phone is vertically oriented in the central corridor
+                    if view_side in ["left", "right"] and (rel_cx < 0.12 or rel_cx > 0.88 or rel_cy < 0.05 or rel_cy > 0.95):
+                        continue
+
                     # Filter out candidate if it falls on human hands/fingers
                     if hand_mask is not None and self.hand_filter.is_defect_on_hand(global_polygon, hand_mask, threshold_ratio=0.25):
                         continue
@@ -285,7 +290,7 @@ class DefectDetector:
                     # Filter out if completely outside phone body
                     if inspection_mask is not None:
                         crop_mask = inspection_mask[by1:by1+bh, bx1:bx1+bw]
-                        if crop_mask.size > 0 and np.mean(crop_mask) < 35:
+                        if crop_mask.size > 0 and np.mean(crop_mask) < 45:
                             continue
 
                     metrics = self.spatial_scaler.measure_polygon_metrics(global_polygon, scale_mm)
@@ -343,18 +348,20 @@ class DefectDetector:
 
             peri = cv2.arcLength(cnt, True)
             bx, by, bw, bh = cv2.boundingRect(cnt)
+            rel_cx = (bx + bw / 2.0) / max(w, 1)
+            rel_cy = (by + bh / 2.0) / max(h, 1)
 
             # 1. Structural Filter: Drop long antenna bands, frame seams, or bezel outlines
             if bw > w * 0.20 or bh > h * 0.20:
                 continue
 
-            # 2. Outer Border Filter: Avoid outer boundary edges of the crop
+            # 2. Outer Border & Spatial Corridor Filter
             if bx < 15 or by < 15 or (bx + bw) > (w - 15) or (by + bh) > (h - 15):
+                continue
+            if view_side in ["left", "right"] and (rel_cx < 0.12 or rel_cx > 0.88 or rel_cy < 0.05 or rel_cy > 0.95):
                 continue
 
             # 3. Hardware Feature Filter: Drop standard USB charging ports on bottom view only
-            rel_cx = (bx + bw / 2.0) / w
-            rel_cy = (by + bh / 2.0) / h
             if view_side == "bottom":
                 if 0.40 <= rel_cx <= 0.60 and 0.35 <= rel_cy <= 0.65:
                     continue

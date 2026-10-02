@@ -173,21 +173,21 @@ class MLGradingAggregator:
                 if pred_grade in ["C", "D"]:
                     pred_grade = "A"
                     confidence = max(0.92, float(prob_dict.get("A", 0.0)))
-                    reasons.append(f"Safeguard Kosmetik: Total DPI ({total_dpi:.1f} < 3.0) sangat minim tanpa sompal/penyok (Grade A).")
+                    reasons.append(f"Safeguard Fisik Bodi: Total DPI ({total_dpi:.1f} < 3.0) sangat minim tanpa sompal/penyok (Grade A).")
                 else:
                     reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Kondisi bodi sangat mulus / Like New.")
             elif total_dpi < 18.0 and dents <= 2 and chips <= 2:
                 if pred_grade in ["C", "D"]:
                     pred_grade = "B"
                     confidence = max(0.85, float(prob_dict.get("B", 0.6)))
-                    reasons.append(f"Safeguard Kosmetik: Penalti DPI wajar ({total_dpi:.1f} < 18.0) tanpa cacat struktural (Grade B).")
+                    reasons.append(f"Safeguard Fisik Bodi: Penalti DPI wajar ({total_dpi:.1f} < 18.0) tanpa cacat struktural (Grade B).")
                 else:
                     reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Pemakaian bodi wajar/ringan (Grade {pred_grade}).")
             elif total_dpi < 45.0:
                 if pred_grade == "D":
                     pred_grade = "C"
                     confidence = max(0.82, float(prob_dict.get("C", 0.5)))
-                    reasons.append(f"Safeguard Kosmetik: Aus bodi moderat ({total_dpi:.1f} < 45.0) tanpa veto patah (Grade C).")
+                    reasons.append(f"Safeguard Fisik Bodi: Aus bodi moderat ({total_dpi:.1f} < 45.0) tanpa veto patah (Grade C).")
                 else:
                     reasons.append(f"Model ML (Probabilitas {confidence*100:.1f}%): Aus bodi pemakaian wajar hingga berat (Grade {pred_grade}).")
             else:

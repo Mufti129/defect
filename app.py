@@ -410,7 +410,7 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
             Inspeksi Cacat Fisik & Grading Smartphone
         </div>
         <div class="appbar-subtitle">
-            Platform taksiran bodi smartphone terstandarisasi sub-milimeter, isolasi pantulan cahaya (glare filter), dan prediksi Grade kosmetik cerdas berbasis AI.
+            Platform taksiran bodi smartphone terstandarisasi sub-milimeter, isolasi pantulan cahaya (glare filter), dan prediksi Grade kondisi fisik cerdas berbasis AI.
         </div>
         <div class="appbar-tags">
             <span class="appbar-tag-pill">Multi-Model AI (V1 - V5)</span>
@@ -898,7 +898,7 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
             Rule of Thumb & Logika Klasifikasi Grade AI
         </div>
         <div class="appbar-subtitle">
-            Pedoman resmi, arsitektur keputusan 2-tier (Fast-Fail Safety Veto & Machine Learning 18 Fitur), serta batas toleransi metrik fisik sub-milimeter untuk taksiran kosmetik smartphone.
+            Pedoman resmi, arsitektur keputusan 2-tier (Fast-Fail Safety Veto & Machine Learning 18 Fitur), serta batas toleransi metrik fisik sub-milimeter untuk taksiran kondisi fisik smartphone.
         </div>
         <div class="appbar-tags">
             <span class="appbar-tag-pill">Standar PGI Computer Vision</span>
@@ -921,7 +921,7 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
 
     with rule_tab1:
         st.markdown("""
-        ### Prinsip Dasar & Filosofi Penilaian Kosmetik PGI
+        ### Prinsip Dasar & Filosofi Penilaian Kondisi Fisik Bodi PGI
         Sistem Computer Vision PGI dirancang untuk menghilangkan subjektivitas penaksir di cabang pegadaian dengan menerapkan **standar metrik fisik terukur sub-milimeter** ($mm$ dan $mm^2$) pada 4 sisi housing bodi smartphone (*Top, Bottom, Left, Right*).
         
         Sistem menggunakan pendekatan **Hierarki Keputusan 2-Tahap (*Two-Tier Decision Pipeline*)**:
@@ -949,7 +949,7 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
                     ▼                                               ▼
         [LANGSUNG VONIS GRADE D]                   ┌───────────────────────────────────┐
         (Veto Keamanan Finansial                   │ TIER 2: MACHINE LEARNING &        │
-         Mencegah Risiko Over-Valuasi)             │ PHYSICAL COSMETIC SAFEGUARDS      │
+         Mencegah Risiko Over-Valuasi)             │ PHYSICAL BODY SAFEGUARDS          │
                                                    └─────────────────┬─────────────────┘
                                                                      │
                                                                      ▼
@@ -961,7 +961,7 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
                                                    [Inferensi Random Forest (1.918 Unit)]
                                                                      │
                                                                      ▼
-                                                   [Penyelarasan Batas Fisik Kosmetik]:
+                                                   [Penyelarasan Batas Kondisi Fisik]:
                                                    • Total DPI < 3.0 & lecet < 2mm  ──> GRADE A
                                                    • Total DPI < 18.0 & dent <= 2   ──> GRADE B
                                                    • Total DPI 18.0 s/d 44.9        ──> GRADE C
@@ -973,8 +973,8 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
         #### Mengapa Diperlukan Arsitektur 2-Tier?
         1. **Fast-Fail Safety Veto (Tier 1):**  
            Machine Learning berbasis probabilitas murni kadang dapat tertipu oleh unit yang sebagian besar mulus namun memiliki satu sudut casing sompal patah 5mm. Veto Tier 1 menjamin keamanan finansial bisnis dengan **menggugurkan langsung unit tersebut ke Grade D**, melindungi perusahaan dari kerugian membeli barang rusak dengan harga taksiran tinggi (*over-grading*).
-        2. **Cosmetic Physical Safeguards (Tier 2):**  
-           Mencegah noise label fungsional cabang (misalnya unit mulus namun mati mesin yang di database diberi label Grade D) agar tidak merusak penilaian kosmetik kamera AI. Unit bodi bersih mulus dijamin mendapatkan haknya sebagai **Grade A**.
+        2. **Physical Body Safeguards (Tier 2):**  
+           Mencegah noise label fungsional cabang (misalnya unit mulus namun mati mesin yang di database diberi label Grade D) agar tidak merusak penilaian kondisi fisik kamera AI. Unit bodi bersih mulus dijamin mendapatkan haknya sebagai **Grade A**.
         """)
 
     with rule_tab2:
@@ -1141,7 +1141,7 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
         **Tabel Bobot Kelas ($W_{\text{class}}$):**
         - **Broken (Pecah / Casing Sompal Patah):** Bobot **25.0** (Tingkat bahaya struktural tinggi).
         - **Crack (Retakan Kaca Bodi):** Bobot **12.0** (Tingkat degradasi integritas bodi tinggi).
-        - **Chip (Sompal Cat Bezel / Gompel):** Bobot **4.0** (Cacat kosmetik nyata terlihat mata).
+        - **Chip (Sompal Cat Bezel / Gompel):** Bobot **4.0** (Cacat fisik nyata terlihat mata).
         - **Dent (Penyok Casing Logam):** Bobot **2.5** (Deformasi bodi akibat benturan tumpul).
         - **Scratch (Goresan / Baret Garis):** Bobot **1.0** (Keausan gesekan normal).
 
@@ -1189,13 +1189,13 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
                 sim_reasons.append(f"Veto Operasional: Akumulasi penalti cacat melampaui batas industri (DPI {est_dpi:.1f} >= 45.0).")
             elif (sim_scratches + sim_dents + sim_chips) == 0 or (est_dpi < 3.0 and sim_dents == 0 and sim_chips == 0):
                 sim_grade = "A"
-                sim_reasons.append(f"Safeguard Kosmetik: Bodi mulus Like New dengan penalti DPI sangat minim ({est_dpi:.1f} < 3.0).")
+                sim_reasons.append(f"Safeguard Fisik Bodi: Bodi mulus Like New dengan penalti DPI sangat minim ({est_dpi:.1f} < 3.0).")
             elif est_dpi < 18.0 and sim_dents <= 2 and sim_chips <= 2:
                 sim_grade = "B"
-                sim_reasons.append(f"Safeguard Kosmetik: Pemakaian bodi normal wajar (DPI {est_dpi:.1f} < 18.0, dent <= 2).")
+                sim_reasons.append(f"Safeguard Fisik Bodi: Pemakaian bodi normal wajar (DPI {est_dpi:.1f} < 18.0, dent <= 2).")
             else:
                 sim_grade = "C"
-                sim_reasons.append(f"Safeguard Kosmetik: Keausan bodi nyata jamak (DPI {est_dpi:.1f} < 45.0).")
+                sim_reasons.append(f"Safeguard Fisik Bodi: Keausan bodi nyata jamak (DPI {est_dpi:.1f} < 45.0).")
 
             st.markdown(f"""
             <div class="grade-badge-{sim_grade}" style="margin-bottom: 14px;">
@@ -1622,7 +1622,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
           ├─ Ambil 4 foto bodi: Top, Bottom, Left, Right
           ├─ Segmentasi Poligon & Pengukuran Metrik Fisik (mm & mm²)
           ├─ Eliminasi Pantulan Cahaya (Specular Glare Filter)
-          └─ Klasifikasi Grade Kosmetik: Grade A, B, atau C Otomatis
+          └─ Klasifikasi Grade Kondisi Fisik: Grade A, B, atau C Otomatis
         ```
         """)
 

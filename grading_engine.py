@@ -195,7 +195,7 @@ class GradingEngine:
         # Check Grade C criteria (Good / Heavy Cosmetic Wear)
         # Condition: Heavy scratches, multiple dents or chips, but NO cracks or broken glass.
         if total_dpi < 40.0:
-            reasons.append(f"Pemakaian kosmetik berat: DPI {total_dpi:.1f}.")
+            reasons.append(f"Keausan fisik bodi cukup nyata: DPI {total_dpi:.1f}.")
             if class_counts.get("dent", 0) > 0:
                 reasons.append(f"Terdapat {class_counts['dent']} penyok (dent).")
             if class_counts.get("chip", 0) > 0:
