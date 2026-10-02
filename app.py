@@ -38,6 +38,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core_engine import StreamlitInspectionEngine, MODEL_REGISTRY
+from db_manager import InspectionDBManager
 
 # ---------------------------------------------------------
 # Page Configuration & Flutter "Belajarku" Styling
@@ -168,37 +169,49 @@ st.markdown("""
         box-shadow: 0 8px 24px -2px rgba(239, 68, 68, 0.35);
     }
 
-    /* Metric Card */
+    /* Metric Card - Proportional & Zero Text Overlap */
     .flutter-metric-card {
         background: #FFFFFF;
-        border: 1px solid #EDE9FE;
+        border: 1.5px solid #EDE9FE;
         border-radius: 16px;
-        padding: 16px 14px;
+        padding: 14px 12px;
         text-align: center;
-        box-shadow: 0 2px 12px rgba(109, 40, 217, 0.05);
+        box-shadow: 0 2px 10px rgba(109, 40, 217, 0.05);
         height: 100%;
         display: flex;
         flex-direction: column;
         justify-content: center;
+        min-width: 0;
+        box-sizing: border-box;
+        overflow: hidden;
     }
     .flutter-metric-val {
-        font-size: 1.65rem;
+        font-size: 1.55rem;
         font-weight: 800;
         color: #6D28D9;
         line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .flutter-metric-label {
-        font-size: 0.78rem;
+        font-size: 0.74rem;
         font-weight: 700;
         color: #64748B;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.04em;
         margin-top: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .flutter-metric-sub {
-        font-size: 0.72rem;
+        font-size: 0.70rem;
         color: #94A3B8;
         margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     /* Defect Pill Tags */
@@ -273,6 +286,7 @@ nav_choice = st.sidebar.radio(
     [
         "Inspeksi Unit (Studio Interaktif)",
         "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)",
+        "Database & Bank Data Inputan Lapangan",
         "Pengujian Massal (Batch Inspection)",
         "Standar Kalibrasi Matras (ArUco Tray)",
         "Laporan Investigasi & Evaluasi Empiris",
@@ -632,7 +646,7 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
         if not view_files_dict:
             st.error("Harap pilih atau unggah minimal satu foto sudut pandang bodi smartphone.")
         else:
-            with st.spinner(f"Menjalankan inferensi dengan {active_cfg['name']} (Ambang Sensitivitas: {conf_thresh_slider:.2f})..."):
+            with st.spinner(f"Menjalankan inferensi cerdas dengan {active_cfg['name']} (Ambang Sensitivitas: {conf_thresh_slider:.2f})..."):
                 t0 = time.time()
                 try:
                     res_tuple = engine.run_unit_inspection(
@@ -654,6 +668,92 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                     report, card_bgr, annotated_views = res_tuple
                     stage1_previews = getattr(engine, "last_stage1_previews", {})
 
+                # Store result in session_state to prevent disappearance upon interaction
+                st.session_state["inspection_result"] = {
+                    "report": report,
+                    "card_bgr": card_bgr,
+                    "annotated_views": annotated_views,
+                    "stage1_previews": stage1_previews,
+                    "elapsed": elapsed,
+                    "unit_id": unit_id_input,
+                    "model_version": selected_version,
+                    "view_files_dict": view_files_dict,
+                    "stage1_toggle": stage1_toggle
+                }
+
+    # Render results from session_state
+    if "inspection_result" in st.session_state and st.session_state["inspection_result"] is not None:
+        saved_res = st.session_state["inspection_result"]
+        report = saved_res["report"]
+        card_bgr = saved_res["card_bgr"]
+        annotated_views = saved_res["annotated_views"]
+        stage1_previews = saved_res["stage1_previews"]
+        elapsed = saved_res["elapsed"]
+        active_unit_id = saved_res["unit_id"]
+        used_views = saved_res.get("view_files_dict", {})
+
+        st.write("")
+
+        # -------------------------------------------------------------
+        # CASE 1: Guardrail Rejection (Detected Non-Phone Objects)
+        # -------------------------------------------------------------
+        if report.get("status") == "REJECTED_NON_PHONE" or not report.get("is_valid_phone", True):
+            st.markdown(f"""
+            <div style="background: linear-gradient(135deg, #FEF2F2 0%, #FFFFFF 100%); border: 2px solid #EF4444; border-radius: 18px; padding: 22px 24px; box-shadow: 0 8px 25px rgba(239, 68, 68, 0.12); margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.4rem; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);">
+                            🛡️
+                        </div>
+                        <div>
+                            <div style="font-size: 1.25rem; font-weight: 800; color: #991B1B; letter-spacing: -0.01em;">
+                                Validasi Objek Gagal: Terdeteksi Objek Non-Smartphone
+                            </div>
+                            <div style="font-size: 0.82rem; color: #B91C1C; font-weight: 600;">
+                                Sistem AI Guardrail menolak citra masukan karena bukan merupakan bodi smartphone yang sah
+                            </div>
+                        </div>
+                    </div>
+                    <span style="background: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;">
+                        REJECTED • BUKAN HP
+                    </span>
+                </div>
+                <div style="background: #FFFFFF; border: 1.5px solid #FECACA; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; color: #7F1D1D; font-size: 0.88rem; line-height: 1.5;">
+                    <b>Temuan AI Guardrail:</b><br>{report.get('rejection_summary', 'Objek tidak dikenal / bukan bodi ponsel.')}
+                </div>
+                <div style="background: #FAF5FF; border: 1px solid #E9D5FF; border-radius: 10px; padding: 12px 16px; color: #581C87; font-size: 0.84rem; line-height: 1.45;">
+                    💡 <b>Instruksi Operator:</b> Silakan periksa kembali foto yang diunggah. Pastikan citra hanya menampilkan <b>bodi smartphone</b> (sisi Top, Bottom, Left, Right) yang diletakkan pada matras inspeksi atau meja. Objek sembarang seperti manusia, laptop, hewan, mobil, botol, tanaman, dsb. akan ditolak otomatis dan tidak dapat dinilai kondisi fisiknya.
+                </div>
+                <div style="font-size: 0.76rem; color: #6B7280; margin-top: 10px;">
+                    ℹ️ <i>Citra penolakan ini telah otomatis dicatat ke dalam <b>Database & Bank Data Masukan Lapangan</b> sebagai bahan evaluasi dan penguatan model lanjutan (Active Learning).</i>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            c_head, c_btn = st.columns([3.5, 1])
+            with c_btn:
+                if st.button("🔄 Reset & Unggah Ulang Foto", use_container_width=True):
+                    st.session_state["inspection_result"] = None
+                    st.rerun()
+
+            col_rej_img, col_rej_info = st.columns([2.2, 1])
+            with col_rej_img:
+                if card_bgr is not None:
+                    card_rgb = cv2.cvtColor(card_bgr, cv2.COLOR_BGR2RGB)
+                    st.image(card_rgb, use_container_width=True, caption=f"Visualisasi Penolakan AI Guardrail - Unit: {active_unit_id}")
+            with col_rej_info:
+                st.markdown("#### Detail Objek Non-HP Terdeteksi:")
+                all_objs = report.get("all_detected_objects", {})
+                for s_side, objs in all_objs.items():
+                    st.markdown(f"**Sisi {s_side.upper()}:**")
+                    for obj in objs:
+                        st.markdown(f"- ⚠️ **{obj['class_name'].upper()}** ({obj['confidence']*100:.0f}%) — BBox: `{obj['bbox']}`")
+                st.warning("⚠️ **Grade Kondisi Fisik Dibatalkan:** Penilaian Grade A/B/C/D dinonaktifkan demi menjaga integritas data valuasi.")
+
+        # -------------------------------------------------------------
+        # CASE 2: Valid Phone Inspection (Grade, Metrics, Stage 1, Gallery)
+        # -------------------------------------------------------------
+        else:
             grade = report.get("final_grade", "D")
             confidence = report.get("grade_confidence", 0.0)
             total_dpi = report.get("total_dpi", 0.0)
@@ -661,66 +761,89 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
             bottom_back_dpi = report.get("bottom_back_dpi", 0.0)
             defects_count = report.get("total_defects_count", 0)
 
-            # -----------------------------------------
-            # Top Summary Metrics & Grade Hero (Flutter Grid)
-            # -----------------------------------------
-            st.write("")
-            m_col1, m_col2, m_col3, m_col4, m_col5, m_col6 = st.columns([1.6, 1, 1, 1, 1, 1])
+            # Action Bar: Title + Reset Button
+            c_ttl, c_act = st.columns([3.5, 1])
+            with c_ttl:
+                st.markdown(f"<h3 style='color: #4C1D95; margin:0;'>Hasil Inspeksi Unit: <code>{active_unit_id}</code></h3>", unsafe_allow_html=True)
+            with c_act:
+                if st.button("🔄 Inspeksi Unit Baru / Reset", use_container_width=True):
+                    st.session_state["inspection_result"] = None
+                    st.rerun()
 
-            with m_col1:
+            st.write("")
+
+            # -------------------------------------------------------------
+            # Balanced 2-Column Hero & Metric Layout (Zero Text Overlap)
+            # -------------------------------------------------------------
+            hero_col, metrics_col = st.columns([1.1, 2.0])
+
+            with hero_col:
                 badge_html = f"""
-                <div class="grade-badge-{grade}">
+                <div class="grade-badge-{grade}" style="height: 100%; display: flex; flex-direction: column; justify-content: center; border-radius: 18px; padding: 22px 18px;">
                     <div style="font-size: 0.80rem; letter-spacing: 0.12em; text-transform: uppercase;">Hasil Graded AI</div>
-                    <div style="font-size: 2.85rem; line-height: 1.1; margin: 4px 0;">GRADE {grade}</div>
-                    <div style="font-size: 0.82rem; font-weight: 600;">Keyakinan: {confidence*100:.1f}%</div>
+                    <div style="font-size: 2.85rem; line-height: 1.1; margin: 6px 0; font-weight: 800;">GRADE {grade}</div>
+                    <div style="font-size: 0.84rem; font-weight: 600;">Keyakinan Model: {confidence*100:.1f}%</div>
+                    <div style="margin-top: 8px; font-size: 0.72rem; opacity: 0.9; background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 12px; display: inline-block; align-self: center;">
+                        {active_cfg['short_name']}
+                    </div>
                 </div>
                 """
                 st.markdown(badge_html, unsafe_allow_html=True)
 
-            with m_col2:
-                st.markdown(f"""
-                <div class="flutter-metric-card">
-                    <div class="flutter-metric-val">{defects_count}</div>
-                    <div class="flutter-metric-label">Total Cacat</div>
-                    <div class="flutter-metric-sub">titik terdeteksi</div>
-                </div>
-                """, unsafe_allow_html=True)
+            with metrics_col:
+                # Row 1: 3 Spacious Metric Cards
+                r1_c1, r1_c2, r1_c3 = st.columns(3)
+                with r1_c1:
+                    st.markdown(f"""
+                    <div class="flutter-metric-card">
+                        <div class="flutter-metric-val">{defects_count}</div>
+                        <div class="flutter-metric-label">Total Cacat</div>
+                        <div class="flutter-metric-sub">titik terdeteksi</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with r1_c2:
+                    st.markdown(f"""
+                    <div class="flutter-metric-card">
+                        <div class="flutter-metric-val">{total_dpi:.1f}</div>
+                        <div class="flutter-metric-label">Total DPI</div>
+                        <div class="flutter-metric-sub">Defect Penalty</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with r1_c3:
+                    st.markdown(f"""
+                    <div class="flutter-metric-card">
+                        <div class="flutter-metric-val">{elapsed:.2f}s</div>
+                        <div class="flutter-metric-label">Kecepatan</div>
+                        <div class="flutter-metric-sub">{len(used_views)} sisi bodi</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-            with m_col3:
-                st.markdown(f"""
-                <div class="flutter-metric-card">
-                    <div class="flutter-metric-val">{total_dpi:.1f}</div>
-                    <div class="flutter-metric-label">Total DPI</div>
-                    <div class="flutter-metric-sub">Defect Penalty</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with m_col4:
-                st.markdown(f"""
-                <div class="flutter-metric-card">
-                    <div class="flutter-metric-val">{frame_dpi:.1f}</div>
-                    <div class="flutter-metric-label">Frame DPI</div>
-                    <div class="flutter-metric-sub">Top / Left / Right</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with m_col5:
-                st.markdown(f"""
-                <div class="flutter-metric-card">
-                    <div class="flutter-metric-val">{bottom_back_dpi:.1f}</div>
-                    <div class="flutter-metric-label">Bottom DPI</div>
-                    <div class="flutter-metric-sub">Port & Speaker</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            with m_col6:
-                st.markdown(f"""
-                <div class="flutter-metric-card">
-                    <div class="flutter-metric-val">{elapsed:.2f}s</div>
-                    <div class="flutter-metric-label">Kecepatan</div>
-                    <div class="flutter-metric-sub">{len(view_files_dict)} sisi bodi</div>
-                </div>
-                """, unsafe_allow_html=True)
+                # Row 2: 3 Spacious Metric Cards
+                r2_c1, r2_c2, r2_c3 = st.columns(3)
+                with r2_c1:
+                    st.markdown(f"""
+                    <div class="flutter-metric-card">
+                        <div class="flutter-metric-val">{frame_dpi:.1f}</div>
+                        <div class="flutter-metric-label">Frame DPI</div>
+                        <div class="flutter-metric-sub">Top / Left / Right</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with r2_c2:
+                    st.markdown(f"""
+                    <div class="flutter-metric-card">
+                        <div class="flutter-metric-val">{bottom_back_dpi:.1f}</div>
+                        <div class="flutter-metric-label">Bottom DPI</div>
+                        <div class="flutter-metric-sub">Port & Speaker</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with r2_c3:
+                    st.markdown(f"""
+                    <div class="flutter-metric-card" style="border-color: #DDD6FE;">
+                        <div class="flutter-metric-val" style="color: #059669; font-size: 1.35rem;">LOLOS</div>
+                        <div class="flutter-metric-label">Guardrail Objek</div>
+                        <div class="flutter-metric-sub">100% Bodi Ponsel</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
             # Quick Rule of Thumb Explanation Expander
             rule_thumb_desc = {
@@ -729,7 +852,7 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                 "C": "Bodi memenuhi kriteria **Grade C (Good / Aus Nyata Jamak)**: Ditemukan keausan bodi nyata, baret jamak merata, atau cat bezel terkelupas (Total DPI 18.0 s/d 44.9) tanpa kerusakan patah bodi.",
                 "D": "Bodi memenuhi kriteria **Grade D (Faulty / Cacat Berat)**: Terpicu oleh Veto Operasional Cacat Struktural (bodi pecah/broken, retak signifikan, sompal berat, atau Total DPI >= 45.0)."
             }
-            with st.expander(f"Pedoman Rule of Thumb: Mengapa Unit Ini Terklasifikasi GRADE {grade}?"):
+            with st.expander(f"📖 Pedoman Rule of Thumb: Mengapa Unit Ini Terklasifikasi GRADE {grade}?", expanded=False):
                 st.markdown(f"""
                 <div style="background: #FAF5FF; border-left: 4px solid #7C3AED; padding: 12px 16px; border-radius: 8px; margin-bottom: 10px;">
                     <div style="font-weight: 700; color: #4C1D95; font-size: 0.95rem; margin-bottom: 4px;">
@@ -745,32 +868,36 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                     st.markdown(f"- {r}")
                 st.caption("Pelajari matriks klasifikasi lengkap, batas toleransi milimeter, dan simulasi interaktif pada menu **Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)**.")
 
-            # -----------------------------------------
-            # Stage 1 Verification Preview Section (Phone Localizer & Auto-Crop)
-            # -----------------------------------------
+            # -------------------------------------------------------------
+            # Stage 1 Verification Preview (Sebelum vs Sesudah) - Prominently Displayed!
+            # -------------------------------------------------------------
             if stage1_previews and report.get("stage1_enabled"):
                 st.write("")
-                with st.expander("Hasil Stage 1: Phone Body Localizer & Auto-Crop (Sebelum vs Sesudah)", expanded=False):
+                with st.expander("🔍 Hasil Stage 1: Phone Body Localizer & Auto-Crop (Sebelum vs Sesudah)", expanded=True):
                     st.markdown("""
-                    <div style="font-size: 0.85rem; color: #374151; margin-bottom: 12px; line-height: 1.5;">
-                        <b>Verifikasi Pipeline Stage 1:</b> Garis hijau menunjukkan kotak pembungkus bodi ponsel yang berhasil dilokalisasi. Latar belakang meja kantor, celana operator, dan ruangan di luar kotak hijau telah <b>dieliminasi 100%</b> sebelum analisis cacat fisik (Stage 2) dimulai.
+                    <div style="background: #F5F3FF; border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 16px; margin-bottom: 12px;">
+                        <b style="color: #5B21B6; font-size: 0.90rem;">Verifikasi Pipeline Stage 1 (Isolasi Bodi Ponsel):</b>
+                        <div style="font-size: 0.82rem; color: #4C1D95; margin-top: 3px; line-height: 1.45;">
+                            • <b>Citra Kiri:</b> Citra mentah kamera + <b>Kotak Hijau</b> pembungkus bodi smartphone hasil pelacakan AI.<br>
+                            • <b>Citra Kanan:</b> Hasil potong bersih (*auto-crop*) bodi ponsel. Latar belakang meja kantor, celana operator, dan ruangan telah <b>dieliminasi 100%</b> sebelum analisis cacat fisik (Stage 2) dimulai.
+                        </div>
                     </div>
                     """, unsafe_allow_html=True)
                     s1_tabs = st.tabs([f"Sisi {s.upper()}" for s in stage1_previews.keys()])
                     for idx, (s_name, prev_bgr) in enumerate(stage1_previews.items()):
                         with s1_tabs[idx]:
                             meta = report.get("stage1_meta", {}).get(s_name, {})
-                            st.caption(f"Kotak Bounding Box: `{meta.get('bbox')}` • Koreksi Kemiringan: `{meta.get('tilt_angle', 0.0)}°` • Status: `{meta.get('confidence', 'HIGH_CONFIDENCE')}`")
+                            st.caption(f"Kotak Bounding Box: `{meta.get('bbox')}` • Koreksi Kemiringan: `{meta.get('tilt_angle', 0.0)}°` • Resolusi Potong: `{meta.get('crop_resolution')}` • Status: `{meta.get('confidence', 'HIGH_CONFIDENCE')}`")
                             prev_rgb = cv2.cvtColor(prev_bgr, cv2.COLOR_BGR2RGB)
-                            st.image(prev_rgb, use_container_width=True, caption=f"Verifikasi Stage 1 Sisi {s_name.upper()}: Kiri (Kotak Hijau Bodi HP) vs Kanan (Hasil Potong Bersih)")
+                            st.image(prev_rgb, use_container_width=True, caption=f"Verifikasi Stage 1 Sisi {s_name.upper()}: Kiri (Kotak Hijau Bodi HP) vs Kanan (Hasil Potong Bersih Bebas Gangguan)")
 
-            # -----------------------------------------
-            # Interactive Per-View Inspection Gallery
-            # -----------------------------------------
+            # -------------------------------------------------------------
+            # Interactive Per-View Inspection Gallery (With Stage 1 tab included!)
+            # -------------------------------------------------------------
             st.write("")
             st.markdown('<div class="flutter-card">', unsafe_allow_html=True)
             st.markdown("""
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                 <h4 style="color: #4C1D95; margin: 0;">Galeri Visual Anotasi Cacat Fisik Per-Sudut Pandang</h4>
                 <span style="font-size: 0.82rem; color: #6D28D9; background: #F5F3FF; padding: 4px 10px; border-radius: 8px; font-weight: 600;">Klik Tab di Bawah untuk Zoom Resolusi Tinggi</span>
             </div>
@@ -786,6 +913,10 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                 "back": "Sisi Back (Belakang)",
                 "front": "Sisi Front (Depan)"
             }
+            if stage1_previews and report.get("stage1_enabled"):
+                gallery_tabs.append("Stage 1 Auto-Crop (Sebelum vs Sesudah)")
+                tab_view_keys.append("stage1_tab")
+
             for side in ["top", "bottom", "left", "right", "back", "front"]:
                 if side in annotated_views:
                     gallery_tabs.append(view_labels.get(side, side.upper()))
@@ -796,20 +927,31 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
             # Tab 0: Composite Collage Card
             with rendered_tabs[0]:
                 card_rgb = cv2.cvtColor(card_bgr, cv2.COLOR_BGR2RGB)
-                st.image(card_rgb, use_container_width=True, caption=f"Inspection Collage Card - Unit: {unit_id_input} - Model: {active_cfg['short_name']}")
+                st.image(card_rgb, use_container_width=True, caption=f"Inspection Collage Card - Unit: {active_unit_id} - Model: {active_cfg['short_name']}")
                 is_success, buffer = cv2.imencode(".jpg", card_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
                 if is_success:
                     st.download_button(
                         label="Unduh Kartu Hasil Inspeksi Komposit (High-Res JPG)",
                         data=buffer.tobytes(),
-                        file_name=f"inspection_card_{unit_id_input}_{selected_version}_{grade}.jpg",
+                        file_name=f"inspection_card_{active_unit_id}_{selected_version}_{grade}.jpg",
                         mime="image/jpeg",
                         use_container_width=True
                     )
 
+            # Stage 1 Tab in Gallery (if present)
+            curr_tab_idx = 1
+            if stage1_previews and report.get("stage1_enabled"):
+                with rendered_tabs[curr_tab_idx]:
+                    st.markdown("#### Verifikasi Stage 1: Phone Body Localizer & Auto-Crop")
+                    for s_name, prev_bgr in stage1_previews.items():
+                        st.markdown(f"**Sisi {s_name.upper()}:**")
+                        prev_rgb = cv2.cvtColor(prev_bgr, cv2.COLOR_BGR2RGB)
+                        st.image(prev_rgb, use_container_width=True, caption=f"Sisi {s_name.upper()}: Citra Mentah Kamera vs Bodi Ponsel Terisolasi")
+                curr_tab_idx += 1
+
             # Individual Per-View Tabs with Full Zoom and Defect Pills
             detections_by_view = report.get("detections_by_view", {})
-            for i in range(1, len(gallery_tabs)):
+            for i in range(curr_tab_idx, len(gallery_tabs)):
                 side = tab_view_keys[i]
                 with rendered_tabs[i]:
                     col_img, col_info = st.columns([2.2, 1])
@@ -835,9 +977,9 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
 
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # -----------------------------------------
+            # -------------------------------------------------------------
             # Detailed Analysis Tabs (Flutter Style)
-            # -----------------------------------------
+            # -------------------------------------------------------------
             st.write("")
             tab1, tab2, tab3 = st.tabs([
                 "Rincian Cacat Fisik (Breakdown)",
@@ -925,7 +1067,7 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                 st.download_button(
                     label="Unduh Laporan JSON",
                     data=json.dumps(json_clean, indent=2),
-                    file_name=f"inspection_report_{unit_id_input}_{selected_version}.json",
+                    file_name=f"inspection_report_{active_unit_id}_{selected_version}.json",
                     mime="application/json"
                 )
 
@@ -1250,6 +1392,316 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
             st.markdown("**Analisis Alasan Keputusan:**")
             for r in sim_reasons:
                 st.markdown(f"- {r}")
+
+
+# ---------------------------------------------------------
+# Module: Database & Bank Data Inputan Lapangan
+# ---------------------------------------------------------
+elif nav_choice == "Database & Bank Data Inputan Lapangan":
+    st.markdown("""
+    <div class="flutter-appbar">
+        <div class="appbar-title">
+            Database & Bank Data Masukan Lapangan
+        </div>
+        <div class="appbar-subtitle">
+            Repositori penyimpanan lokal persisten seluruh foto 4-sisi yang dimasukkan, riwayat grading AI, catatan audit penolakan objek bukan smartphone, serta bank data aktif untuk bahan evaluasi dan pelatihan Model Versi 6.
+        </div>
+        <div class="appbar-tags">
+            <span class="appbar-tag-pill">Penyimpanan SQLite Persisten</span>
+            <span class="appbar-tag-pill">Bank Data Citra 4 Sisi</span>
+            <span class="appbar-tag-pill">Audit Validasi Guardrail</span>
+            <span class="appbar-tag-pill">Dataset Retraining Model V6</span>
+            <span class="appbar-tag-pill">Ekspor CSV / Database</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    render_model_banner()
+
+    db = InspectionDBManager()
+    stats = db.get_summary_stats()
+
+    # ---------------------------------------------------------
+    # KPI Statistics Summary Cards (Flutter Style)
+    # ---------------------------------------------------------
+    st.markdown('<div class="flutter-card">', unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #4C1D95; margin-top:0; margin-bottom: 14px;'>Ringkasan Repositori & Bank Data</h4>", unsafe_allow_html=True)
+
+    stat_c1, stat_c2, stat_c3, stat_c4 = st.columns(4)
+    with stat_c1:
+        st.markdown(f"""
+        <div class="flutter-metric-card">
+            <div class="flutter-metric-val">{stats['total_records']}</div>
+            <div class="flutter-metric-label">Total Sesi Masukan</div>
+            <div class="flutter-metric-sub">seluruh riwayat inspeksi</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with stat_c2:
+        st.markdown(f"""
+        <div class="flutter-metric-card" style="border-color: #A7F3D0;">
+            <div class="flutter-metric-val" style="color: #059669;">{stats['valid_phones']}</div>
+            <div class="flutter-metric-label">Bodi HP Valid</div>
+            <div class="flutter-metric-sub">lolos guardrail AI</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with stat_c3:
+        st.markdown(f"""
+        <div class="flutter-metric-card" style="border-color: #FECACA;">
+            <div class="flutter-metric-val" style="color: #DC2626;">{stats['rejected_records']}</div>
+            <div class="flutter-metric-label">Ditolak (Non-HP)</div>
+            <div class="flutter-metric-sub">manusia / laptop / botol / dsb</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with stat_c4:
+        gc = stats['grade_counts']
+        st.markdown(f"""
+        <div class="flutter-metric-card" style="border-color: #DDD6FE;">
+            <div class="flutter-metric-val" style="font-size: 1.15rem; color: #6D28D9;">
+                A:{gc['A']} | B:{gc['B']} | C:{gc['C']} | D:{gc['D']}
+            </div>
+            <div class="flutter-metric-label">Sebaran Grade Unit</div>
+            <div class="flutter-metric-sub">populasi hasil grading</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ---------------------------------------------------------
+    # Filtering & Search Controls
+    # ---------------------------------------------------------
+    st.markdown('<div class="flutter-card">', unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #4C1D95; margin-top:0;'>Pencarian & Filter Rekaman</h4>", unsafe_allow_html=True)
+    f_c1, f_c2, f_c3 = st.columns([1.2, 1, 1.8])
+
+    with f_c1:
+        status_filter_opt = st.selectbox(
+            "Filter Validasi Objek:",
+            ["Semua Rekaman", "Hanya Valid (Bodi Smartphone)", "Hanya Ditolak (Bukan HP)"]
+        )
+        status_map = {
+            "Semua Rekaman": None,
+            "Hanya Valid (Bodi Smartphone)": "valid",
+            "Hanya Ditolak (Bukan HP)": "rejected"
+        }
+        chosen_status = status_map[status_filter_opt]
+
+    with f_c2:
+        grade_filter_opt = st.selectbox(
+            "Filter Grade:",
+            ["Semua", "A", "B", "C", "D"]
+        )
+
+    with f_c3:
+        search_query = st.text_input("Cari Berdasarkan ID Unit / Nama Model:", placeholder="contoh: oppo, iphone, HP-INSPECTION...")
+
+    # Query records from SQLite database
+    raw_records = db.get_recent_records(
+        limit=200,
+        filter_status=chosen_status,
+        filter_grade=grade_filter_opt
+    )
+
+    # In-memory filter for text query if given
+    if search_query:
+        sq = search_query.strip().lower()
+        records = [r for r in raw_records if sq in r["unit_id"].lower() or sq in r["model_name"].lower()]
+    else:
+        records = raw_records
+
+    st.caption(f"Menampilkan **{len(records)}** rekaman data dari total {stats['total_records']} entri di database.")
+
+    if records:
+        # Build interactive dataframe
+        table_rows = []
+        for r in records:
+            is_val = bool(r["is_valid_phone"])
+            table_rows.append({
+                "ID": r["id"],
+                "Waktu Inspeksi": r["timestamp"],
+                "Unit ID": r["unit_id"],
+                "Model AI": r["model_version"].upper(),
+                "Status": "VALID (HP)" if is_val else "DITOLAK (NON-HP)",
+                "Grade": r["final_grade"] if is_val else "REJECTED",
+                "Keyakinan": f"{r['grade_confidence']*100:.1f}%" if is_val else "-",
+                "Total DPI": f"{r['total_dpi']:.1f}" if is_val else "-",
+                "Total Cacat": r["defects_count"] if is_val else "-",
+                "Durasi (s)": f"{r['elapsed_sec']:.2f}s",
+                "Sisi Disimpan": r["views_list"] or "-"
+            })
+
+        df_table = pd.DataFrame(table_rows)
+        st.dataframe(df_table, use_container_width=True)
+
+        st.markdown("---")
+
+        # ---------------------------------------------------------
+        # Record Detail Inspector (Visual & Image Assets)
+        # ---------------------------------------------------------
+        st.markdown("<h4 style='color: #4C1D95; margin-top:0;'>Inspektur Detail Rekaman & Bank Citra</h4>", unsafe_allow_html=True)
+        rec_options = {r["id"]: f"ID #{r['id']} | {r['unit_id']} | Grade {r['final_grade'] or 'REJECTED'} ({r['timestamp']})" for r in records}
+        selected_rec_id = st.selectbox(
+            "Pilih Rekaman untuk Melihat Citra Tersimpan:",
+            options=list(rec_options.keys()),
+            format_func=lambda k: rec_options[k]
+        )
+
+        chosen_record = next((r for r in records if r["id"] == selected_rec_id), None)
+        if chosen_record:
+            storage_path = Path(chosen_record["storage_folder"])
+            st.markdown(f"""
+            <div style="background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <b style="color: #4C1D95; font-size: 1.05rem;">ID #{chosen_record['id']} — {chosen_record['unit_id']}</b>
+                        <div style="font-size: 0.82rem; color: #6D28D9; margin-top: 3px;">
+                            Waktu: <b>{chosen_record['timestamp']}</b> | Model AI: <b>{chosen_record['model_name']} ({chosen_record['model_version'].upper()})</b> | Durasi: <b>{chosen_record['elapsed_sec']:.2f}s</b>
+                        </div>
+                    </div>
+                    <div>
+                        <span style="background: {'#10B981' if chosen_record['is_valid_phone'] else '#EF4444'}; color: white; padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 0.82rem;">
+                            {f"GRADE {chosen_record['final_grade']}" if chosen_record['is_valid_phone'] else "DITOLAK: BUKAN HP"}
+                        </span>
+                    </div>
+                </div>
+                {f'<div style="margin-top: 8px; font-size: 0.82rem; color: #B91C1C; background: #FEF2F2; padding: 8px 12px; border-radius: 6px; border: 1px solid #FECACA;"><b>Alasan Penolakan Guardrail:</b> {chosen_record["rejection_reason"]}</div>' if not chosen_record['is_valid_phone'] else ''}
+            </div>
+            """, unsafe_allow_html=True)
+
+            d_tab1, d_tab2, d_tab3, d_tab4, d_tab5 = st.tabs([
+                "Citra Mentah Masukan (Raw)",
+                "Hasil Potong Bodi Stage 1 (Cropped)",
+                "Hasil Anotasi AI (Bounding Box)",
+                "Kartu Komposit Lengkap",
+                "Metadata Lengkap (JSON)"
+            ])
+
+            with d_tab1:
+                raw_dir = storage_path / "raw"
+                if raw_dir.exists():
+                    raw_files = sorted(list(raw_dir.glob("*.jpg")) + list(raw_dir.glob("*.png")))
+                    if raw_files:
+                        r_cols = st.columns(len(raw_files))
+                        for idx, rf in enumerate(raw_files):
+                            with r_cols[idx]:
+                                st.image(str(rf), caption=f"RAW: {rf.stem.upper()}", use_container_width=True)
+                    else:
+                        st.info("Tidak ada file citra mentah pada rekaman ini.")
+                else:
+                    st.info("Folder citra mentah tidak ditemukan.")
+
+            with d_tab2:
+                crop_dir = storage_path / "cropped"
+                if crop_dir.exists():
+                    crop_files = sorted(list(crop_dir.glob("*.jpg")) + list(crop_dir.glob("*.png")))
+                    if crop_files:
+                        c_cols = st.columns(len(crop_files))
+                        for idx, cf in enumerate(crop_files):
+                            with c_cols[idx]:
+                                st.image(str(cf), caption=f"STAGE 1 CROP: {cf.stem.upper()}", use_container_width=True)
+                    else:
+                        st.info("Tidak ada file crop Stage 1 (Mungkin input langsung atau Stage 1 dinonaktifkan).")
+                else:
+                    st.info("Folder crop Stage 1 tidak ditemukan.")
+
+            with d_tab3:
+                ann_dir = storage_path / "annotated"
+                if ann_dir.exists():
+                    ann_files = sorted(list(ann_dir.glob("*.jpg")) + list(ann_dir.glob("*.png")))
+                    if ann_files:
+                        a_cols = st.columns(len(ann_files))
+                        for idx, af in enumerate(ann_files):
+                            with a_cols[idx]:
+                                st.image(str(af), caption=f"ANNOTATED: {af.stem.upper()}", use_container_width=True)
+                    else:
+                        st.info("Tidak ada file anotasi pada rekaman ini.")
+                else:
+                    st.info("Folder anotasi tidak ditemukan.")
+
+            with d_tab4:
+                card_path = storage_path / "composite_card.jpg"
+                if card_path.exists():
+                    st.image(str(card_path), caption=f"Kartu Komposit Unit {chosen_record['unit_id']}", use_container_width=True)
+                else:
+                    st.info("Kartu komposit tidak tersimpan untuk rekaman ini.")
+
+            with d_tab5:
+                meta_json_path = storage_path / "inspection_metadata.json"
+                if meta_json_path.exists():
+                    with open(meta_json_path, "r", encoding="utf-8") as f:
+                        meta_dict = json.load(f)
+                    st.json(meta_dict)
+                else:
+                    st.json(dict(chosen_record))
+
+    else:
+        st.info("Belum ada riwayat rekaman inspeksi yang cocok dengan filter yang dipilih.")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ---------------------------------------------------------
+    # Data Export & Future Model V6 Pipeline Tools
+    # ---------------------------------------------------------
+    st.markdown('<div class="flutter-card">', unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #4C1D95; margin-top:0;'>Ekspor Data & Siklus Pengembangan Model Versi 6</h4>", unsafe_allow_html=True)
+
+    exp_col1, exp_col2 = st.columns(2)
+    with exp_col1:
+        st.markdown("""
+        <b>Unduh Seluruh Data Rekaman (CSV):</b>
+        <div style="font-size: 0.82rem; color: #6B7280; margin-top: 4px; margin-bottom: 10px;">
+            Ekspor seluruh tabel riwayat inspeksi, nilai metrik sub-milimeter, DPI, dan rincian cacat dalam format spreadsheet CSV.
+        </div>
+        """, unsafe_allow_html=True)
+        csv_string = db.export_to_csv_string()
+        st.download_button(
+            label="Unduh Rekaman Database (CSV)",
+            data=csv_string,
+            file_name=f"bank_data_inspeksi_hp_{int(time.time())}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+
+    with exp_col2:
+        st.markdown("""
+        <b>Unduh File Database SQLite Asli:</b>
+        <div style="font-size: 0.82rem; color: #6B7280; margin-top: 4px; margin-bottom: 10px;">
+            Unduh file database biner SQLite (<code>inspection_database.sqlite</code>) untuk analisis tingkat lanjut atau integrasi backend API.
+        </div>
+        """, unsafe_allow_html=True)
+        if db.db_path.exists():
+            with open(db.db_path, "rb") as f:
+                db_bytes = f.read()
+            st.download_button(
+                label="Unduh File SQLite (Database Biner)",
+                data=db_bytes,
+                file_name="inspection_database.sqlite",
+                mime="application/x-sqlite3",
+                use_container_width=True
+            )
+        else:
+            st.button("Unduh File SQLite (Database Biner)", disabled=True, use_container_width=True)
+
+    # Continuous Active Learning Information Box for Model V6
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #FAF5FF 0%, #F5F3FF 100%); border: 1.5px solid #DDD6FE; border-left: 5px solid #7C3AED; border-radius: 14px; padding: 16px 20px; margin-top: 18px;">
+        <div style="font-weight: 800; color: #4C1D95; font-size: 0.98rem; margin-bottom: 6px;">
+            Siklus Pembelajaran Berkelanjutan (Active Learning) Menuju Model Versi 6
+        </div>
+        <div style="font-size: 0.85rem; color: #374151; line-height: 1.5;">
+            Seluruh citra masukan lapangan yang ditampung dalam direktori <code>data/collected_data/</code> berfungsi sebagai <b>Bank Data Emas Terpadu</b> untuk melatih model generasi berikutnya:
+            <ul style="margin-top: 6px; margin-bottom: 4px; padding-left: 20px;">
+                <li><b>Hard Negative Mining:</b> Citra yang ditolak oleh AI Guardrail (manusia, botol, casing bermotif ekstrem) digunakan untuk mengeliminasi false positive bodi non-HP hingga 0%.</li>
+                <li><b>Edge Case Annotation:</b> Cacat mikro pada housing bodi dengan tekstur doff/matte dan baret halus pada frame stainless steel akan dianotasi manual oleh tim QA untuk menambah keragaman dataset.</li>
+                <li><b>Retraining Model V6:</b> Bobot model YOLOv8x beresolusi 1280px akan dilatih ulang menggunakan gabungan dataset 1.918 unit historis dan bank data masukan lapangan baru ini.</li>
+            </ul>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------

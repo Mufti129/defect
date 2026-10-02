@@ -28,6 +28,8 @@ from defect_detector import DefectDetector, DefectInstance, CLASS_COLORS
 from ml_grading_aggregator import MLGradingAggregator
 from grading_engine import GradingEngine, GRADE_COLORS, DEFECT_CLASS_WEIGHTS, ZONE_WEIGHTS
 from phone_localizer import PhoneBodyLocalizer
+from object_guardrail import ObjectGuardrail
+from db_manager import InspectionDBManager
 import tempfile
 
 # -------------------------------------------------------------------------
@@ -152,11 +154,13 @@ class StreamlitInspectionEngine:
         print(f"                   YOLO: {yolo_path}")
         print(f"                   ML  : {ml_path}")
 
-        # Initialize detector with optimized CPU inference
-        self.detector = DefectDetector(weights_path=yolo_path, device="cpu")
+        # Initialize detector with hardware acceleration (MPS/CPU)
+        self.detector = DefectDetector(weights_path=yolo_path)
         self.ml_aggregator = MLGradingAggregator(model_path=ml_path)
         self.grading_engine = GradingEngine(detector=self.detector, ml_aggregator=self.ml_aggregator)
         self.phone_localizer = PhoneBodyLocalizer()
+        self.guardrail = ObjectGuardrail()
+        self.db_manager = InspectionDBManager()
         self.last_stage1_previews = {}
 
     def run_unit_inspection(
@@ -168,7 +172,11 @@ class StreamlitInspectionEngine:
     ) -> Tuple[Dict[str, Any], np.ndarray, Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """
         Runs complete evaluation across all provided views and generates the visual inspection card.
-        Integrates Stage 1 (Phone Body Localizer & Auto-Crop) to eliminate background noise.
+        Integrates:
+        1. Object Guardrail (Rejects non-phone objects: person, bottle, laptop, animal, etc.)
+        2. Stage 1 (Phone Body Localizer & Auto-Crop) to eliminate background noise.
+        3. Stage 2 (Defect Inspection & Physical Grading).
+        4. Persistent Data Bank Logging (SQLite + Storage).
 
         Returns:
             report: Full inspection JSON dictionary with active model metadata.
@@ -176,6 +184,53 @@ class StreamlitInspectionEngine:
             annotated_views: Dictionary of high-res annotated OpenCV images per view.
             stage1_previews: Dictionary of Stage 1 verification comparison images per view.
         """
+        # -------------------------------------------------------------
+        # Step 0: Input Object Guardrail (Validate against non-phone objects)
+        # -------------------------------------------------------------
+        guardrail_res = self.guardrail.validate_views(view_images)
+        if not guardrail_res["is_valid"]:
+            # Rejected non-phone input! Provide visual feedback and instruct re-input
+            report = {
+                "unit_id": unit_id,
+                "status": "REJECTED_NON_PHONE",
+                "is_valid_phone": False,
+                "rejection_summary": guardrail_res["rejection_summary"],
+                "rejected_views": guardrail_res["rejected_views"],
+                "all_detected_objects": guardrail_res["all_detected_objects"],
+                "model_version": self.version,
+                "model_name": self.config["name"],
+                "model_arch": self.config["arch"],
+                "model_status": self.config["status"],
+                "stage1_enabled": False,
+                "final_grade": None,
+                "grade_confidence": 0.0,
+                "total_dpi": 0.0,
+                "frame_dpi": 0.0,
+                "bottom_back_dpi": 0.0,
+                "total_defects_count": 0,
+                "reasons": [guardrail_res["rejection_summary"] or "Objek bukan bodi smartphone."],
+                "inspection_time_sec": 0.1
+            }
+            card_bgr = self._create_guardrail_card(guardrail_res["annotated_previews"], guardrail_res["rejection_summary"])
+            # Save rejection record into database bank for dataset audit
+            try:
+                self.db_manager.save_record(
+                    unit_id=unit_id,
+                    model_version=self.version,
+                    model_name=self.config["name"],
+                    is_valid_phone=False,
+                    rejection_reason=guardrail_res["rejection_summary"],
+                    detected_objects=guardrail_res["all_detected_objects"],
+                    report=report,
+                    raw_views=view_images,
+                    annotated_views_bgr=guardrail_res["annotated_previews"],
+                    card_bgr=card_bgr
+                )
+            except Exception as e:
+                print(f"[InspectionEngine] DB save error: {e}")
+
+            return report, card_bgr, guardrail_res["annotated_previews"], {}
+
         stage1_previews = {}
         stage1_meta = {}
         inspected_views = {}
@@ -209,6 +264,8 @@ class StreamlitInspectionEngine:
         )
 
         # Inject model metadata & Stage 1 results
+        report["status"] = "SUCCESS"
+        report["is_valid_phone"] = True
         report["model_version"] = self.version
         report["model_name"] = self.config["name"]
         report["model_arch"] = self.config["arch"]
@@ -227,7 +284,74 @@ class StreamlitInspectionEngine:
         # Clean internal objects to ensure JSON serializability
         report.pop("_defect_instances_by_view", None)
         self.last_stage1_previews = stage1_previews
+
+        # Save successful inspection record and images to persistent database bank
+        try:
+            self.db_manager.save_record(
+                unit_id=unit_id,
+                model_version=self.version,
+                model_name=self.config["name"],
+                is_valid_phone=True,
+                report=report,
+                raw_views=view_images,
+                cropped_views=inspected_views if use_stage1_crop else None,
+                annotated_views_bgr=annotated_views,
+                card_bgr=card_bgr
+            )
+        except Exception as e:
+            print(f"[InspectionEngine] Warning: Could not save record to database: {e}")
+
         return report, card_bgr, annotated_views, stage1_previews
+
+    def _create_guardrail_card(
+        self,
+        annotated_views: Dict[str, np.ndarray],
+        rejection_reason: Optional[str] = None,
+        target_height: int = 450
+    ) -> np.ndarray:
+        """
+        Creates a visual rejection collage showing the detected non-phone objects with a warning header.
+        """
+        resized_views = []
+        for side, img in annotated_views.items():
+            if img is None:
+                continue
+            h, w = img.shape[:2]
+            scale = target_height / max(1, h)
+            resized = cv2.resize(img, (int(w * scale), target_height))
+            
+            # Add side header
+            header = np.full((36, resized.shape[1], 3), (40, 20, 25), dtype=np.uint8)
+            cv2.putText(header, f"SISI {side.upper()} (NON-PHONE)", (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)
+            resized_views.append(np.vstack([header, resized]))
+
+        if not resized_views:
+            blank = np.zeros((300, 600, 3), dtype=np.uint8)
+            cv2.putText(blank, "Input Ditolak - Bukan Bodi Smartphone", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            return blank
+
+        # Horizontal collage
+        max_h = max(v.shape[0] for v in resized_views)
+        padded = []
+        for v in resized_views:
+            if v.shape[0] < max_h:
+                pad = np.zeros((max_h - v.shape[0], v.shape[1], 3), dtype=np.uint8)
+                v = np.vstack([v, pad])
+            padded.append(v)
+            divider = np.full((max_h, 3, 3), (80, 80, 80), dtype=np.uint8)
+            padded.append(divider)
+
+        strip = np.hstack(padded[:-1])
+
+        # Top Warning Banner (Red/Crimson)
+        banner_h = 60
+        banner = np.full((banner_h, strip.shape[1], 3), (25, 20, 180), dtype=np.uint8)
+        title = "PERINGATAN: INPUT DITOLAK - TERDETEKSI BUKAN BODI SMARTPHONE"
+        sub = "Sistem inspeksi hanya memproses smartphone. Harap masukkan ulang foto bodi HP yang benar."
+        cv2.putText(banner, title, (16, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(banner, sub, (16, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (220, 230, 255), 1, cv2.LINE_AA)
+
+        return np.vstack([banner, strip])
 
     def generate_card_image(
         self,
@@ -265,8 +389,7 @@ class StreamlitInspectionEngine:
                     conf_threshold=conf_threshold
                 )
 
-            _, hand_mask = self.detector.hand_filter.generate_inspection_mask(img, view_side)
-            ann = self.detector.draw_defects_on_image(img, defects, hand_mask=hand_mask)
+            ann = self.detector.draw_defects_on_image(img, defects, hand_mask=None)
             annotated_views_full[view_side] = ann
 
             # Resize preserving aspect ratio for the composite card
