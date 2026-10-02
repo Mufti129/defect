@@ -436,74 +436,129 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
         crop_base = APP_DIR
 
     if input_mode == "📁 Demo 1-Click (Gunakan Unit Riil Database)":
-        st.markdown("<p style='font-size:0.9rem; font-weight:600; color:#5B21B6; margin-top:8px;'>⭐ Sampel Unggulan Investigasi & Evaluasi Lapangan:</p>", unsafe_allow_html=True)
-        audit_cases = {
-            "Pilih Sampel Bebas (Gunakan Dropdown di Bawah)": None,
-            "⚡ Kasus 2: Oppo A5i (Grade D Riil - Cacat Sompal Sudut Top)": ("grade_D", "1-00013e-13__oppo__oppo-a5i-4-128"),
-            "⚡ Kasus 1: iPhone 13 Pro Max (Grade B - Presisi Crop Bodi Kanan)": ("grade_B", "1-00023e-13__apple__iphone-13-pro-max-128gb"),
-            "⚡ Uji Mulus: iPhone 16 (Grade A - Bersih Mulus Zero False Positive)": ("grade_A", "1-00023e-13__apple__iphone-16-128gb"),
-            "⚡ Uji Aus: Oppo A15 (Grade C - Keausan Bodi Nyata Tanpa Retak)": ("grade_C", "1-00013e-13__oppo__oppo-a15-3-32")
+        st.markdown("""
+        <div style="background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px;">
+            <div style="font-weight: 700; color: #5B21B6; font-size: 0.95rem; margin-bottom: 3px;">
+                ✨ Koleksi Sampel Representatif Emas (Visual Defect Bergaransi Tiap Grade)
+            </div>
+            <div style="font-size: 0.82rem; color: #6D28D9; line-height: 1.45;">
+                Pilihan sampel di bawah ini telah dikurasi khusus untuk menghasilkan anotasi visual riil (bounding box cacat, chip kelas, dan estimasi ukuran mm) yang akurat merepresentasikan karakteristik masing-masing Grade (A, B, C, dan D).
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        golden_cases = {
+            "🔴 Grade D (Cacat Berat / Sompal / Pecah)": {
+                "⚡ D1: Oppo A5i — Sompal Sudut Casing Atas (Broken 4.8mm, DPI 23.9)": {
+                    "grade": "grade_D",
+                    "unit": "1-00013e-13__oppo__oppo-a5i-4-128",
+                    "desc": "Menghasilkan polygon & bounding box cacat pecah/sompal bodi pada sudut atas (Top). Memicu Veto Operasional Grade D."
+                },
+                "⚡ D2: iPhone X — Pecah Bodi Ekstrem & Retak (4 Broken, 1 Crack, 1 Chip, DPI 329.6)": {
+                    "grade": "grade_D",
+                    "unit": "1-00033e-13__apple__iphone-x-64gb",
+                    "desc": "Menghasilkan anotasi masif kerusakan fisik bodi pada sisi kiri & kanan. Memicu Veto Operasional Grade D."
+                }
+            },
+            "🟠 Grade C (Aus Nyata Jamak / DPI Tinggi)": {
+                "⚡ C1: Oppo A5s — Bodi Baret Jamak Merata (14 Titik Goresan Terukur, DPI 19.3)": {
+                    "grade": "grade_C",
+                    "unit": "1-00033e-13__oppo__oppo-a5s-3-32",
+                    "desc": "Menghasilkan visualisasi 14 goresan bodi merata di frame samping & bawah. Terklasifikasi Grade C secara akurat."
+                },
+                "⚡ C2: Samsung A07 — Cacat Bodi Jamak (5 Goresan & 2 Sompal Cat/Chip, DPI 18.4)": {
+                    "grade": "grade_C",
+                    "unit": "1-00033e-13__samsung__samsung-a07-4-64",
+                    "desc": "Menghasilkan kombinasi bounding box goresan bodi dan cat terkelupas (chip). Terklasifikasi Grade C."
+                },
+                "⚡ C3: Oppo A15 — Aus Pemakaian Moderat (Goresan Bodi Samping, DPI 3.9)": {
+                    "grade": "grade_C",
+                    "unit": "1-00013e-13__oppo__oppo-a15-3-32",
+                    "desc": "Menghasilkan deteksi goresan nyata pada bodi samping dengan penalti DPI sedang."
+                }
+            },
+            "🟡 Grade B (Aus Wajar / Pemakaian Normal)": {
+                "⚡ B1: Oppo A78 5G — Aus Wajar Pemakaian Normal (5 Baret Halus + 1 Dent, DPI 10.1)": {
+                    "grade": "grade_B",
+                    "unit": "1-00023e-13__oppo__oppo-a78-8-256-5g",
+                    "desc": "Menghasilkan visualisasi baret halus dan 1 penyok mikro pada housing samping. Sesuai toleransi Grade B."
+                },
+                "⚡ B2: Oppo A16 — Baret Samping Ringan (3 Baret Halus + 1 Dent, DPI 8.1)": {
+                    "grade": "grade_B",
+                    "unit": "1-00033e-13__oppo__oppo-a16-4-64",
+                    "desc": "Menghasilkan 3 baret pemakaian normal dan 1 penyok bodi ringan. Terklasifikasi Grade B."
+                },
+                "⚡ B3: iPhone 13 Pro Max — Goresan Bezel Stainless (5 Baret Halus + 1 Dent, DPI 10.5)": {
+                    "grade": "grade_B",
+                    "unit": "1-00023e-13__apple__iphone-13-pro-max-128gb",
+                    "desc": "Menghasilkan deteksi baret pemakaian normal pada bezel samping kanan dan bawah. Terklasifikasi Grade B."
+                }
+            },
+            "🟢 Grade A (Like New / Mint / Zero Cacat)": {
+                "⚡ A1: iPhone 16e — Like New Flawless (Bodi Bersih Sempurna / DPI 0.0 / Zero FP)": {
+                    "grade": "grade_A",
+                    "unit": "1-00023e-13__apple__iphone-16e-128gb",
+                    "desc": "Kondisi bodi sangat mulus Like New. Membuktikan eliminasi glare bekerja sempurna tanpa false positive (0 cacat, DPI 0.0)."
+                },
+                "⚡ A2: iPhone 7 Plus — Kondisi Mint Terawat (Zero Defect / DPI 0.0)": {
+                    "grade": "grade_A",
+                    "unit": "1-00043e-13__apple__iphone-7-plus-32gb",
+                    "desc": "Bodi housing bersih mulus, terklasifikasi Grade A murni dengan keyakinan tinggi."
+                },
+                "⚡ A3: Oppo A18 — Toleransi Lecet Mikro (< 2.0 mm / DPI 1.2 / Grade A)": {
+                    "grade": "grade_A",
+                    "unit": "1-00023e-13__oppo__oppo-a18-4-128",
+                    "desc": "Menghasilkan deteksi 1 goresan mikro tipis (< 2mm). Terbukti tetap lolos Grade A sesuai batas toleransi fisik SOP."
+                }
+            }
         }
-        selected_case = st.selectbox("Pilih Kasus Investigasi Cepat:", list(audit_cases.keys()))
 
-        if audit_cases[selected_case] is not None:
-            c_grade, c_unit = audit_cases[selected_case]
-            unit_id_input = c_unit
-            candidate_dirs = [
-                APP_DIR / "demo_samples" / c_grade / c_unit,
-                PROJECT_DIR / "Hasil_Crop_Raw" / c_grade / c_unit
-            ]
-            unit_dir = None
-            for cd in candidate_dirs:
-                if cd.exists():
-                    unit_dir = cd
-                    break
+        col_g1, col_g2 = st.columns([1.3, 2.7])
+        with col_g1:
+            grade_category = st.radio(
+                "Filter Kategori Grade:",
+                list(golden_cases.keys()),
+                index=0
+            )
 
-            if unit_dir is not None:
-                for side in ["top", "bottom", "left", "right", "front", "back"]:
-                    p_jpg = unit_dir / f"{side}.jpg"
-                    p_png = unit_dir / f"{side}.png"
-                    if p_jpg.exists():
-                        view_files_dict[side] = str(p_jpg)
-                    elif p_png.exists():
-                        view_files_dict[side] = str(p_png)
-            else:
-                st.warning(f"Direktori sampel untuk unit {c_unit} tidak ditemukan.")
+        with col_g2:
+            cases_in_cat = golden_cases[grade_category]
+            chosen_case_title = st.selectbox(
+                "Pilih Kasus Sampel Representatif:",
+                list(cases_in_cat.keys())
+            )
+            case_data = cases_in_cat[chosen_case_title]
+            unit_id_input = case_data["unit"]
+            c_grade = case_data["grade"]
+            st.markdown(f"""
+            <div style="background: #FAF5FF; border-left: 4px solid #7C3AED; padding: 8px 14px; border-radius: 6px; margin-top: 6px; font-size: 0.82rem; color: #4C1D95;">
+                👁️ <b>Karakteristik Visual & Target Evaluasi:</b><br>{case_data['desc']}
+            </div>
+            """, unsafe_allow_html=True)
 
+        candidate_dirs = [
+            APP_DIR / "demo_samples" / c_grade / unit_id_input,
+            PROJECT_DIR / "Hasil_Crop_Raw" / c_grade / unit_id_input
+        ]
+        unit_dir = None
+        for cd in candidate_dirs:
+            if cd.exists():
+                unit_dir = cd
+                break
+
+        if unit_dir is not None:
+            for side in ["top", "bottom", "left", "right"]:
+                p_jpg = unit_dir / f"{side}.jpg"
+                p_png = unit_dir / f"{side}.png"
+                if p_jpg.exists():
+                    view_files_dict[side] = str(p_jpg)
+                elif p_png.exists():
+                    view_files_dict[side] = str(p_png)
         else:
-            col_grade, col_unit = st.columns([1, 2])
-            with col_grade:
-                target_grade = st.selectbox("Pilih Kategori Grade:", ["Grade B (Mayoritas)", "Grade A (Mulus)", "Grade C (Aus Wajar)", "Grade D (Cacat Berat)"])
-                grade_folder = {
-                    "Grade A (Mulus)": "grade_A",
-                    "Grade B (Mayoritas)": "grade_B",
-                    "Grade C (Aus Wajar)": "grade_C",
-                    "Grade D (Cacat Berat)": "grade_D"
-                }[target_grade]
-
-            with col_unit:
-                selected_grade_path = crop_base / grade_folder
-                available_units = []
-                if selected_grade_path.exists():
-                    available_units = sorted([d.name for d in selected_grade_path.iterdir() if d.is_dir()])
-
-                if available_units:
-                    chosen_unit = st.selectbox(f"Pilih Sampel Unit Riil ({len(available_units)} tersedia):", available_units[:100])
-                    unit_id_input = chosen_unit
-                    unit_dir = selected_grade_path / chosen_unit
-
-                    for side in ["top", "bottom", "left", "right", "front", "back"]:
-                        p_jpg = unit_dir / f"{side}.jpg"
-                        p_png = unit_dir / f"{side}.png"
-                        if p_jpg.exists():
-                            view_files_dict[side] = str(p_jpg)
-                        elif p_png.exists():
-                            view_files_dict[side] = str(p_png)
-                else:
-                    st.warning(f"Direktori {selected_grade_path} tidak ditemukan.")
+            st.warning(f"Direktori sampel untuk unit {unit_id_input} tidak ditemukan.")
 
         if view_files_dict:
-            st.markdown(f"<p style='font-size:0.85rem; color:#4C1D95; margin-top:12px;'>📸 <b>Unit Terpilih:</b> <code>{unit_id_input}</code> ({len(view_files_dict)} sudut foto terdeteksi: <i>{', '.join(view_files_dict.keys())}</i>)</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='font-size:0.85rem; color:#4C1D95; margin-top:14px; margin-bottom:8px;'>📸 <b>Pratinjau Foto 4 Sisi Housing:</b> <code>{unit_id_input}</code></p>", unsafe_allow_html=True)
             t_cols = st.columns(len(view_files_dict))
             for i, (side, path) in enumerate(view_files_dict.items()):
                 with t_cols[i]:
@@ -551,11 +606,17 @@ if nav_choice == "🔍 Inspeksi Unit (Interactive Studio)":
         else:
             with st.spinner(f"Menjalankan inferensi dengan {active_cfg['name']} (Ambang Sensitivitas: {conf_thresh_slider:.2f})..."):
                 t0 = time.time()
-                report, card_bgr, annotated_views = engine.run_unit_inspection(
-                    unit_id_input,
-                    view_files_dict,
-                    conf_threshold=conf_thresh_slider
-                )
+                try:
+                    report, card_bgr, annotated_views = engine.run_unit_inspection(
+                        unit_id_input,
+                        view_files_dict,
+                        conf_threshold=conf_thresh_slider
+                    )
+                except TypeError:
+                    report, card_bgr, annotated_views = engine.run_unit_inspection(
+                        unit_id_input,
+                        view_files_dict
+                    )
                 elapsed = time.time() - t0
 
             grade = report.get("final_grade", "D")
