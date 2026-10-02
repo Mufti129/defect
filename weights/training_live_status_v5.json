@@ -1,0 +1,12 @@
+{
+  "status": "TRAINING_IN_PROGRESS",
+  "current_epoch": 11,
+  "total_epochs": 30,
+  "current_batch": 900,
+  "total_batches_per_epoch": 1337,
+  "epoch_progress_percent": 67.3,
+  "overall_progress_percent": 35.58,
+  "qty_images_processed_this_epoch": 3600,
+  "total_train_images": 5346,
+  "last_update": "2026-10-02 10:22:33"
+}

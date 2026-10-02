@@ -4,7 +4,7 @@ STREAMLIT INSPECTION WEB APPLICATION
 ====================================
 Interactive multi-view smartphone defect detection, physical measurement,
 cosmetic grading, and inspection card generation.
-Version: 3.2 - Housing-Only (Empirical Investigation & System Improvement Edition)
+Version: 3.3 - Multi-Model Edition (V1, V2, V3, V4, and V5 Live Checkpoint)
 """
 
 import os
@@ -31,7 +31,7 @@ if str(PROJECT_DIR) not in sys.path:
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from core_engine import StreamlitInspectionEngine
+from core_engine import StreamlitInspectionEngine, MODEL_REGISTRY
 
 # ---------------------------------------------------------
 # Page Configuration & Modern Styling
@@ -55,7 +55,7 @@ st.markdown("""
     .sub-header {
         font-size: 1.02rem;
         color: #64748B;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.2rem;
     }
     .grade-badge-A {
         background: linear-gradient(135deg, #10B981, #059669);
@@ -124,39 +124,26 @@ st.markdown("""
         font-size: 1.1rem;
         margin-bottom: 0.4rem;
     }
-    .highlight-card {
-        background: #F8FAFC;
-        border: 1px solid #CBD5E1;
-        border-radius: 8px;
+    .model-card-box {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
         padding: 16px;
         margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
-# Cached Engine Initialization
-# ---------------------------------------------------------
-@st.cache_resource(show_spinner="Memuat Model YOLOv8-Seg dan ML Housing Grading Aggregator...")
-def get_engine():
-    local_weights = APP_DIR / "weights"
-    if local_weights.exists() and (local_weights / "phone_defect_model.pt").exists():
-        weights_path = local_weights
-    else:
-        weights_path = PROJECT_DIR / "weights"
-    return StreamlitInspectionEngine(weights_dir=str(weights_path))
-
-
-engine = get_engine()
-
-# ---------------------------------------------------------
-# Sidebar Navigation & System Specs
+# Sidebar Navigation & Model Version Selection
 # ---------------------------------------------------------
 st.sidebar.image("https://img.icons8.com/fluency/96/phone.png", width=64)
 st.sidebar.title("Sistem Taksiran AI")
 st.sidebar.caption("PGI Computer Vision & ML Grading Platform")
 
+# 1. Module Selector
 nav_choice = st.sidebar.radio(
     "Navigasi Modul:",
     [
@@ -169,28 +156,115 @@ nav_choice = st.sidebar.radio(
 )
 
 st.sidebar.divider()
-st.sidebar.markdown("**Spesifikasi Sistem & Model Terkini:**")
-st.sidebar.markdown("""
-- **Cakupan Input:** `4 Sisi Housing (Top, Bottom, Left, Right)`
-- **Defect Model:** `YOLOv8-Seg (Polygon Instance)`
-- **Centrality:** `Gaussian Dynamic Weighting`
-- **Hand Filter:** `Adaptive YCrCb+HSV (Edge Thresh 0.40)`
-- **Grading Engine:** `Random Forest (18 Housing Features)`
-- **Skala Pelatihan:** `1.918 Unit (>9.000 Citra Hasil Crop)`
-- **Safety Rule:** `Fast-Fail Veto (Sompal >= 4.0mm / Crack)`
+
+# 2. Dynamic Model Version Selector
+st.sidebar.markdown("### 🤖 Pilihan Model AI:")
+model_options = {
+    "v5": "⚡ Model V5 (YOLOv8s 1024px - Checkpoint Terbaik/Sementara)",
+    "v3": "⭐ Model V3 (Housing Skala Penuh 1.918 Unit - Rekomendasi)",
+    "v4": "🎯 Model V4 (Real Annotated Defect Detector - YOLOv8n)",
+    "v2": "🔄 Model V2 (Multi-View 5-Sudut - Front & Body)",
+    "v1": "📦 Model V1 (Baseline Segmentation & Synthetic Heuristics)"
+}
+
+selected_version = st.sidebar.selectbox(
+    "Pilih Versi Model Inspeksi:",
+    options=list(model_options.keys()),
+    format_func=lambda k: model_options[k],
+    index=0
+)
+
+
+# ---------------------------------------------------------
+# Cached Engine Initialization for Selected Version
+# ---------------------------------------------------------
+@st.cache_resource(show_spinner="Memuat Model AI...")
+def get_cached_engine(version: str):
+    local_weights = APP_DIR / "weights"
+    if local_weights.exists():
+        weights_path = local_weights
+    else:
+        weights_path = PROJECT_DIR / "weights"
+    return StreamlitInspectionEngine(version=version, weights_dir=str(weights_path))
+
+
+engine = get_cached_engine(selected_version)
+active_cfg = engine.config
+
+# Display Active Model Specs in Sidebar
+st.sidebar.markdown(f"""
+<div style="background-color: {active_cfg['badge_color']}; color: white; padding: 6px 12px; border-radius: 6px; font-weight: 700; text-align: center; font-size: 0.85rem; margin-top: 6px; margin-bottom: 10px;">
+    {active_cfg['badge']}
+</div>
+""", unsafe_allow_html=True)
+
+st.sidebar.markdown(f"""
+- **Arsitektur:** `{active_cfg['arch']}`
+- **Fokus:** `{active_cfg['focus']}`
+- **Dataset:** `{active_cfg['dataset']}`
+- **Status:** `{active_cfg['status']}`
 """)
+
+# Special Live Training Box for V5
+if selected_version == "v5":
+    v5_status_file = APP_DIR / "weights" / "training_live_status_v5.json"
+    if not v5_status_file.exists():
+        v5_status_file = PROJECT_DIR / "weights_v5" / "training_live_status.json"
+
+    if v5_status_file.exists():
+        try:
+            with open(v5_status_file, "r") as f:
+                v5_data = json.load(f)
+            cur_ep = v5_data.get("current_epoch", 11)
+            tot_ep = v5_data.get("total_epochs", 30)
+            prog_pct = v5_data.get("overall_progress_percent", 35.5)
+            st.sidebar.markdown(f"""
+            <div style="background-color: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 8px; padding: 10px; font-size: 0.82rem; margin-top: 8px;">
+                <b style="color: #6D28D9;">🚧 Live Training Progress:</b><br>
+                • <b>Epoch:</b> {cur_ep} / {tot_ep}<br>
+                • <b>Progress:</b> {prog_pct:.1f}%<br>
+                • <b>Bobot Aktif:</b> Checkpoint Terbaik (Epoch 10 mAP50: 30.6%, Recall: 57.1%)<br>
+                <i style="color: #4B5563; font-size: 0.78rem;">Bobot final akan otomatis diperbarui setelah 30 epoch selesai.</i>
+            </div>
+            """, unsafe_allow_html=True)
+            st.sidebar.progress(float(prog_pct) / 100.0)
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------
+# Top Active Model Banner (Displayed on all main screens)
+# ---------------------------------------------------------
+def render_model_banner():
+    st.markdown(f"""
+    <div style="background: linear-gradient(90deg, #F8FAFC 0%, #EFF6FF 100%); border-left: 4px solid {active_cfg['badge_color']}; padding: 12px 18px; border-radius: 8px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div>
+                <span style="background: {active_cfg['badge_color']}; color: white; font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.05em;">{active_cfg['badge']}</span>
+                <span style="font-weight: 700; font-size: 1.05rem; color: #1E293B; margin-left: 8px;">{active_cfg['name']}</span>
+            </div>
+            <div style="font-size: 0.82rem; color: #64748B;">Arsitektur: <b>{active_cfg['arch']}</b> | Status: <b>{active_cfg['status']}</b></div>
+        </div>
+        <div style="font-size: 0.85rem; color: #475569; margin-top: 6px;">{active_cfg['description']}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
 # Module 1: Single Unit Inspection (Upload or Demo)
 # ---------------------------------------------------------
 if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
-    st.markdown('<div class="main-header">📱 Inspeksi Cacat Fisik & Grading Housing Smartphone</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Analisis 4 sisi bodi smartphone (Top, Bottom, Left, Right) dengan segmentasi poligon presisi sub-milimeter dan estimasi Grade otomatis.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">📱 Inspeksi Cacat Fisik & Grading Smartphone</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Analisis bodi smartphone dengan segmentasi poligon presisi sub-milimeter, isolasi pantulan cahaya, dan estimasi Grade otomatis.</div>', unsafe_allow_html=True)
+
+    render_model_banner()
+
+    if selected_version == "v5":
+        st.info("💡 **Catatan Model Versi 5:** Model ini menggunakan bobot **checkpoint terbaik sementara** dari pelatihan 30 epoch yang sedang berjalan (Epoch 10 mAP50 30.6% & Recall 57.1%). Anda juga dapat membandingkan hasilnya dengan **Model Versi 3** (Rekomendasi Produksi) atau **Model Versi 4** melalui pilihan model di sidebar kiri.")
 
     input_mode = st.radio(
         "Pilih Metode Masukan Foto:",
-        ["📁 Demo 1-Click (Gunakan Unit Riil Database)", "📤 Upload Foto 4 Sisi Housing Sendiri (Top, Bottom, Left, Right)"],
+        ["📁 Demo 1-Click (Gunakan Unit Riil Database)", "📤 Upload Foto Bodi Smartphone Sendiri"],
         horizontal=True
     )
 
@@ -219,7 +293,6 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
         if audit_cases[selected_case] is not None:
             c_grade, c_unit = audit_cases[selected_case]
             unit_id_input = c_unit
-            # Try to locate in demo_samples or Hasil_Crop_Raw
             candidate_dirs = [
                 APP_DIR / "demo_samples" / c_grade / c_unit,
                 PROJECT_DIR / "Hasil_Crop_Raw" / c_grade / c_unit
@@ -231,7 +304,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                     break
 
             if unit_dir is not None:
-                for side in ["top", "bottom", "left", "right"]:
+                for side in ["top", "bottom", "left", "right", "front", "back"]:
                     p_jpg = unit_dir / f"{side}.jpg"
                     p_png = unit_dir / f"{side}.png"
                     if p_jpg.exists():
@@ -263,7 +336,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                     unit_id_input = chosen_unit
                     unit_dir = selected_grade_path / chosen_unit
 
-                    for side in ["top", "bottom", "left", "right"]:
+                    for side in ["top", "bottom", "left", "right", "front", "back"]:
                         p_jpg = unit_dir / f"{side}.jpg"
                         p_png = unit_dir / f"{side}.png"
                         if p_jpg.exists():
@@ -281,9 +354,9 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                     st.image(path, caption=side.upper(), use_container_width=True)
 
     else:
-        # Manual Upload Mode (Strictly 4 Housing Sides)
-        unit_id_input = st.text_input("Unit ID / No. Seri Smartphone:", value="HP-HOUSING-001")
-        st.markdown("**Unggah Foto 4 Sisi Bodi Smartphone (Top, Bottom, Left, Right):**")
+        # Manual Upload Mode
+        unit_id_input = st.text_input("Unit ID / No. Seri Smartphone:", value="HP-INSPECTION-001")
+        st.markdown("**Unggah Foto Sisi Bodi Smartphone (Top, Bottom, Left, Right):**")
 
         up_col1, up_col2, up_col3, up_col4 = st.columns(4)
 
@@ -313,13 +386,14 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
 
     # Trigger Inspection Button
     st.write("")
-    run_btn = st.button("🚀 Jalankan Inspeksi & Grading AI", type="primary", use_container_width=True)
+    btn_label = f"🚀 Jalankan Inspeksi & Grading dengan {active_cfg['short_name']}"
+    run_btn = st.button(btn_label, type="primary", use_container_width=True)
 
     if run_btn:
         if not view_files_dict:
             st.error("Harap pilih atau unggah minimal satu foto sudut pandang bodi smartphone.")
         else:
-            with st.spinner("Menjalankan inferensi multi-view YOLOv8-Seg, estimasi spasial ArUco, dan evaluasi Machine Learning Housing-Only..."):
+            with st.spinner(f"Menjalankan inferensi dengan {active_cfg['name']}..."):
                 t0 = time.time()
                 report, card_bgr = engine.run_unit_inspection(unit_id_input, view_files_dict)
                 elapsed = time.time() - t0
@@ -331,7 +405,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
             bottom_back_dpi = report.get("bottom_back_dpi", 0.0)
             defects_count = report.get("total_defects_count", 0)
 
-            st.success(f"Analisis 4 sisi selesai dalam {elapsed:.2f} detik!")
+            st.success(f"Analisis dengan **{active_cfg['short_name']}** selesai dalam {elapsed:.2f} detik!")
 
             # -----------------------------------------
             # Top Summary Metrics & Grade Hero
@@ -390,7 +464,7 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                 <div class="metric-card">
                     <div class="metric-label">Kecepatan</div>
                     <div class="metric-value">{elapsed:.2f}s</div>
-                    <div style="font-size: 0.75rem; color: #94A3B8;">4-sisi housing</div>
+                    <div style="font-size: 0.75rem; color: #94A3B8;">{len(view_files_dict)} sisi bodi</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -399,14 +473,14 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
             # -----------------------------------------
             st.subheader("🖼️ Kartu Hasil Inspeksi Visual (Inspection Card)")
             card_rgb = cv2.cvtColor(card_bgr, cv2.COLOR_BGR2RGB)
-            st.image(card_rgb, use_container_width=True, caption=f"Inspection Card - Unit ID: {unit_id_input}")
+            st.image(card_rgb, use_container_width=True, caption=f"Inspection Card - Unit: {unit_id_input} - Model: {active_cfg['short_name']}")
 
             is_success, buffer = cv2.imencode(".jpg", card_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
             if is_success:
                 st.download_button(
                     label="📥 Unduh Kartu Hasil Inspeksi (High-Res JPG)",
                     data=buffer.tobytes(),
-                    file_name=f"inspection_card_{unit_id_input}_{grade}.jpg",
+                    file_name=f"inspection_card_{unit_id_input}_{selected_version}_{grade}.jpg",
                     mime="image/jpeg",
                     use_container_width=True
                 )
@@ -448,26 +522,41 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
                 b_cols[4].metric("Broken (Pecah/Sompal)", bd.get("broken", 0))
 
             with tab2:
-                st.markdown("#### Faktor Penentu Keputusan:")
-                reasons = report.get("reasons", [])
-                for r in reasons:
-                    st.markdown(f"- 📌 **{r}**")
+                col_reas, col_mod = st.columns([1.2, 1])
+                with col_reas:
+                    st.markdown("#### Faktor Penentu Keputusan:")
+                    reasons = report.get("reasons", [])
+                    for r in reasons:
+                        st.markdown(f"- 📌 **{r}**")
 
-                st.markdown("#### Distribusi Probabilitas Grade:")
-                probs = report.get("grade_probabilities", {})
-                if probs:
-                    prob_df = pd.DataFrame({
-                        "Grade": list(probs.keys()),
-                        "Probabilitas": [v * 100 for v in probs.values()]
-                    })
-                    st.bar_chart(prob_df.set_index("Grade"))
+                    st.markdown("#### Distribusi Probabilitas Grade:")
+                    probs = report.get("grade_probabilities", {})
+                    if probs:
+                        prob_df = pd.DataFrame({
+                            "Grade": list(probs.keys()),
+                            "Probabilitas": [v * 100 for v in probs.values()]
+                        })
+                        st.bar_chart(prob_df.set_index("Grade"))
+
+                with col_mod:
+                    st.markdown("#### Informasi Model Aktif:")
+                    st.markdown(f"""
+                    <div class="model-card-box">
+                        <b style="color: {active_cfg['badge_color']};">{active_cfg['badge']}</b><br>
+                        <b>Model:</b> {active_cfg['name']}<br>
+                        <b>Arsitektur:</b> {active_cfg['arch']}<br>
+                        <b>Dataset:</b> {active_cfg['dataset']}<br>
+                        <b>Status:</b> {active_cfg['status']}<br>
+                        <b>Fokus Deteksi:</b> {active_cfg['focus']}<br>
+                    </div>
+                    """, unsafe_allow_html=True)
 
             with tab3:
                 st.json(report)
                 st.download_button(
                     label="📥 Unduh Laporan JSON",
                     data=json.dumps(report, indent=2),
-                    file_name=f"inspection_report_{unit_id_input}.json",
+                    file_name=f"inspection_report_{unit_id_input}_{selected_version}.json",
                     mime="application/json"
                 )
 
@@ -476,14 +565,16 @@ if nav_choice == "🔍 Inspeksi Unit (Upload / Demo)":
 # Module 2: Batch Testing from Folder
 # ---------------------------------------------------------
 elif nav_choice == "📂 Batch Folder Testing":
-    st.markdown('<div class="main-header">📂 Batch Inspection & Pengujian Massal (Housing-Only)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Jalankan pengujian grading otomatis pada puluhan unit smartphone sekaligus dari direktori lokal khusus 4 sisi (Top, Bottom, Left, Right).</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">📂 Batch Inspection & Pengujian Massal</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Jalankan pengujian grading otomatis pada puluhan unit smartphone sekaligus dari direktori lokal.</div>', unsafe_allow_html=True)
+
+    render_model_banner()
 
     default_batch_path = str(PROJECT_DIR / "Hasil_Crop_Raw" / "grade_B")
     batch_dir_str = st.text_input("Path Folder Target Pengujian:", value=default_batch_path)
     limit_units = st.slider("Jumlah Unit yang Akan Diuji:", min_value=2, max_value=50, value=10)
 
-    start_batch = st.button("🚀 Mulai Batch Testing", type="primary")
+    start_batch = st.button(f"🚀 Mulai Batch Testing ({active_cfg['short_name']})", type="primary")
 
     if start_batch:
         b_path = Path(batch_dir_str)
@@ -494,7 +585,7 @@ elif nav_choice == "📂 Batch Folder Testing":
             if not unit_dirs:
                 st.warning("Tidak ada sub-folder unit ditemukan dalam direktori tersebut.")
             else:
-                st.info(f"Memulai evaluasi pada {len(unit_dirs)} unit khusus 4 sisi housing...")
+                st.info(f"Memulai evaluasi pada {len(unit_dirs)} unit menggunakan **{active_cfg['short_name']}**...")
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
@@ -504,7 +595,7 @@ elif nav_choice == "📂 Batch Folder Testing":
                 for i, u_dir in enumerate(unit_dirs):
                     status_text.text(f"Memproses unit {i+1}/{len(unit_dirs)}: {u_dir.name}")
                     v_dict = {}
-                    for side in ["top", "bottom", "left", "right"]:
+                    for side in ["top", "bottom", "left", "right", "front", "back"]:
                         p_jpg = u_dir / f"{side}.jpg"
                         p_png = u_dir / f"{side}.png"
                         if p_jpg.exists():
@@ -519,6 +610,7 @@ elif nav_choice == "📂 Batch Folder Testing":
 
                         batch_results.append({
                             "Unit ID": u_dir.name,
+                            "Model": selected_version.upper(),
                             "Predicted Grade": report.get("final_grade"),
                             "Confidence": f"{report.get('grade_confidence', 0.0)*100:.1f}%",
                             "Total DPI": report.get("total_dpi"),
@@ -547,7 +639,7 @@ elif nav_choice == "📂 Batch Folder Testing":
                 st.download_button(
                     label="📥 Unduh Ringkasan Hasil Pengujian (CSV)",
                     data=csv_bytes,
-                    file_name="batch_inspection_results_housing.csv",
+                    file_name=f"batch_inspection_results_{selected_version}.csv",
                     mime="text/csv"
                 )
 
@@ -558,6 +650,8 @@ elif nav_choice == "📂 Batch Folder Testing":
 elif nav_choice == "📐 Standar Matras (Tray Marker)":
     st.markdown('<div class="main-header">📐 Standar Matras Inspeksi (Tray Marker A4)</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Standarisasi pengambilan gambar untuk akurasi metrik fisik sub-milimeter dan eliminasi bayangan tangan.</div>', unsafe_allow_html=True)
+
+    render_model_banner()
 
     local_marker = APP_DIR / "static" / "tray_marker_template.png"
     if local_marker.exists():
@@ -603,10 +697,13 @@ elif nav_choice == "📐 Standar Matras (Tray Marker)":
 # Module 4: Laporan Investigasi & Evaluasi Empiris (Knowledge Hub)
 # ---------------------------------------------------------
 elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
-    st.markdown('<div class="main-header">📑 Laporan Investigasi Teknis, Evaluasi Empiris & Perbaikan Sistem</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Dokumentasi audit presisi pipeline cropping, eliminasi false-positive, analisis penghapusan background, dan pembuktian empiris performa model skala penuh (1.918 unit).</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">📑 Laporan Investigasi Teknis, Evaluasi Empiris & Perbandingan Model</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Dokumentasi audit presisi pipeline cropping, eliminasi false-positive, analisis penghapusan background, dan komparasi 5 versi model AI (V1 s/d V5).</div>', unsafe_allow_html=True)
 
-    rep_tab1, rep_tab2, rep_tab3, rep_tab4, rep_tab5 = st.tabs([
+    render_model_banner()
+
+    rep_tab1, rep_tab2, rep_tab3, rep_tab4, rep_tab5, rep_tab6 = st.tabs([
+        "🤖 Komparasi 5 Versi Model AI",
         "🔍 Audit 2 Kasus Kritis Lapangan",
         "⚖️ Analisis Background Removal vs Soft ROI",
         "📊 Tabel Verifikasi Uji Lapangan",
@@ -616,7 +713,81 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
 
     with rep_tab1:
         st.markdown("""
-        ### 1. Ringkasan Eksekutif & 2 Kasus Masalah Kritis Lapangan
+        ### 🤖 Komparasi Komprehensif 5 Versi Model AI
+        Sistem inspeksi telah mengalami 5 fase evolusi arsitektur dan peningkatan data latih:
+        """)
+
+        models_comp_data = {
+            "Versi Model": [
+                "⚡ Versi 5 (Terbaru - In Training)",
+                "⭐ Versi 3 (Rekomendasi Produksi)",
+                "🎯 Versi 4 (Real Annotated)",
+                "🔄 Versi 2 (Multi-View 5-Sisi)",
+                "📦 Versi 1 (Baseline Prototipe)"
+            ],
+            "Arsitektur Detector": [
+                "YOLOv8s Detect (1024x1024, 11M Params)",
+                "YOLOv8-Seg Polygon Nano (640x640)",
+                "YOLOv8n Detect (640x640, 3M Params)",
+                "YOLOv8-Seg Polygon Nano (640x640)",
+                "YOLOv8-Seg Polygon Nano (640x640)"
+            ],
+            "Basis Data Pelatihan": [
+                "dataset_v5_full (1.918 Unit Bodi Housing, Resolusi Asli)",
+                "Hasil_Crop_Raw (1.918 Unit / 7.672 Citra Bodi)",
+                "dataset_v4_real (1.600+ Foto Riil Cacat Teranotasi)",
+                "Kohort Seimbang 240 Unit (1.200 Citra 5 Sisi)",
+                "Dataset Sintetis Awal 120 Sampel"
+            ],
+            "Cakupan Input": [
+                "4 Sisi Housing (Top, Bottom, Left, Right)",
+                "4 Sisi Housing (Top, Bottom, Left, Right)",
+                "Bodi & Housing Smartphone",
+                "5 Sudut Pandang (Termasuk Front)",
+                "Universal (5 Sudut)"
+            ],
+            "Metrik Capaian Utama": [
+                "Checkpoint Epoch 10: mAP50 30.6%, Recall 57.1%",
+                "Akurasi 57.0%, Recall Grade A 80.0%, Macro F1 0.5558",
+                "mAP50 1.45% (Model Eksperimental Awal)",
+                "Akurasi 69.0%, Macro F1 0.6828 (Multi-View)",
+                "Akurasi Fiktif 90% (Hasil Simulasi Monte Carlo)"
+            ],
+            "Status & Rekomendasi": [
+                "Checkpoint Terbaik Sementara (Training 11/30 Epoch Berjalan)",
+                "STABIL & TERVALIDASI (Pilihan Terbaik Produksi Saat Ini)",
+                "Arsip Eksperimen Dataset Anotasi Riil",
+                "Model Pembanding untuk Taksiran Layar Depan",
+                "Arsip Prototipe Awal"
+            ]
+        }
+        st.dataframe(pd.DataFrame(models_comp_data), use_container_width=True)
+
+        st.markdown("#### 📈 Progres Training Model Versi 5 (Epoch 1 s/d 10):")
+        st.caption("Pencatatan metrik performa berkala dari file training `runs_v5_training/real_defects_v5-4/results.csv`:")
+
+        v5_history = {
+            "Epoch": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "Train Box Loss": [2.582, 2.286, 2.130, 2.046, 1.959, 1.861, 1.754, 1.713, 1.662, 1.602],
+            "Train Cls Loss": [3.325, 2.896, 2.715, 2.620, 2.518, 2.424, 2.323, 2.238, 2.177, 2.106],
+            "Precision (B)": ["29.7%", "57.2%", "37.8%", "13.7%", "23.0%", "22.3%", "23.8%", "25.1%", "23.4%", "24.9%"],
+            "Recall (B)": ["26.8%", "17.2%", "17.5%", "44.5%", "27.4%", "42.1%", "49.0%", "50.4%", "66.9%", "57.1%"],
+            "mAP50 (B)": ["7.3%", "10.8%", "12.9%", "13.9%", "18.6%", "21.8%", "27.7%", "25.1%", "27.7%", "30.6%"],
+            "mAP50-95 (B)": ["2.2%", "3.5%", "5.2%", "6.7%", "7.1%", "11.2%", "13.9%", "13.7%", "15.6%", "17.0%"]
+        }
+        st.dataframe(pd.DataFrame(v5_history), use_container_width=True)
+
+        st.markdown("""
+        > [!NOTE]
+        > **Keunggulan Arsitektur Model Versi 5:**
+        > 1. **Resolusi Input 1024x1024 (Naik dari 640x640):** Mencegah lecet rambut mikro (*hairline scratch*) dan cuil kecil pada bezel terhapus akibat kompresi resolusi.
+        > 2. **Kapasitas Model YOLOv8s (11 Juta Parameter):** 3.6x lebih besar dibandingkan YOLOv8n (3.2 Juta Parameter), memberikan diskriminasi tekstur bodi yang jauh lebih tajam.
+        > 3. **Fokus Eksklusif Housing (No Front):** Seluruh kapasitas model dialokasikan khusus mendeteksi cacat bezel samping, port charger, speaker grill, dan bodi belakang tanpa terdistraksi pantulan kaca layar.
+        """)
+
+    with rep_tab2:
+        st.markdown("""
+        ### 2. Audit 2 Kasus Masalah Kritis Lapangan & Solusi Rekayasa
         Berdasarkan evaluasi lapangan terhadap hasil pemotongan (*cropping*) bodi smartphone dan prediksi grading model, ditemukan 2 permasalahan krusial yang berhasil diinvestigasi dan diselesaikan:
         """)
 
@@ -652,9 +823,9 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
             </div>
             """, unsafe_allow_html=True)
 
-    with rep_tab2:
+    with rep_tab3:
         st.markdown("""
-        ### 2. Analisis Strategis: Apakah Perlu Menghapus Background Secara Permanen?
+        ### 3. Analisis Strategis: Apakah Perlu Menghapus Background Secara Permanen?
         Pertanyaan krusial arsitektur: *Apakah sistem perlu menghapus background menjadi hitam/transparan secara permanen menggunakan AI background removal?*
         """)
 
@@ -682,9 +853,9 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
 
         st.info("💡 **Rekomendasi Arsitektur Definitif:** **JANGAN MENGHAPUS BACKGROUND SECARA DESTRUKTIF**. Pertahankan piksel asli citra secara utuh, dan gunakan *phone boundary distance map* untuk membatasi ruang deteksi hanya pada bodi smartphone.")
 
-    with rep_tab3:
+    with rep_tab4:
         st.markdown("""
-        ### 3. Tabel Verifikasi Hasil Pengujian Lapangan (Before vs After)
+        ### 4. Tabel Verifikasi Hasil Pengujian Lapangan (Before vs After)
         Verifikasi empiris pada unit smartphone representatif yang menjadi bahan audit lapangan:
         """)
 
@@ -720,9 +891,9 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
         ]
         st.dataframe(pd.DataFrame(verif_data), use_container_width=True)
 
-    with rep_tab4:
+    with rep_tab5:
         st.markdown("""
-        ### 4. Hasil Evaluasi Model Skala Penuh (1.918 Unit / >9.000 Citra)
+        ### 5. Hasil Evaluasi Model Skala Penuh (1.918 Unit / >9.000 Citra)
         Model Random Forest Housing-Only telah dilatih menggunakan seluruh populasi dataset hasil crop (**1.918 unit / 7.672 citra bodi**) pada 4 sisi (`top`, `bottom`, `left`, `right`):
         """)
 
@@ -751,20 +922,9 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
         }
         st.dataframe(pd.DataFrame(cm_data).set_index("Ground Truth"), use_container_width=True)
 
+    with rep_tab6:
         st.markdown("""
-        #### Perbandingan 3 Tahap Evolusi Model:
-        """)
-        evol_data = {
-            "Parameter": ["Tipe Evaluasi", "Total Unit Diuji", "Akurasi Riil", "Macro F1", "Recall Grade A", "Waktu Inferensi"],
-            "Tahap 1 (Awal Legacy)": ["Simulasi Acak (np.random)", "100 unit simulasi", "90.0% (Fiktif)", "0.9056 (Fiktif)", "92.0% (Fiktif)", "N/A"],
-            "Tahap 2 (Model Transisi)": ["Foto Riil (Model Mini)", "100 unit riil", "41.0% (Rendah)", "0.3930", "48.0%", "1.25s"],
-            "Tahap 3 (Model Skala Penuh)": ["Foto Riil (1.918 Unit)", "100 unit benchmark", "57.00% (Riil)", "0.5558 (Riil)", "80.00% (Andal)", "0.99s"]
-        }
-        st.table(pd.DataFrame(evol_data))
-
-    with rep_tab5:
-        st.markdown("""
-        ### 5. Rekomendasi SOP 2-Tahap di Cabang & Audit Risiko Finansial
+        ### 6. Rekomendasi SOP 2-Tahap di Cabang & Audit Risiko Finansial
         Untuk meminimalkan risiko kerugian valuasi gadai dan komplain retur konsumen:
         """)
 
@@ -803,6 +963,8 @@ elif nav_choice == "📑 Laporan Investigasi & Evaluasi Empiris":
 # ---------------------------------------------------------
 elif nav_choice == "ℹ️ Panduan SOP & Arsitektur":
     st.markdown('<div class="main-header">ℹ️ Arsitektur Sistem & Rekomendasi SOP PGI</div>', unsafe_allow_html=True)
+
+    render_model_banner()
 
     st.markdown(r"""
     ### 1. SOP Pemeriksaan 2-Tahap di Cabang Gadai
