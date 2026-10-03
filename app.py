@@ -2729,7 +2729,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
     with rep_tab0:
         st.markdown("""
         ### Detail Evaluasi Mendalam Per Model AI (Versi 1 s.d. Versi 5 & Masa Depan)
-        Menu khusus ini menyajikan rincian teknis mendalam untuk setiap versi model AI: metrik performa per-grade (*Precision, Recall, F1-Score*), matriks kebingungan (*confusion matrix* ber-kontras tinggi), grafik kurva evaluasi & pelatihan (*loss & metric curves*), serta analisis risiko valuasi operasional.
+        Menu khusus ini menyajikan rincian teknis mendalam untuk setiap versi model AI: jenis paradigma AI, siklus pelatihan (epoch/iterasi), dataset & ukuran sampel, metrik performa per-grade (*Precision, Recall, F1-Score*), matriks kebingungan (*confusion matrix* kontras tinggi), grafik kurva evaluasi (*loss & metric curves*), serta analisis risiko valuasi operasional.
         """)
 
         eval_model_options = {
@@ -2749,6 +2749,34 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
         )
 
         st.write("")
+
+        def _render_model_paradigm_info(paradigm_type, paradigm_desc, training_cycle, cycle_desc, dataset_info, dataset_desc, target_info, target_desc, theme_color="#8B5CF6"):
+            return f"""
+            <div style="background: #FFFFFF; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
+                    <div style="border-left: 3px solid {theme_color}; padding-left: 10px;">
+                        <div style="font-size: 0.70rem; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Jenis Paradigma AI</div>
+                        <div style="font-size: 0.88rem; font-weight: 800; color: #0F172A; margin-top: 3px;">{paradigm_type}</div>
+                        <div style="font-size: 0.76rem; color: #64748B; margin-top: 2px;">{paradigm_desc}</div>
+                    </div>
+                    <div style="border-left: 3px solid {theme_color}; padding-left: 10px;">
+                        <div style="font-size: 0.70rem; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Siklus Pelatihan (Epoch / Iterasi)</div>
+                        <div style="font-size: 0.88rem; font-weight: 800; color: {theme_color}; margin-top: 3px;">{training_cycle}</div>
+                        <div style="font-size: 0.76rem; color: #64748B; margin-top: 2px;">{cycle_desc}</div>
+                    </div>
+                    <div style="border-left: 3px solid {theme_color}; padding-left: 10px;">
+                        <div style="font-size: 0.70rem; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Dataset & Ukuran Sampel</div>
+                        <div style="font-size: 0.88rem; font-weight: 800; color: #0F172A; margin-top: 3px;">{dataset_info}</div>
+                        <div style="font-size: 0.76rem; color: #64748B; margin-top: 2px;">{dataset_desc}</div>
+                    </div>
+                    <div style="border-left: 3px solid {theme_color}; padding-left: 10px;">
+                        <div style="font-size: 0.70rem; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Mekanisme Optimasi & Fitur</div>
+                        <div style="font-size: 0.88rem; font-weight: 800; color: #0F172A; margin-top: 3px;">{target_info}</div>
+                        <div style="font-size: 0.76rem; color: #64748B; margin-top: 2px;">{target_desc}</div>
+                    </div>
+                </div>
+            </div>
+            """
 
         def _render_styled_cm_table(cm, classes=["A", "B", "C", "D"], counts=[25, 25, 25, 25], theme_color="#6D28D9"):
             rows_html = ""
@@ -2776,7 +2804,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                     row_cells += f'<td style="{bg_style} padding: 10px 8px; text-align: center;"><span style="{span_style}">{val}</span></td>'
                 rows_html += f"<tr>{row_cells}</tr>"
 
-            header_cells = f'<th style="background: #020617; padding: 10px 12px; border: 1px solid #334155; text-align: left; white-space: nowrap;"><span style="color: #FFFFFF !important; font-weight: 900; font-size: 0.86rem; display: inline-block;">True \\\\ Pred</span></th>'
+            header_cells = f'<th style="background: #020617; padding: 10px 12px; border: 1px solid #334155; text-align: left; white-space: nowrap;"><span style="color: #FFFFFF !important; font-weight: 900; font-size: 0.86rem; display: inline-block;">True \\ Pred</span></th>'
             for pred_c in classes:
                 header_cells += f'<th style="background: {theme_color}; padding: 10px 8px; border: 1px solid rgba(255,255,255,0.25); text-align: center;"><span style="color: #FFFFFF !important; font-weight: 900; font-size: 0.86rem; display: inline-block;">Pred {pred_c}</span></th>'
 
@@ -2806,7 +2834,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
         # -------------------------------------------------------------
         if eval_chosen_version == "v5":
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #FAF5FF 0%, #F5F3FF 100%); border: 1.5px solid #DDD6FE; border-left: 6px solid #8B5CF6; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px;">
+            <div style="background: linear-gradient(135deg, #FAF5FF 0%, #F5F3FF 100%); border: 1.5px solid #DDD6FE; border-left: 6px solid #8B5CF6; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <span style="background: #8B5CF6; color: white; font-size: 0.76rem; font-weight: 800; padding: 4px 10px; border-radius: 6px;">TERBARU (CHECKPOINT TERBAIK)</span>
@@ -2819,6 +2847,19 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+            # Metadata Paradigma AI, Siklus Pelatihan & Dataset
+            st.markdown(_render_model_paradigm_info(
+                paradigm_type="Deep Learning Neural Network",
+                paradigm_desc="YOLOv8s Object Detector (11.2M Parameter)",
+                training_cycle="30 Epochs (Epoch 18 Berjalan)",
+                cycle_desc="Progres: 57.2% Selesai (AdamW / SGD)",
+                dataset_info="5.346 Citra Bodi Housing Riil",
+                dataset_desc="100% Citra Ber-Cacat (1024x1024px)",
+                target_info="SGD / AdamW Gradient Backprop",
+                target_desc="CIoU Loss + DFL + BCE Bounding Box",
+                theme_color="#8B5CF6"
+            ), unsafe_allow_html=True)
 
             # KPI Highlights
             k1, k2, k3, k4, k5 = st.columns(5)
@@ -2899,7 +2940,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                     [0, 0, 2, 23]
                 ]
                 st.markdown(_render_styled_cm_table(v5_cm_data, theme_color="#6D28D9"), unsafe_allow_html=True)
-                st.caption("Diagonal hijau menandai prediksi tepat (83/100 unit = 83.0% True Accuracy). Kolom pertama (True Grade) memiliki kontras gelap solid.")
+                st.caption("Diagonal hijau menandai prediksi tepat (83/100 unit = 83.0% True Accuracy).")
 
             st.write("")
 
@@ -2965,7 +3006,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
         # -------------------------------------------------------------
         elif eval_chosen_version == "v3":
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%); border: 1.5px solid #BBF7D0; border-left: 6px solid #059669; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px;">
+            <div style="background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%); border: 1.5px solid #BBF7D0; border-left: 6px solid #059669; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <span style="background: #059669; color: white; font-size: 0.76rem; font-weight: 800; padding: 4px 10px; border-radius: 6px;">REKOMENDASI PRODUKSI UTAMA</span>
@@ -2978,6 +3019,19 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+            # Metadata Paradigma AI, Siklus Pelatihan & Dataset
+            st.markdown(_render_model_paradigm_info(
+                paradigm_type="Classical ML Ensemble & Hybrid Rules",
+                paradigm_desc="YOLO Spatial Extractor + Random Forest & GBDT + Veto",
+                training_cycle="100 s.d. 200 Estimators × 5-Fold",
+                cycle_desc="Konvergensi Stabil pada 100 Trees",
+                dataset_info="1.918 Unit Smartphone Riil (9.500 Citra)",
+                dataset_desc="Dataset Bodi 4-Sisi (*Hasil_Crop_Raw*)",
+                target_info="18 Fitur Spasial Multivariat",
+                target_desc="Gini Impurity & Out-of-Bag (OOB) Loss Minimization",
+                theme_color="#059669"
+            ), unsafe_allow_html=True)
 
             k1, k2, k3, k4, k5 = st.columns(5)
             with k1:
@@ -3055,7 +3109,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                     [1, 2, 1, 21]
                 ]
                 st.markdown(_render_styled_cm_table(v3_cm_data, theme_color="#059669"), unsafe_allow_html=True)
-                st.caption("Recall Grade B 88.0% (22/25) dan Grade D 84.0% (21/25). Kolom pertama ber-kontras gelap solid.")
+                st.caption("Recall Grade B 88.0% (22/25) dan Grade D 84.0% (21/25).")
 
             st.write("")
 
@@ -3114,7 +3168,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
         # -------------------------------------------------------------
         elif eval_chosen_version == "v4":
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%); border: 1.5px solid #BAE6FD; border-left: 6px solid #0284C7; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px;">
+            <div style="background: linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%); border: 1.5px solid #BAE6FD; border-left: 6px solid #0284C7; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <span style="background: #0284C7; color: white; font-size: 0.76rem; font-weight: 800; padding: 4px 10px; border-radius: 6px;">REAL ANNOTATED DEFECTS</span>
@@ -3127,6 +3181,19 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+            # Metadata Paradigma AI, Siklus Pelatihan & Dataset
+            st.markdown(_render_model_paradigm_info(
+                paradigm_type="Deep Learning Neural Network",
+                paradigm_desc="YOLOv8n Nano Object Detector (3.2M Parameter)",
+                training_cycle="30 Epochs Selesai (100%)",
+                cycle_desc="Batch Size 16, Optimizer SGD",
+                dataset_info="1.600+ Anotasi Bounding Box Riil",
+                dataset_desc="Label Cacat Manual Lapangan (640x640px)",
+                target_info="Bounding Box Localization",
+                target_desc="Terhambat resolusi 640px pada lecet mikro < 3px",
+                theme_color="#0284C7"
+            ), unsafe_allow_html=True)
 
             k1, k2, k3, k4, k5 = st.columns(5)
             with k1:
@@ -3204,7 +3271,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                     [6, 4, 2, 13]
                 ]
                 st.markdown(_render_styled_cm_table(v4_cm_data, theme_color="#0284C7"), unsafe_allow_html=True)
-                st.caption("Akurasi 46.0% (46/100 unit). Kolom pertama (True Grade) memiliki background gelap kontras.")
+                st.caption("Akurasi 46.0% (46/100 unit).")
 
             st.write("")
 
@@ -3266,7 +3333,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
         # -------------------------------------------------------------
         elif eval_chosen_version == "v2":
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #F5F3FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-left: 6px solid #7C3AED; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px;">
+            <div style="background: linear-gradient(135deg, #F5F3FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-left: 6px solid #7C3AED; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <span style="background: #7C3AED; color: white; font-size: 0.76rem; font-weight: 800; padding: 4px 10px; border-radius: 6px;">MULTI-VIEW 5-SUDUT</span>
@@ -3279,6 +3346,19 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+            # Metadata Paradigma AI, Siklus Pelatihan & Dataset
+            st.markdown(_render_model_paradigm_info(
+                paradigm_type="Classical ML Multi-View Ensemble",
+                paradigm_desc="YOLO Multi-Angle + Decision Trees Ensemble",
+                training_cycle="100 Estimators × 5-Fold CV",
+                cycle_desc="Evaluasi 5 Sudut Kamera Sekaligus",
+                dataset_info="100 Unit Smartphone Riil (500 Citra)",
+                dataset_desc="Layar Depan (*Front*) + 4 Sisi Bodi (*Housing*)",
+                target_info="Multi-Angle Feature Concatenation",
+                target_desc="Terdampak pantulan lampu (*glare flare*) layar depan",
+                theme_color="#7C3AED"
+            ), unsafe_allow_html=True)
 
             k1, k2, k3, k4, k5 = st.columns(5)
             with k1:
@@ -3355,7 +3435,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                     [3, 2, 5, 15]
                 ]
                 st.markdown(_render_styled_cm_table(v2_cm_data, theme_color="#7C3AED"), unsafe_allow_html=True)
-                st.caption("Akurasi multi-view 5-sudut (57/100 langsung pada bodi + layar). Kolom pertama kontras solid.")
+                st.caption("Akurasi multi-view 5-sudut (57/100 langsung pada bodi + layar).")
 
             st.write("")
 
@@ -3405,7 +3485,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
         # -------------------------------------------------------------
         elif eval_chosen_version == "v1":
             st.markdown("""
-            <div style="background: linear-gradient(135deg, #F8FAFC 0%, #FFFFFF 100%); border: 1.5px solid #E2E8F0; border-left: 6px solid #64748B; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px;">
+            <div style="background: linear-gradient(135deg, #F8FAFC 0%, #FFFFFF 100%); border: 1.5px solid #E2E8F0; border-left: 6px solid #64748B; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <span style="background: #64748B; color: white; font-size: 0.76rem; font-weight: 800; padding: 4px 10px; border-radius: 6px;">BASELINE PROTOTIPE</span>
@@ -3418,6 +3498,19 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+            # Metadata Paradigma AI, Siklus Pelatihan & Dataset
+            st.markdown(_render_model_paradigm_info(
+                paradigm_type="Rule-Based Heuristic & Deterministic",
+                paradigm_desc="YOLO-Seg Nano + Aturan If-Else Statis",
+                training_cycle="1-Pass Deterministic Calculation",
+                cycle_desc="Tanpa Siklus Epoch Backpropagation",
+                dataset_info="120 Citra Purwarupa Sintetis",
+                dataset_desc="Simulasi Acak Monte Carlo (`np.random.rand()`)",
+                target_info="Hardcoded Penalties (DPI Formula)",
+                target_desc="Gagal beradaptasi pada variabilitas citra riil cabang",
+                theme_color="#64748B"
+            ), unsafe_allow_html=True)
 
             k1, k2, k3, k4, k5 = st.columns(5)
             with k1:
@@ -3491,7 +3584,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                     [4, 5, 7, 9]
                 ]
                 st.markdown(_render_styled_cm_table(v1_cm_data, theme_color="#64748B"), unsafe_allow_html=True)
-                st.caption("Akurasi riil hanya 28/100 unit. Kolom pertama kontras gelap solid.")
+                st.caption("Akurasi riil hanya 28/100 unit.")
 
             st.write("")
 
