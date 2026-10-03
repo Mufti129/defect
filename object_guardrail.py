@@ -129,6 +129,24 @@ COCO_INDONESIAN_MAP = {
 # All COCO classes except cell phone are non-phone objects
 NON_PHONE_CLASSES = {k: v for k, v in COCO_INDONESIAN_MAP.items() if k != "cell phone"}
 
+# Specific arbitrary non-phone categories guarded by system (human, animals, laptop, bottle, car, plant)
+DISALLOWED_COCO_CLASSES = {
+    # 1. Manusia / Orang (Selfie / Wajah / Subjek Manusia)
+    "person",
+    # 2. Binatang / Hewan
+    "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",
+    # 3. Komputer & Elektronik (Non-HP)
+    "laptop", "tv", "mouse", "keyboard", "microwave", "oven", "toaster", "refrigerator",
+    # 4. Botol & Wadah Minuman
+    "bottle", "cup", "wine glass", "bowl",
+    # 5. Kendaraan
+    "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
+    # 6. Tumbuhan & Perabot
+    "potted plant", "vase", "chair", "couch", "bed", "dining table",
+    # 7. Makanan
+    "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake"
+}
+
 # Color palette for guardrail visual annotations (BGR)
 GUARDRAIL_COLORS = {
     "person": (0, 0, 230),        # Crimson Red
@@ -317,10 +335,19 @@ class ObjectGuardrail:
                     )
                     continue
 
-                # Tolerated operator hands/fingers when holding a phone
-                is_operator_hand = (cls_name == "person" and (has_phone or (conf < 0.50 and area_ratio < 0.30)))
+                # Filter out classes that are not in DISALLOWED_COCO_CLASSES (e.g. knife/scissors false positives on metallic bezels)
+                if cls_name not in DISALLOWED_COCO_CLASSES:
+                    continue
+
+                # Tolerated operator hands/fingers only when holding a legitimate phone
+                is_operator_hand = (
+                    cls_name == "person" and (
+                        (has_phone and area_ratio < 0.25) or
+                        (view_side.lower() in ["top", "bottom", "left", "right"] and area_ratio < 0.15 and conf < 0.50)
+                    )
+                )
                 if is_operator_hand:
-                    # Draw subtle cyan box for operator holding phone
+                    # Draw subtle amber box for operator holding phone
                     cv2.rectangle(annotated_img, (bx1, by1), (bx2, by2), (200, 180, 0), 2)
                     self._draw_label_box(
                         annotated_img,

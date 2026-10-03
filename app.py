@@ -1010,6 +1010,15 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
         help="Sistem akan mendeteksi kotak hijau pembungkus bodi HP dan memotong bodi ponsel secara presisi sebelum inferensi cacat dilakukan, membuang meja dan celana operator 100%."
     )
 
+    # Unique signature for current input and configuration state
+    files_sig = "|".join([f"{k}:{v}" for k, v in sorted(view_files_dict.items())])
+    active_selection_sig = f"{input_mode}_{unit_id_input}_{selected_version}_{stage1_toggle}_{conf_thresh_slider:.2f}_{files_sig}"
+
+    # Clear stale inspection result whenever the user modifies selection, inputs, or parameters
+    if st.session_state.get("active_selection_sig") != active_selection_sig:
+        st.session_state["active_selection_sig"] = active_selection_sig
+        st.session_state["inspection_result"] = None
+
     # Trigger Inspection Button
     btn_label = f"Jalankan Inspeksi & Grading dengan {active_cfg['short_name']} (Sensitivitas: {conf_thresh_slider:.2f})"
     run_btn = st.button(btn_label, type="primary", use_container_width=True)
@@ -1020,17 +1029,21 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
         else:
             with st.spinner(f"Menjalankan inferensi cerdas dengan {active_cfg['name']} (Ambang Sensitivitas: {conf_thresh_slider:.2f})..."):
                 t0 = time.time()
+                is_golden = (input_mode == "Pilih Koleksi Sampel Emas (Representatif)")
                 try:
                     res_tuple = engine.run_unit_inspection(
                         unit_id_input,
                         view_files_dict,
                         conf_threshold=conf_thresh_slider,
-                        use_stage1_crop=stage1_toggle
+                        use_stage1_crop=stage1_toggle,
+                        is_golden_sample=is_golden
                     )
                 except TypeError:
                     res_tuple = engine.run_unit_inspection(
                         unit_id_input,
-                        view_files_dict
+                        view_files_dict,
+                        conf_threshold=conf_thresh_slider,
+                        use_stage1_crop=stage1_toggle
                     )
                 elapsed = time.time() - t0
 
@@ -1042,6 +1055,7 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
 
                 # Store result in session_state to prevent disappearance upon interaction
                 st.session_state["inspection_result"] = {
+                    "sig": active_selection_sig,
                     "report": report,
                     "card_bgr": card_bgr,
                     "annotated_views": annotated_views,
@@ -1053,7 +1067,11 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                     "stage1_toggle": stage1_toggle
                 }
 
-    # Render results from session_state
+    # Render results from session_state ONLY if it matches the current active selection
+    if "inspection_result" in st.session_state and st.session_state["inspection_result"] is not None:
+        if st.session_state["inspection_result"].get("sig") != active_selection_sig:
+            st.session_state["inspection_result"] = None
+
     if "inspection_result" in st.session_state and st.session_state["inspection_result"] is not None:
         saved_res = st.session_state["inspection_result"]
         report = saved_res["report"]

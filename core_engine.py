@@ -177,7 +177,8 @@ class StreamlitInspectionEngine:
         unit_id: str,
         view_images: Dict[str, str],
         conf_threshold: Optional[float] = None,
-        use_stage1_crop: bool = True
+        use_stage1_crop: bool = True,
+        is_golden_sample: bool = False
     ) -> Tuple[Dict[str, Any], np.ndarray, Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         """
         Runs complete evaluation across all provided views and generates the visual inspection card.
@@ -196,49 +197,50 @@ class StreamlitInspectionEngine:
         # -------------------------------------------------------------
         # Step 0: Input Object Guardrail (Validate against non-phone objects)
         # -------------------------------------------------------------
-        guardrail_res = self.guardrail.validate_views(view_images)
-        if not guardrail_res["is_valid"]:
-            # Rejected non-phone input! Provide visual feedback and instruct re-input
-            report = {
-                "unit_id": unit_id,
-                "status": "REJECTED_NON_PHONE",
-                "is_valid_phone": False,
-                "rejection_summary": guardrail_res["rejection_summary"],
-                "rejected_views": guardrail_res["rejected_views"],
-                "all_detected_objects": guardrail_res["all_detected_objects"],
-                "model_version": self.version,
-                "model_name": self.config["name"],
-                "model_arch": self.config["arch"],
-                "model_status": self.config["status"],
-                "stage1_enabled": False,
-                "final_grade": None,
-                "grade_confidence": 0.0,
-                "total_dpi": 0.0,
-                "frame_dpi": 0.0,
-                "bottom_back_dpi": 0.0,
-                "total_defects_count": 0,
-                "reasons": [guardrail_res["rejection_summary"] or "Objek bukan bodi smartphone."],
-                "inspection_time_sec": 0.1
-            }
-            card_bgr = self._create_guardrail_card(guardrail_res["annotated_previews"], guardrail_res["rejection_summary"])
-            # Save rejection record into database bank for dataset audit
-            try:
-                self.db_manager.save_record(
-                    unit_id=unit_id,
-                    model_version=self.version,
-                    model_name=self.config["name"],
-                    is_valid_phone=False,
-                    rejection_reason=guardrail_res["rejection_summary"],
-                    detected_objects=guardrail_res["all_detected_objects"],
-                    report=report,
-                    raw_views=view_images,
-                    annotated_views_bgr=guardrail_res["annotated_previews"],
-                    card_bgr=card_bgr
-                )
-            except Exception as e:
-                print(f"[InspectionEngine] DB save error: {e}")
+        if not is_golden_sample:
+            guardrail_res = self.guardrail.validate_views(view_images)
+            if not guardrail_res["is_valid"]:
+                # Rejected non-phone input! Provide visual feedback and instruct re-input
+                report = {
+                    "unit_id": unit_id,
+                    "status": "REJECTED_NON_PHONE",
+                    "is_valid_phone": False,
+                    "rejection_summary": guardrail_res["rejection_summary"],
+                    "rejected_views": guardrail_res["rejected_views"],
+                    "all_detected_objects": guardrail_res["all_detected_objects"],
+                    "model_version": self.version,
+                    "model_name": self.config["name"],
+                    "model_arch": self.config["arch"],
+                    "model_status": self.config["status"],
+                    "stage1_enabled": False,
+                    "final_grade": None,
+                    "grade_confidence": 0.0,
+                    "total_dpi": 0.0,
+                    "frame_dpi": 0.0,
+                    "bottom_back_dpi": 0.0,
+                    "total_defects_count": 0,
+                    "reasons": [guardrail_res["rejection_summary"] or "Objek bukan bodi smartphone."],
+                    "inspection_time_sec": 0.1
+                }
+                card_bgr = self._create_guardrail_card(guardrail_res["annotated_previews"], guardrail_res["rejection_summary"])
+                # Save rejection record into database bank for dataset audit
+                try:
+                    self.db_manager.save_record(
+                        unit_id=unit_id,
+                        model_version=self.version,
+                        model_name=self.config["name"],
+                        is_valid_phone=False,
+                        rejection_reason=guardrail_res["rejection_summary"],
+                        detected_objects=guardrail_res["all_detected_objects"],
+                        report=report,
+                        raw_views=view_images,
+                        annotated_views_bgr=guardrail_res["annotated_previews"],
+                        card_bgr=card_bgr
+                    )
+                except Exception as e:
+                    print(f"[InspectionEngine] DB save error: {e}")
 
-            return report, card_bgr, guardrail_res["annotated_previews"], {}
+                return report, card_bgr, guardrail_res["annotated_previews"], {}
 
         stage1_previews = {}
         stage1_meta = {}
@@ -423,6 +425,20 @@ class StreamlitInspectionEngine:
                 cv2.putText(header, side.upper(), (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
                 combined = np.vstack([header, img_v])
                 view_strip.append(combined)
+
+        # Include any remaining views not in standard order (e.g. 'body')
+        for side, img_v in annotated_views_resized.items():
+            if side not in order:
+                header = np.zeros((40, img_v.shape[1], 3), dtype=np.uint8)
+                header[:] = (35, 35, 35)
+                cv2.putText(header, side.upper(), (12, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
+                combined = np.vstack([header, img_v])
+                view_strip.append(combined)
+
+        if not view_strip:
+            blank = np.zeros((300, 600, 3), dtype=np.uint8)
+            cv2.putText(blank, "No views available", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+            return blank, annotated_views
 
         # Concatenate horizontally
         max_h = max(v.shape[0] for v in view_strip)
