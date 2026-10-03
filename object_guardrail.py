@@ -22,6 +22,8 @@ PROJECT_DIR = BASE_DIR.parent
 DEFAULT_COCO_WEIGHTS = PROJECT_DIR / "yolov8n.pt"
 
 # Complete Indonesian mapping for all 80 standard COCO classes
+__all__ = ["ObjectGuardrail", "COCO_INDONESIAN_MAP", "NON_PHONE_CLASSES", "GUARDRAIL_COLORS"]
+
 COCO_INDONESIAN_MAP = {
     # 1. Manusia & Aksesoris
     "person": "Manusia / Orang",
@@ -149,6 +151,9 @@ class ObjectGuardrail:
     """
     Validates user input images using a pre-trained COCO object detector.
     """
+    COCO_INDONESIAN_MAP = COCO_INDONESIAN_MAP
+    NON_PHONE_CLASSES = NON_PHONE_CLASSES
+
     def __init__(self, weights_path: Optional[str] = None):
         resolved_weights = None
         if weights_path and os.path.exists(weights_path):
