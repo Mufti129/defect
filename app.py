@@ -304,7 +304,7 @@ st.sidebar.divider()
 # 2. Dynamic Model Version Selector
 st.sidebar.markdown("### Pilihan Model AI:")
 model_options = {
-    "v5": "Model V5 (YOLOv8s 1024px - Checkpoint Pelatihan)",
+    "v5": "Model V5 (YOLOv8s 800px - Checkpoint Pelatihan)",
     "v3": "Model V3 (Housing 1.918 Unit - Rekomendasi Produksi)",
     "v4": "Model V4 (Real Annotated Defect Detector - YOLOv8n)",
     "v2": "Model V2 (Multi-View 5-Sudut - Front & Body)",
@@ -2733,7 +2733,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
         """)
 
         eval_model_options = {
-            "v5": "Model Versi 5 (Housing-Only YOLOv8s 1024px — Checkpoint Pelatihan Terbaru)",
+            "v5": "Model Versi 5 (Housing-Only YOLOv8s 800px — Checkpoint Pelatihan Terbaru)",
             "v3": "Model Versi 3 (Housing-Only 1.918 Unit — Rekomendasi Produksi)",
             "v4": "Model Versi 4 (Real Annotated Defect Detector — YOLOv8n)",
             "v2": "Model Versi 2 (Multi-View 5-Sudut — Front & Body)",
@@ -2838,12 +2838,12 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div>
                         <span style="background: #8B5CF6; color: white; font-size: 0.76rem; font-weight: 800; padding: 4px 10px; border-radius: 6px;">TERBARU (CHECKPOINT TERBAIK)</span>
-                        <span style="font-weight: 800; font-size: 1.15rem; color: #2E1065; margin-left: 10px;">Model Versi 5: YOLOv8s Detect (1024x1024px)</span>
+                        <span style="font-weight: 800; font-size: 1.15rem; color: #2E1065; margin-left: 10px;">Model Versi 5: YOLOv8s Detect (800x800px)</span>
                     </div>
                     <span style="background: #EDE9FE; color: #6D28D9; font-weight: 700; font-size: 0.80rem; padding: 3px 10px; border-radius: 12px;">Epoch 18/30 Sedang Berjalan (57.2% Selesai)</span>
                 </div>
                 <div style="font-size: 0.84rem; color: #4C1D95; margin-top: 8px; line-height: 1.45;">
-                    Model resolusi tinggi 1024x1024 piksel dengan arsitektur YOLOv8s (11.2M Parameter) khusus 4 sisi bodi (*housing-only*). Menggunakan filter 100% citra ber-cacat (tanpa background kosong) untuk memaksimalkan daya pembeda pada lecet mikro, bodi penyok, dan cat gompal.
+                    Model resolusi tinggi 800x800 piksel dengan arsitektur YOLOv8s (11.2M Parameter) khusus 4 sisi bodi (*housing-only*). Menggunakan filter 100% citra ber-cacat (tanpa background kosong) untuk memaksimalkan daya pembeda pada lecet mikro, bodi penyok, dan cat gompal.
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -2855,7 +2855,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 training_cycle="30 Epochs (Epoch 18 Berjalan)",
                 cycle_desc="Progres: 57.2% Selesai (AdamW / SGD)",
                 dataset_info="5.346 Citra Bodi Housing Riil",
-                dataset_desc="100% Citra Ber-Cacat (1024x1024px)",
+                dataset_desc="100% Citra Ber-Cacat (800x800px)",
                 target_info="SGD / AdamW Gradient Backprop",
                 target_desc="CIoU Loss + DFL + BCE Bounding Box",
                 theme_color="#8B5CF6"
@@ -2898,7 +2898,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
             with k5:
                 st.markdown("""
                 <div class="flutter-metric-card" style="border-color: #DDD6FE;">
-                    <div class="flutter-metric-val" style="color: #2563EB;">1024 px</div>
+                    <div class="flutter-metric-val" style="color: #2563EB;">800 px</div>
                     <div class="flutter-metric-label">Resolusi Input</div>
                     <div class="flutter-metric-sub">Tekstur Cacat Mikro Tajam</div>
                 </div>
@@ -3649,7 +3649,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 "Versi 1 (Baseline Prototipe)"
             ],
             "Arsitektur Detector": [
-                "YOLOv8s Detect (1024x1024, 11.2M Params)",
+                "YOLOv8s Detect (800x800, 11.2M Params)",
                 "YOLOv8n Detect + Random Forest Ensemble",
                 "YOLOv8n Detect (640x640, 3.2M Params)",
                 "YOLOv8-Seg Polygon Nano (640x640)",
@@ -3704,7 +3704,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
         st.markdown("""
         > [!NOTE]
         > **Keunggulan Arsitektur Model Versi 5:**
-        > 1. **Resolusi Input 1024x1024 (Naik dari 640x640):** Mencegah lecet rambut mikro (*hairline scratch*) dan cuil kecil pada bezel terhapus akibat kompresi resolusi.
+        > 1. **Resolusi Input 800x800 (Naik dari 640x640):** Mencegah lecet rambut mikro (*hairline scratch*) dan cuil kecil pada bezel terhapus akibat kompresi resolusi.
         > 2. **Kapasitas Model YOLOv8s (11 Juta Parameter):** 3.6x lebih besar dibandingkan YOLOv8n (3.2 Juta Parameter), memberikan diskriminasi tekstur bodi yang jauh lebih tajam.
         > 3. **Fokus Eksklusif Housing (No Front):** Seluruh kapasitas model dialokasikan khusus mendeteksi cacat bezel samping, port charger, speaker grill, dan bodi belakang tanpa terdistraksi pantulan kaca layar.
         """)
