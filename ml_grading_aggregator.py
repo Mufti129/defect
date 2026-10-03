@@ -18,9 +18,6 @@ import json
 import joblib
 from typing import Dict, List, Tuple, Optional, Any
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
 
 MODEL_WEIGHTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights", "ml_grading_model.joblib")
 FEATURE_NAMES = [
@@ -221,6 +218,10 @@ class MLGradingAggregator:
         """
         save_dest = save_path or self.model_path
         os.makedirs(os.path.dirname(os.path.abspath(save_dest)), exist_ok=True)
+
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.model_selection import train_test_split
+        from sklearn.metrics import classification_report, confusion_matrix, f1_score, accuracy_score
 
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y

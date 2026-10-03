@@ -344,15 +344,14 @@ class ObjectGuardrail:
                 # In 4-side housing photography (top, bottom, left, right), operators physically hold or position
                 # the phone on the inspection mat. The operator's hands, sleeves, or upper body are naturally visible
                 # in the frame, and will be cleanly eliminated by Stage 1 (Phone Body Localizer & Auto-Cropper).
-                # Unless the human subject completely dominates the frame as an obvious portrait/selfie (area_ratio >= 0.70),
-                # detected person on 4-side views is classified as the legitimate operator and never rejected.
+                # On 4-side housing views, detected person is classified as the legitimate operator and never causes rejection.
                 is_housing_side = view_side.lower() in ["top", "bottom", "left", "right"]
                 is_operator = False
 
                 if cls_name == "person":
-                    if is_housing_side and area_ratio < 0.70:
+                    if is_housing_side:
                         is_operator = True
-                    elif has_phone and area_ratio < 0.65:
+                    elif has_phone or area_ratio < 0.65:
                         is_operator = True
 
                 if is_operator:
@@ -364,6 +363,10 @@ class ObjectGuardrail:
                         bx1, by1, bx2, by2,
                         (180, 150, 0)
                     )
+                    continue
+
+                # Ignore tiny background clutter (< 5% canvas area) on housing sides since Stage 1 localizer crops them out
+                if is_housing_side and area_ratio < 0.05:
                     continue
 
                 # Strict Non-phone object detected!

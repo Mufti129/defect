@@ -24,20 +24,13 @@ if str(PARENT_DIR) not in sys.path:
 if str(CURRENT_DIR) not in sys.path:
     sys.path.insert(0, str(CURRENT_DIR))
 
-from defect_detector import DefectDetector, DefectInstance, CLASS_COLORS
-from ml_grading_aggregator import MLGradingAggregator
-from grading_engine import GradingEngine, GRADE_COLORS, DEFECT_CLASS_WEIGHTS, ZONE_WEIGHTS
-from phone_localizer import PhoneBodyLocalizer
-try:
-    from object_guardrail import ObjectGuardrail
-except Exception:
-    class ObjectGuardrail:  # type: ignore
-        def __init__(self, *args, **kwargs):
-            self.model = None
-        def validate_single_image(self, img, *args, **kwargs):
-            return {"is_valid": True, "has_phone": True, "detected_non_phone": [], "detected_phone": [], "all_detections": [], "annotated_bgr": img, "rejection_message": None}
-        def validate_views(self, view_images, *args, **kwargs):
-            return {"is_valid": True, "rejected_views": [], "all_detected_objects": {}, "annotated_previews": {}, "rejection_summary": None}
+# Grade color indicators (BGR for OpenCV visualization)
+GRADE_COLORS = {
+    "A": (34, 139, 34),     # Forest Green (Mint)
+    "B": (218, 165, 32),    # Goldenrod / Blue-Green (Very Good)
+    "C": (0, 140, 255),     # Dark Orange (Good / Heavy Wear)
+    "D": (30, 30, 220),     # Bright Red (Faulty / Broken)
+}
 from db_manager import InspectionDBManager
 import tempfile
 
@@ -162,6 +155,29 @@ class StreamlitInspectionEngine:
         print(f"[InspectionEngine] Initializing Model {version.upper()}: {self.config['name']}")
         print(f"                   YOLO: {yolo_path}")
         print(f"                   ML  : {ml_path}")
+
+        # Optimize PyTorch CPU threads for inference
+        try:
+            import torch
+            torch.set_num_threads(2)
+        except Exception:
+            pass
+
+        # Lazy-import heavy deep learning & ML engines only on engine instantiation
+        from defect_detector import DefectDetector
+        from ml_grading_aggregator import MLGradingAggregator
+        from grading_engine import GradingEngine
+        from phone_localizer import PhoneBodyLocalizer
+        try:
+            from object_guardrail import ObjectGuardrail
+        except Exception:
+            class ObjectGuardrail:  # type: ignore
+                def __init__(self, *args, **kwargs):
+                    self.model = None
+                def validate_single_image(self, img, *args, **kwargs):
+                    return {"is_valid": True, "has_phone": True, "detected_non_phone": [], "detected_phone": [], "all_detections": [], "annotated_bgr": img, "rejection_message": None}
+                def validate_views(self, view_images, *args, **kwargs):
+                    return {"is_valid": True, "rejected_views": [], "all_detected_objects": {}, "annotated_previews": {}, "rejection_summary": None}
 
         # Initialize detector with hardware acceleration (MPS/CPU)
         self.detector = DefectDetector(weights_path=yolo_path)

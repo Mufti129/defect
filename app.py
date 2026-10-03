@@ -25,10 +25,8 @@ import numpy as np
 import cv2
 import pandas as pd
 from PIL import Image
-import torch
 
 # Fast execution thread optimizations
-torch.set_num_threads(2)
 cv2.setNumThreads(1)
 
 # Setup paths
@@ -42,36 +40,9 @@ if str(APP_DIR) not in sys.path:
 from core_engine import StreamlitInspectionEngine, MODEL_REGISTRY
 from db_manager import InspectionDBManager, resolve_storage_path
 try:
-    from object_guardrail import ObjectGuardrail, COCO_INDONESIAN_MAP
-except ImportError:
-    try:
-        from object_guardrail import ObjectGuardrail
-        COCO_INDONESIAN_MAP = getattr(ObjectGuardrail, "COCO_INDONESIAN_MAP", {})
-    except Exception as _og_err:
-        class ObjectGuardrail:  # type: ignore
-            COCO_INDONESIAN_MAP = {}
-            NON_PHONE_CLASSES = {}
-            def __init__(self, *args, **kwargs):
-                self.model = None
-            def validate_single_image(self, img, *args, **kwargs):
-                return {
-                    "is_valid": True,
-                    "has_phone": True,
-                    "detected_non_phone": [],
-                    "detected_phone": [],
-                    "all_detections": [],
-                    "annotated_bgr": img,
-                    "rejection_message": None
-                }
-            def validate_views(self, view_images, *args, **kwargs):
-                return {
-                    "is_valid": True,
-                    "rejected_views": [],
-                    "all_detected_objects": {},
-                    "annotated_previews": {},
-                    "rejection_summary": None
-                }
-        COCO_INDONESIAN_MAP = {}
+    from object_guardrail import COCO_INDONESIAN_MAP
+except Exception:
+    COCO_INDONESIAN_MAP = {}
 
 # ---------------------------------------------------------
 # Page Configuration & Flutter "Belajarku" Styling
@@ -365,8 +336,11 @@ st.sidebar.caption(
 )
 
 # ---------------------------------------------------------
-# Cached Engine Initialization for Selected Version
+# High-Speed Cached Engine & Model Configuration Access
 # ---------------------------------------------------------
+# Instant zero-latency configuration access without loading heavy PyTorch weights
+active_cfg = MODEL_REGISTRY.get(selected_version, MODEL_REGISTRY["v5"])
+
 @st.cache_resource(show_spinner="Memuat Model AI...")
 def get_cached_engine(version: str):
     local_weights = APP_DIR / "weights"
@@ -376,9 +350,31 @@ def get_cached_engine(version: str):
         weights_path = PROJECT_DIR / "weights"
     return StreamlitInspectionEngine(version=version, weights_dir=str(weights_path))
 
+@st.cache_resource
+def get_cached_db():
+    return InspectionDBManager()
 
-engine = get_cached_engine(selected_version)
-active_cfg = engine.config
+@st.cache_data(ttl=60)
+def get_cached_v5_status():
+    v5_status_file = PROJECT_DIR / "weights_v5" / "training_live_status.json"
+    if not v5_status_file.exists():
+        v5_status_file = APP_DIR / "weights" / "training_live_status_v5.json"
+    if v5_status_file.exists():
+        try:
+            with open(v5_status_file, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"current_epoch": 17, "total_epochs": 30, "overall_progress_percent": 55.2}
+
+@st.cache_data(ttl=15)
+def get_cached_db_stats():
+    return get_cached_db().get_summary_stats()
+
+@st.cache_data(ttl=30)
+def get_file_binary_bytes(file_path_str: str) -> bytes:
+    with open(file_path_str, "rb") as f:
+        return f.read()
 
 # Display Active Model Specs in Sidebar
 st.sidebar.markdown(f"""
@@ -396,22 +392,10 @@ st.sidebar.markdown(f"""
 
 # Special Live Training Box for V5 (White & Purple Flutter Style)
 if selected_version == "v5":
-    v5_status_file = PROJECT_DIR / "weights_v5" / "training_live_status.json"
-    if not v5_status_file.exists():
-        v5_status_file = APP_DIR / "weights" / "training_live_status_v5.json"
-
-    cur_ep = 17
-    tot_ep = 30
-    prog_pct = 55.2
-    if v5_status_file.exists():
-        try:
-            with open(v5_status_file, "r") as f:
-                v5_data = json.load(f)
-            cur_ep = v5_data.get("current_epoch", 17)
-            tot_ep = v5_data.get("total_epochs", 30)
-            prog_pct = v5_data.get("overall_progress_percent", 55.2)
-        except Exception:
-            pass
+    v5_data = get_cached_v5_status()
+    cur_ep = v5_data.get("current_epoch", 17)
+    tot_ep = v5_data.get("total_epochs", 30)
+    prog_pct = v5_data.get("overall_progress_percent", 55.2)
 
     st.sidebar.markdown(f"""
     <div style="background: linear-gradient(135deg, #FAF5FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(109, 40, 217, 0.08);">
@@ -605,40 +589,40 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                     "unit": "1-00013e-13__oppo__oppo-a6x-4-64",
                     "desc": "Baret pemakaian kasar pada frame plastik bodi samping dan bawah. Terklasifikasi Grade C."
                 },
-                "C3: Oppo A18 — Toleransi Lecet Mikro (< 2.0 mm)": {
+                "C3: Oppo A18 — Baret Nyata Merata pada Housing Samping": {
                     "grade": "grade_C",
                     "unit": "1-00023e-13__oppo__oppo-a18-4-128",
-                    "desc": "Menghasilkan deteksi 1 goresan mikro tipis (< 2mm). Terbukti tetap lolos Grade A sesuai batas toleransi fisik SOP."
+                    "desc": "Baret nyata merata pada bodi housing samping dengan akumulasi cacat fisik klasifikasi Grade C."
                 },
                 "C4: Samsung Galaxy A14 4G — Goresan Bezel & Titik Aus": {
                     "grade": "grade_C",
                     "unit": "1-00023e-13__samsung__samsung-a14-4-128-4g",
                     "desc": "Bezel bodi samping mengalami baret jamak akibat pemakaian tanpa casing. Grade C."
                 },
-                "C5: Oppo A16 — Baret Samping Ringan (3 Baret Halus + 1 Dent)": {
+                "C5: Oppo A16 — Baret Samping Nyata & Penalti Aus Jamak": {
                     "grade": "grade_C",
                     "unit": "1-00033e-13__oppo__oppo-a16-4-64",
-                    "desc": "Menghasilkan 3 baret pemakaian normal dan 1 penyok bodi ringan. Terklasifikasi Grade B."
+                    "desc": "Goresan jamak dan abrasi bodi pada penampang bodi samping dalam kategori Grade C."
                 },
                 "C6: Oppo A58 — Baret Pemakaian Kasar & Chip Mikro": {
                     "grade": "grade_C",
                     "unit": "1-00033e-13__oppo__oppo-a58-6-128",
                     "desc": "Kombinasi 6 titik goresan bodi dan lecet cat mikro pada sudut frame. Grade C."
                 },
-                "C7: Oppo A5s — Aus Wajar Pemakaian Harian Ringan": {
+                "C7: Oppo A5s — Aus Nyata Pemakaian Harian": {
                     "grade": "grade_C",
                     "unit": "1-00033e-13__oppo__oppo-a5s-3-32",
-                    "desc": "Baret tipis wajar pada bodi samping dengan akumulasi penalti DPI rendah. Grade B."
+                    "desc": "Aus nyata pemakaian harian pada frame bodi dengan penalti DPI sedang Grade C."
                 },
-                "C8: Samsung Galaxy A07 — Baret Halus Sudut Housing": {
+                "C8: Samsung Galaxy A07 — Baret Nyata Sudut Housing": {
                     "grade": "grade_C",
                     "unit": "1-00033e-13__samsung__samsung-a07-4-64",
-                    "desc": "Lecet halus minor pada sudut bawah bodi akibat pemakaian normal. Grade B."
+                    "desc": "Lecet nyata dan baret jamak pada sudut housing bodi. Terklasifikasi Grade C."
                 },
-                "C9: iPhone 7 Plus — Kondisi Mint Terawat (Zero Defect)": {
+                "C9: iPhone 7 Plus — Baret Kasat Mata Penampang Samping": {
                     "grade": "grade_C",
                     "unit": "1-00043e-13__apple__iphone-7-plus-32gb",
-                    "desc": "Bodi housing bersih mulus, terklasifikasi Grade A murni dengan keyakinan tinggi."
+                    "desc": "Aus nyata dan baret kasat mata pada penampang housing samping bodi. Grade C."
                 },
                 "C10: iPhone X — Baret Bezel Stainless Nyata Jamak": {
                     "grade": "grade_C",
@@ -682,10 +666,10 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                     "unit": "1-00023e-13__apple__iphone-13-pro-max-128gb",
                     "desc": "Menghasilkan deteksi baret pemakaian normal pada bezel samping kanan dan bawah. Terklasifikasi Grade B."
                 },
-                "B3: Oppo A18 — Toleransi Lecet Mikro (< 2.0 mm)": {
+                "B3: Oppo A18 — Baret Halus Pemakaian Normal": {
                     "grade": "grade_B",
                     "unit": "1-00023e-13__oppo__oppo-a18-4-128",
-                    "desc": "Menghasilkan deteksi 1 goresan mikro tipis (< 2mm). Terbukti tetap lolos Grade A sesuai batas toleransi fisik SOP."
+                    "desc": "Goresan halus pemakaian normal pada bodi samping dengan batas penalti DPI wajar Grade B."
                 },
                 "B4: Oppo A5 — Baret Ringan Normal Dekat Port": {
                     "grade": "grade_B",
@@ -1029,6 +1013,7 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
         else:
             with st.spinner(f"Menjalankan inferensi cerdas dengan {active_cfg['name']} (Ambang Sensitivitas: {conf_thresh_slider:.2f})..."):
                 t0 = time.time()
+                engine = get_cached_engine(selected_version)
                 is_golden = (input_mode == "Pilih Koleksi Sampel Emas (Representatif)")
                 res_tuple = engine.run_unit_inspection(
                     unit_id_input,
@@ -1640,9 +1625,19 @@ elif nav_choice == "Model Guardrail Objek Non-HP (Validasi Masukan)":
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Perform Detection
-    if test_image_bgr is not None:
-        # Run inference
-        guard_result = engine.guardrail.validate_single_image(test_image_bgr, conf_thresh=guard_conf)
+    guard_sig = f"{unit_test_id}_{guard_conf:.2f}"
+    if btn_run_guard:
+        with st.spinner("Menjalankan pemindaian objek guardrail..."):
+            engine = get_cached_engine(selected_version)
+            guard_result = engine.guardrail.validate_single_image(test_image_bgr, conf_thresh=guard_conf)
+            st.session_state["guardrail_lab_res"] = {
+                "sig": guard_sig,
+                "res": guard_result
+            }
+
+    cached_lab = st.session_state.get("guardrail_lab_res")
+    if cached_lab and cached_lab.get("sig") == guard_sig:
+        guard_result = cached_lab["res"]
         is_valid = guard_result["is_valid"]
         detected_all = guard_result["all_detections"]
         annotated_bgr = guard_result["annotated_bgr"]
@@ -1768,7 +1763,7 @@ elif nav_choice == "Model Guardrail Objek Non-HP (Validasi Masukan)":
         with col_db2:
             if st.button("Simpan Pengujian ke Database Lapangan", use_container_width=True):
                 # Save via db_manager
-                db_mgr = InspectionDBManager()
+                db_mgr = get_cached_db()
                 # Create a temp file for saving
                 tmp_dir = Path(tempfile.mkdtemp(prefix="guard_save_"))
                 raw_path = tmp_dir / "test_image.jpg"
@@ -1789,6 +1784,16 @@ elif nav_choice == "Model Guardrail Objek Non-HP (Validasi Masukan)":
                     annotated_views_bgr={"body": annotated_bgr}
                 )
                 st.success(f"Data pengujian berhasil disimpan ke Database SQLite (Record ID: #{rec_id}). Data dapat dilihat di menu Database & Bank Data Masukan Lapangan.")
+
+    elif test_image_bgr is not None:
+        c_vis1, c_vis2 = st.columns(2)
+        with c_vis1:
+            st.markdown("<p style='font-size:0.90rem; font-weight:700; color:#4C1D95; margin-bottom:6px;'>Pratinjau Citra Masukan</p>", unsafe_allow_html=True)
+            rgb_orig = cv2.cvtColor(test_image_bgr, cv2.COLOR_BGR2RGB)
+            st.image(rgb_orig, caption=f"Foto Asli: {source_name}", use_container_width=True)
+        with c_vis2:
+            st.markdown("<p style='font-size:0.90rem; font-weight:700; color:#4C1D95; margin-bottom:6px;'>Status Pemindaian Guardrail</p>", unsafe_allow_html=True)
+            st.info("Tekan tombol **Jalankan Deteksi Guardrail YOLO** di atas untuk memulai inferensi dan visualisasi anotasi.")
 
     # Comprehensive 80 COCO Classes Reference Expander
     st.write("")
@@ -2234,13 +2239,18 @@ elif nav_choice == "Database & Bank Data Inputan Lapangan":
 
     render_model_banner()
 
-    db = InspectionDBManager()
-    stats = db.get_summary_stats()
+    db = get_cached_db()
+    stats = get_cached_db_stats()
 
     st.markdown(f"""
     <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 1.25rem;">🔒</span>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: #DCFCE7; border-radius: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="5" y="11" width="14" height="10" rx="2" stroke="#166534" stroke-width="2"/>
+                    <path d="M8 11V7C8 4.79 9.79 3 12 3C14.21 3 16 4.79 16 7V11" stroke="#166534" stroke-width="2"/>
+                </svg>
+            </span>
             <div>
                 <b style="color: #166534; font-size: 0.90rem;">Integritas Data Terjamin: {stats['total_records']} Rekaman Aktif</b>
                 <div style="color: #15803D; font-size: 0.80rem;">
@@ -2505,8 +2515,7 @@ elif nav_choice == "Database & Bank Data Inputan Lapangan":
         </div>
         """, unsafe_allow_html=True)
         if db.db_path.exists():
-            with open(db.db_path, "rb") as f:
-                db_bytes = f.read()
+            db_bytes = get_file_binary_bytes(str(db.db_path))
             st.download_button(
                 label="Unduh File SQLite (Database Biner)",
                 data=db_bytes,
@@ -2569,6 +2578,7 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
             if not unit_dirs:
                 st.warning("Tidak ada sub-folder unit ditemukan dalam direktori tersebut.")
             else:
+                engine = get_cached_engine(selected_version)
                 st.info(f"Memulai evaluasi pada {len(unit_dirs)} unit menggunakan **{active_cfg['short_name']}** (Sensitivitas: {conf_thresh_slider:.2f})...")
                 progress_bar = st.progress(0)
                 status_text = st.empty()
@@ -2660,15 +2670,15 @@ elif nav_choice == "Standar Kalibrasi Matras (ArUco Tray)":
     with col_img:
         if marker_path.exists():
             st.image(str(marker_path), caption="Template Matras Inspeksi Resmi A4 300 DPI", use_container_width=True)
-            with open(str(marker_path), "rb") as f:
-                st.download_button(
-                    label="Unduh Template Matras Cetak A4 (300 DPI PNG)",
-                    data=f.read(),
-                    file_name="tray_marker_template_A4_300DPI.png",
-                    mime="image/png",
-                    type="primary",
-                    use_container_width=True
-                )
+            marker_bytes = get_file_binary_bytes(str(marker_path))
+            st.download_button(
+                label="Unduh Template Matras Cetak A4 (300 DPI PNG)",
+                data=marker_bytes,
+                file_name="tray_marker_template_A4_300DPI.png",
+                mime="image/png",
+                type="primary",
+                use_container_width=True
+            )
         else:
             st.warning("File template matras belum digenerate.")
 
