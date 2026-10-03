@@ -2754,30 +2754,43 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
             rows_html = ""
             for i, c_name in enumerate(classes):
                 cnt = counts[i]
-                row_cells = f'<td style="font-weight: 800; background: #1E293B; color: #FFFFFF !important; padding: 8px 12px; border: 1px solid #334155; text-align: left; white-space: nowrap;">True {c_name} ({cnt})</td>'
+                row_cells = f'<td style="background: #1E293B; padding: 10px 12px; border: 1px solid #334155; text-align: left; white-space: nowrap;"><span style="color: #F8FAFC !important; font-weight: 800; font-size: 0.86rem; display: inline-block;">True {c_name} ({cnt})</span></td>'
                 for j, pred_c in enumerate(classes):
                     val = cm[i][j]
                     if i == j:
-                        # Correct prediction (Green)
-                        cell_style = "background: #DCFCE7; color: #14532D !important; font-weight: 800; font-size: 0.90rem; padding: 8px; border: 1px solid #86EFAC;"
+                        # Correct prediction (Dark Emerald Green + Neon Green Text)
+                        bg_style = "background: #064E3B; border: 1px solid #059669;"
+                        span_style = "color: #34D399 !important; font-weight: 900; font-size: 1.15rem; display: inline-block;"
                     elif (i == 0 and j == 3) or (i == 3 and j == 0):
-                        # Critical inversion (Red)
-                        cell_style = "background: #FEE2E2; color: #991B1B !important; font-weight: 800; font-size: 0.88rem; padding: 8px; border: 1px solid #FCA5A5;"
+                        # Critical inversion (Dark Crimson Red + Vivid Coral Red Text)
+                        bg_style = "background: #450A0A; border: 1px solid #DC2626;"
+                        span_style = "color: #F87171 !important; font-weight: 900; font-size: 1.10rem; display: inline-block;"
                     elif abs(i - j) == 1:
-                        # 1-step deviation (Amber)
-                        cell_style = "background: #FEF3C7; color: #78350F !important; font-weight: 700; font-size: 0.88rem; padding: 8px; border: 1px solid #FDE68A;"
+                        # 1-step deviation (Dark Amber/Brown + Vivid Gold/Yellow Text)
+                        bg_style = "background: #451A03; border: 1px solid #D97706;"
+                        span_style = "color: #FBBF24 !important; font-weight: 800; font-size: 1.10rem; display: inline-block;"
                     else:
-                        # Other off-diagonal (Neutral slate)
-                        cell_style = "background: #F8FAFC; color: #475569 !important; font-weight: 600; font-size: 0.88rem; padding: 8px; border: 1px solid #E2E8F0;"
-                    row_cells += f'<td style="{cell_style}">{val}</td>'
+                        # Other off-diagonal (Dark Slate + Crisp Silver Text)
+                        bg_style = "background: #0F172A; border: 1px solid #334155;"
+                        span_style = "color: #E2E8F0 !important; font-weight: 700; font-size: 1.05rem; display: inline-block;"
+                    row_cells += f'<td style="{bg_style} padding: 10px 8px; text-align: center;"><span style="{span_style}">{val}</span></td>'
                 rows_html += f"<tr>{row_cells}</tr>"
 
-            header_cells = f'<th style="background: #0F172A; color: #FFFFFF !important; font-weight: 800; font-size: 0.84rem; padding: 8px 12px; border: 1px solid #334155; text-align: left; white-space: nowrap;">True \\ Pred</th>'
+            header_cells = f'<th style="background: #020617; padding: 10px 12px; border: 1px solid #334155; text-align: left; white-space: nowrap;"><span style="color: #FFFFFF !important; font-weight: 900; font-size: 0.86rem; display: inline-block;">True \\\\ Pred</span></th>'
             for pred_c in classes:
-                header_cells += f'<th style="background: {theme_color}; color: #FFFFFF !important; font-weight: 800; font-size: 0.84rem; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.25); text-align: center;">Pred {pred_c}</th>'
+                header_cells += f'<th style="background: {theme_color}; padding: 10px 8px; border: 1px solid rgba(255,255,255,0.25); text-align: center;"><span style="color: #FFFFFF !important; font-weight: 900; font-size: 0.86rem; display: inline-block;">Pred {pred_c}</span></th>'
+
+            legend_html = """
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 0.74rem; font-weight: 700;">
+                <div style="display: flex; align-items: center; gap: 5px;"><span style="display:inline-block; width: 10px; height: 10px; border-radius: 2px; background: #064E3B; border: 1px solid #059669;"></span> <span style="color: #059669;">Prediksi Tepat (TP)</span></div>
+                <div style="display: flex; align-items: center; gap: 5px;"><span style="display:inline-block; width: 10px; height: 10px; border-radius: 2px; background: #451A03; border: 1px solid #D97706;"></span> <span style="color: #D97706;">Deviasi 1 Tingkat</span></div>
+                <div style="display: flex; align-items: center; gap: 5px;"><span style="display:inline-block; width: 10px; height: 10px; border-radius: 2px; background: #450A0A; border: 1px solid #DC2626;"></span> <span style="color: #DC2626;">Inversi Kritis (D ↔ A)</span></div>
+                <div style="display: flex; align-items: center; gap: 5px;"><span style="display:inline-block; width: 10px; height: 10px; border-radius: 2px; background: #0F172A; border: 1px solid #334155;"></span> <span style="color: #64748B;">Lainnya</span></div>
+            </div>
+            """
 
             return f"""
-            <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.82rem; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.84rem; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.15); border: 1.5px solid #334155;">
                 <thead>
                     <tr>{header_cells}</tr>
                 </thead>
@@ -2785,6 +2798,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                     {rows_html}
                 </tbody>
             </table>
+            {legend_html}
             """
 
         # -------------------------------------------------------------
