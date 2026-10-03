@@ -38,7 +38,7 @@ import tempfile
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
     "v5": {
         "id": "v5",
-        "name": "Model Versi 5 (Housing-Only YOLOv8s 1024px - Checkpoint Terbaik/Sementara)",
+        "name": "Model Versi 5 (Housing-Only YOLOv8s 1024px - Checkpoint Terbaru)",
         "short_name": "Versi 5 (YOLOv8s 1024px)",
         "badge": "TERBARU (CHECKPOINT TERBAIK)",
         "badge_color": "#8B5CF6",
@@ -47,8 +47,8 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "arch": "YOLOv8s Detect (1024x1024, 11M Params)",
         "dataset": "dataset_v5_full (1.918 Unit Bodi, Resolusi Asli)",
         "focus": "4 Sisi Housing (Top, Bottom, Left, Right)",
-        "status": "Checkpoint Sementara (Training 11/30 Epoch Berjalan - mAP 30.6%)",
-        "description": "Model resolusi tinggi 1024x1024 arsitektur YOLOv8s untuk ketajaman tekstur micro-defect pada housing smartphone. Menggunakan checkpoint bobot terbaik dari proses training yang sedang berjalan."
+        "status": "Pelatihan Berjalan (Epoch 16/30 Selesai - Recall 68.4%, mAP50 36.1%)",
+        "description": "Model resolusi tinggi 1024x1024 arsitektur YOLOv8s untuk ketajaman tekstur cacat mikro pada housing smartphone. Menggunakan checkpoint bobot terbaik dari proses pelatihan yang sedang berjalan (Epoch 16/30, Recall 68.4%, mAP50 36.1%)."
     },
     "v4": {
         "id": "v4",

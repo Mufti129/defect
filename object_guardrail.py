@@ -21,74 +21,127 @@ BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
 DEFAULT_COCO_WEIGHTS = PROJECT_DIR / "yolov8n.pt"
 
-# Classes that are strictly NON-PHONE objects and must trigger rejection
-NON_PHONE_CLASSES = {
-    # Humans & Animals
+# Complete Indonesian mapping for all 80 standard COCO classes
+COCO_INDONESIAN_MAP = {
+    # 1. Manusia & Aksesoris
     "person": "Manusia / Orang",
-    "cat": "Kucing / Hewan",
-    "dog": "Anjing / Hewan",
-    "horse": "Hewan",
-    "sheep": "Hewan",
-    "cow": "Hewan",
-    "elephant": "Hewan",
-    "bear": "Hewan",
-    "zebra": "Hewan",
-    "giraffe": "Hewan",
-    "bird": "Burung / Hewan",
+    "backpack": "Tas Ransel",
+    "umbrella": "Payung",
+    "handbag": "Tas Tangan",
+    "tie": "Dasi",
+    "suitcase": "Koper / Tas Pakaian",
 
-    # Electronics & Office (Strict Non-phone)
+    # 2. Binatang (Fauna)
+    "bird": "Burung (Binatang)",
+    "cat": "Kucing (Binatang)",
+    "dog": "Anjing (Binatang)",
+    "horse": "Kuda (Binatang)",
+    "sheep": "Domba (Binatang)",
+    "cow": "Sapi (Binatang)",
+    "elephant": "Gajah (Binatang)",
+    "bear": "Beruang (Binatang)",
+    "zebra": "Zebra (Binatang)",
+    "giraffe": "Jerapah (Binatang)",
+
+    # 3. Komputer & Elektronik (Non-Phone)
     "laptop": "Komputer Laptop",
-    "keyboard": "Keyboard Komputer",
     "mouse": "Mouse Komputer",
-    "tv": "Televisi / Monitor",
+    "keyboard": "Keyboard Komputer",
+    "tv": "Televisi / Layar Monitor",
     "microwave": "Microwave",
     "oven": "Oven",
     "toaster": "Pemanggang Roti",
     "refrigerator": "Kulkas",
+    "remote": "Remote Control",
 
-    # Containers & Food
+    # 4. Wadah, Gelas & Minuman
     "bottle": "Botol Minuman",
-    "wine glass": "Gelas",
-    "cup": "Cangkir / Gelas",
+    "wine glass": "Gelas Kaca",
+    "cup": "Cangkir / Gelas Minuman",
     "bowl": "Mangkuk",
-    "banana": "Buah Pisang",
-    "apple": "Buah Apel",
-    "sandwich": "Makanan",
-    "orange": "Buah Jeruk",
-    "pizza": "Makanan",
-    "donut": "Donat",
-    "cake": "Kue",
+    "fork": "Garpu",
+    "knife": "Pisau",
+    "spoon": "Sendok",
 
-    # Vehicles & Outdoors
+    # 5. Kendaraan & Lalu Lintas
     "bicycle": "Sepeda",
     "car": "Mobil",
     "motorcycle": "Sepeda Motor",
-    "airplane": "Pesawat",
+    "airplane": "Pesawat Terbang",
     "bus": "Bus",
-    "train": "Kereta",
+    "train": "Kereta Api",
     "truck": "Truk",
-    "boat": "Perahu",
+    "boat": "Perahu / Kapal",
     "traffic light": "Lampu Lalu Lintas",
+    "fire hydrant": "Hidran Pemadam",
+    "stop sign": "Rambu Berhenti",
+    "parking meter": "Meteran Parkir",
 
-    # Nature & Furniture
-    "potted plant": "Tanaman / Tumbuhan",
+    # 6. Tumbuhan & Perabot
+    "potted plant": "Tanaman / Pot Bunga",
+    "vase": "Vas Bunga",
     "chair": "Kursi",
     "couch": "Sofa",
     "bed": "Tempat Tidur",
+    "dining table": "Meja Makan",
     "toilet": "Toilet",
+    "bench": "Bangku Taman",
+
+    # 7. Makanan & Buah
+    "banana": "Pisang (Buah)",
+    "apple": "Apel (Buah)",
+    "sandwich": "Roti Sandwich",
+    "orange": "Jeruk (Buah)",
+    "broccoli": "Brokoli (Sayur)",
+    "carrot": "Wortel (Sayur)",
+    "hot dog": "Hot Dog",
+    "pizza": "Pizza",
+    "donut": "Donat",
+    "cake": "Kue",
+
+    # 8. Olahraga & Hiburan
+    "frisbee": "Piring Terbang (Frisbee)",
+    "skis": "Papan Ski",
+    "snowboard": "Papan Seluncur",
+    "sports ball": "Bola Olahraga",
+    "kite": "Layang-Layang",
+    "baseball bat": "Tongkat Baseball",
+    "baseball glove": "Sarung Tangan",
+    "skateboard": "Papan Skateboard",
+    "surfboard": "Papan Selancar",
+    "tennis racket": "Raket Tenis",
+
+    # 9. Lainnya
     "book": "Buku / Dokumen",
-    "vase": "Vas Bunga",
-    "teddy bear": "Boneka"
+    "clock": "Jam Dinding / Arloji",
+    "scissors": "Gunting",
+    "teddy bear": "Boneka Beruang",
+    "hair drier": "Pengering Rambut",
+    "toothbrush": "Sikat Gigi",
+    "sink": "Wastafel",
+
+    # 10. Smartphone (Target yang Sah)
+    "cell phone": "Bodi Smartphone / Handphone"
 }
+
+# All COCO classes except cell phone are non-phone objects
+NON_PHONE_CLASSES = {k: v for k, v in COCO_INDONESIAN_MAP.items() if k != "cell phone"}
 
 # Color palette for guardrail visual annotations (BGR)
 GUARDRAIL_COLORS = {
-    "person": (0, 0, 230),        # Red
+    "person": (0, 0, 230),        # Crimson Red
+    "cat": (0, 140, 255),         # Orange Amber
+    "dog": (0, 140, 255),         # Orange Amber
     "laptop": (220, 100, 0),      # Blue
+    "tv": (220, 100, 0),          # Blue
     "bottle": (0, 165, 255),      # Orange
+    "cup": (0, 165, 255),         # Orange
     "potted plant": (50, 180, 50),# Green
+    "vase": (50, 180, 50),        # Green
     "car": (180, 50, 200),        # Purple
-    "animal": (0, 140, 255)       # Amber
+    "bus": (180, 50, 200),        # Purple
+    "motorcycle": (180, 50, 200), # Purple
+    "cell phone": (16, 185, 129), # Emerald Green (Valid)
 }
 
 
@@ -97,57 +150,89 @@ class ObjectGuardrail:
     Validates user input images using a pre-trained COCO object detector.
     """
     def __init__(self, weights_path: Optional[str] = None):
-        if weights_path is None:
-            weights_path = str(DEFAULT_COCO_WEIGHTS)
+        resolved_weights = None
+        if weights_path and os.path.exists(weights_path):
+            resolved_weights = weights_path
+        elif (BASE_DIR / "weights" / "yolov8n.pt").exists():
+            resolved_weights = str(BASE_DIR / "weights" / "yolov8n.pt")
+        elif (PROJECT_DIR / "yolov8n.pt").exists():
+            resolved_weights = str(PROJECT_DIR / "yolov8n.pt")
+        else:
+            resolved_weights = "yolov8n.pt"
 
-        self.weights_path = weights_path
+        self.weights_path = resolved_weights
         self.model = None
         self.device = "cpu"
 
         try:
             import torch
-            self.device = "mps" if torch.backends.mps.is_available() else "cpu"
+            self.device = "mps" if torch.backends.mps.is_available() else ("cuda" if torch.cuda.is_available() else "cpu")
         except Exception:
             self.device = "cpu"
 
-        if os.path.exists(weights_path):
-            try:
-                from ultralytics import YOLO
-                print(f"[ObjectGuardrail] Loading general object validator: {weights_path} (Device: {self.device})")
-                self.model = YOLO(weights_path)
-                # Warmup model
-                if self.device in ["mps", "cuda"]:
-                    try:
-                        dummy = np.zeros((320, 320, 3), dtype=np.uint8)
-                        self.model.predict(dummy, imgsz=320, verbose=False, device=self.device)
-                    except Exception:
-                        pass
-            except Exception as e:
-                print(f"[ObjectGuardrail] Error loading YOLO COCO model: {e}")
-                self.model = None
+        try:
+            from ultralytics import YOLO
+            print(f"[ObjectGuardrail] Loading general object validator: {resolved_weights} (Device: {self.device})")
+            self.model = YOLO(resolved_weights)
+            # Warmup model
+            if self.device in ["mps", "cuda"]:
+                try:
+                    dummy = np.zeros((320, 320, 3), dtype=np.uint8)
+                    self.model.predict(dummy, imgsz=320, verbose=False, device=self.device)
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"[ObjectGuardrail] Error loading YOLO COCO model: {e}")
+            self.model = None
+
+    def _draw_label_box(self, img: np.ndarray, text: str, x1: int, y1: int, x2: int, y2: int, color: Tuple[int, int, int]):
+        """Draws high-visibility text label pill on image without clipping."""
+        h, w = img.shape[:2]
+        font_scale = max(0.50, min(0.80, w / 850.0))
+        thickness = 2
+        (tw, th), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+
+        if y1 >= th + 14:
+            bg_y1 = y1 - th - 12
+            bg_y2 = y1
+            text_y = y1 - 6
         else:
-            print(f"[ObjectGuardrail] Weights '{weights_path}' not found. Guardrail running in bypass mode.")
+            bg_y1 = y1
+            bg_y2 = min(h - 1, y1 + th + 12)
+            text_y = bg_y1 + th + 6
+
+        bg_x1 = max(0, x1)
+        bg_x2 = min(w - 1, x1 + tw + 16)
+
+        cv2.rectangle(img, (bg_x1, bg_y1), (bg_x2, bg_y2), color, -1)
+        cv2.putText(
+            img,
+            text,
+            (bg_x1 + 8, text_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale,
+            (255, 255, 255),
+            thickness,
+            cv2.LINE_AA
+        )
 
     def validate_single_image(
         self,
         img: np.ndarray,
         view_side: str = "body",
-        conf_thresh: float = 0.28
+        conf_thresh: float = 0.25
     ) -> Dict[str, Any]:
         """
-        Scans a single view image for disallowed non-phone objects.
-        Returns:
-            {
-                "is_valid": bool,
-                "detected_non_phone": List[Dict], # [{class, indonesian_label, conf, bbox}]
-                "annotated_bgr": np.ndarray,
-                "rejection_message": Optional[str]
-            }
+        Scans an image for non-phone objects (person, animal, laptop, bottle, vehicle, etc.).
+        Returns full detection details, visual annotations, and validation status.
         """
         if self.model is None or img is None:
             return {
                 "is_valid": True,
+                "has_phone": True,
                 "detected_non_phone": [],
+                "detected_phone": [],
+                "all_detections": [],
                 "annotated_bgr": img,
                 "rejection_message": None
             }
@@ -170,10 +255,12 @@ class ObjectGuardrail:
         )
 
         detected_non_phone = []
+        detected_phone = []
+        all_detections = []
         has_phone = False
         annotated_img = img.copy()
 
-        # Check first if cell phone is present in any box
+        # Pass 1: Check if genuine cell phone is present
         for res in results:
             if res.boxes is not None and len(res.boxes) > 0:
                 for i in range(len(res.boxes)):
@@ -182,6 +269,7 @@ class ObjectGuardrail:
                         has_phone = True
                         break
 
+        # Pass 2: Annotate and collect all objects
         for res in results:
             if res.boxes is None or len(res.boxes) == 0:
                 continue
@@ -190,64 +278,67 @@ class ObjectGuardrail:
                 cls_id = int(res.boxes.cls[i].item())
                 conf = float(res.boxes.conf[i].item())
                 cls_name = self.model.names.get(cls_id, "")
-
-                if cls_name == "cell phone":
-                    continue
+                indo_name = COCO_INDONESIAN_MAP.get(cls_name, cls_name.capitalize())
 
                 box = res.boxes.xyxy[i].cpu().numpy()
-                bx1 = int(box[0] / scale)
-                by1 = int(box[1] / scale)
-                bx2 = int(box[2] / scale)
-                by2 = int(box[3] / scale)
+                bx1 = max(0, int(box[0] / scale))
+                by1 = max(0, int(box[1] / scale))
+                bx2 = min(w - 1, int(box[2] / scale))
+                by2 = min(h - 1, int(box[3] / scale))
                 bw = max(1, bx2 - bx1)
                 bh = max(1, by2 - by1)
                 box_area = bw * bh
                 canvas_area = h * w
                 area_ratio = box_area / max(1, canvas_area)
 
-                # For human person:
-                # If a phone is present, person is the operator holding the device (handled by HandFilter)
-                # If no phone is present, only reject if person is a dominant subject (selfie/portrait: conf >= 0.65 and area_ratio >= 0.40)
-                if cls_name == "person":
-                    if has_phone or area_ratio < 0.40 or conf < 0.65:
-                        continue
+                obj_info = {
+                    "class_name": cls_name,
+                    "label_id": indo_name,
+                    "confidence": round(conf, 3),
+                    "bbox": [bx1, by1, bx2, by2],
+                    "area_ratio": round(area_ratio, 3)
+                }
 
-                # Check if this object belongs to non-phone category
-                if cls_name in NON_PHONE_CLASSES:
-                    # Require minimum confidence and minimum area to avoid spurious micro-boxes
-                    if conf < 0.35 or area_ratio < 0.05:
-                        continue
-
-                    indo_name = NON_PHONE_CLASSES[cls_name]
-                    detected_non_phone.append({
-                        "class_name": cls_name,
-                        "label_id": indo_name,
-                        "confidence": round(conf, 3),
-                        "bbox": [bx1, by1, bx2, by2],
-                        "area_ratio": round(area_ratio, 3)
-                    })
-
-                    # Draw prominent rejection annotation on image
-                    color = GUARDRAIL_COLORS.get(cls_name, (0, 0, 220))
-                    cv2.rectangle(annotated_img, (bx1, by1), (bx2, by2), color, 3)
-                    
-                    label_text = f"BUKAN HP: {indo_name.upper()} ({conf*100:.0f}%)"
-                    (tw, th), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.65, 2)
-                    
-                    lbl_y1 = max(0, by1 - th - 12)
-                    lbl_y2 = by1
-                    cv2.rectangle(annotated_img, (bx1, lbl_y1), (bx1 + tw + 16, lbl_y2), color, -1)
-                    cv2.putText(
+                if cls_name == "cell phone":
+                    detected_phone.append(obj_info)
+                    all_detections.append(obj_info)
+                    # Draw Emerald Green box for legitimate phone
+                    cv2.rectangle(annotated_img, (bx1, by1), (bx2, by2), (16, 185, 129), 3)
+                    self._draw_label_box(
                         annotated_img,
-                        label_text,
-                        (bx1 + 8, lbl_y2 - 6),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.60,
-                        (255, 255, 255),
-                        2,
-                        cv2.LINE_AA
+                        f"BODI HP: SMARTPHONE ({conf*100:.0f}%)",
+                        bx1, by1, bx2, by2,
+                        (16, 185, 129)
                     )
+                    continue
 
+                # Tolerated operator hands/fingers when holding a phone
+                is_operator_hand = (cls_name == "person" and (has_phone or (conf < 0.50 and area_ratio < 0.30)))
+                if is_operator_hand:
+                    # Draw subtle cyan box for operator holding phone
+                    cv2.rectangle(annotated_img, (bx1, by1), (bx2, by2), (200, 180, 0), 2)
+                    self._draw_label_box(
+                        annotated_img,
+                        f"TANGAN OPERATOR ({conf*100:.0f}%)",
+                        bx1, by1, bx2, by2,
+                        (180, 150, 0)
+                    )
+                    continue
+
+                # Strict Non-phone object detected!
+                detected_non_phone.append(obj_info)
+                all_detections.append(obj_info)
+
+                color = GUARDRAIL_COLORS.get(cls_name, (0, 0, 220))
+                cv2.rectangle(annotated_img, (bx1, by1), (bx2, by2), color, 3)
+                self._draw_label_box(
+                    annotated_img,
+                    f"BUKAN HP: {indo_name.upper()} ({conf*100:.0f}%)",
+                    bx1, by1, bx2, by2,
+                    color
+                )
+
+        # Validation status: invalid if any non-phone object was found
         is_valid = len(detected_non_phone) == 0
 
         rejection_msg = None
@@ -256,13 +347,16 @@ class ObjectGuardrail:
             joined_names = ", ".join(detected_names)
             rejection_msg = (
                 f"Citra pada sisi '{view_side.upper()}' terdeteksi memuat objek bukan smartphone "
-                f"({joined_names}). Sistem hanya menerima foto fisik bodi ponsel. "
-                f"Harap masukkan ulang foto bodi HP yang benar."
+                f"({joined_names}). Sistem AI Guardrail menolak citra ini demi menjaga integritas data valuasi. "
+                f"Harap masukkan ulang foto fisik bodi smartphone yang sah."
             )
 
         return {
             "is_valid": is_valid,
+            "has_phone": has_phone,
             "detected_non_phone": detected_non_phone,
+            "detected_phone": detected_phone,
+            "all_detections": all_detections,
             "annotated_bgr": annotated_img,
             "rejection_message": rejection_msg
         }
