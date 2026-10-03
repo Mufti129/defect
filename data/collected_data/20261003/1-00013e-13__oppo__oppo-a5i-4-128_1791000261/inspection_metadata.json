@@ -1,0 +1,21 @@
+{
+  "record_id": 23,
+  "timestamp": "2026-10-03 11:04:21",
+  "unit_id": "1-00013e-13__oppo__oppo-a5i-4-128",
+  "model_version": "v5",
+  "model_name": "Model Versi 5 (Housing-Only YOLOv8s 1024px - Checkpoint Terbaru)",
+  "is_valid_phone": true,
+  "rejection_reason": null,
+  "final_grade": "D",
+  "grade_confidence": 1.0,
+  "total_dpi": 50.33,
+  "defects_count": 8,
+  "defect_breakdown": {
+    "scratch": 5,
+    "dent": 0,
+    "chip": 1,
+    "crack": 0,
+    "broken": 2
+  },
+  "elapsed_sec": 0.0
+}

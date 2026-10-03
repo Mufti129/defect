@@ -1,0 +1,15 @@
+{
+  "record_id": 18,
+  "timestamp": "2026-10-03 10:52:59",
+  "unit_id": "test-human",
+  "model_version": "v3",
+  "model_name": "Model Versi 3 (Housing-Only Skala Penuh 1.918 Unit - Random Forest 18 Fitur)",
+  "is_valid_phone": false,
+  "rejection_reason": "Citra pada sisi 'BODY' terdeteksi memuat objek bukan smartphone (Manusia / Orang). Sistem AI Guardrail menolak citra ini demi menjaga integritas data valuasi. Harap masukkan ulang foto fisik bodi smartphone yang sah.",
+  "final_grade": null,
+  "grade_confidence": 0.0,
+  "total_dpi": 0.0,
+  "defects_count": 0,
+  "defect_breakdown": {},
+  "elapsed_sec": 0.0
+}

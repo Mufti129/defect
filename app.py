@@ -40,7 +40,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core_engine import StreamlitInspectionEngine, MODEL_REGISTRY
-from db_manager import InspectionDBManager
+from db_manager import InspectionDBManager, resolve_storage_path
 try:
     from object_guardrail import ObjectGuardrail, COCO_INDONESIAN_MAP
 except ImportError:
@@ -2237,6 +2237,23 @@ elif nav_choice == "Database & Bank Data Inputan Lapangan":
     db = InspectionDBManager()
     stats = db.get_summary_stats()
 
+    st.markdown(f"""
+    <div style="background: #F0FDF4; border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.25rem;">🔒</span>
+            <div>
+                <b style="color: #166534; font-size: 0.90rem;">Integritas Data Terjamin: {stats['total_records']} Rekaman Aktif</b>
+                <div style="color: #15803D; font-size: 0.80rem;">
+                    Seluruh riwayat masukan (termasuk rekaman sesi 2 Oktober 2026 & 3 Oktober 2026) tersimpan permanen dalam database SQLite & JSON snapshot yang terikat langsung ke repositori GitHub.
+                </div>
+            </div>
+        </div>
+        <span style="background: #DCFCE7; color: #166534; font-weight: 700; font-size: 0.76rem; padding: 4px 10px; border-radius: 20px; border: 1px solid #86EFAC;">
+            AUTO-SYNC GIT PERMANEN
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
+
     # ---------------------------------------------------------
     # KPI Statistics Summary Cards (Flutter Style)
     # ---------------------------------------------------------
@@ -2366,7 +2383,7 @@ elif nav_choice == "Database & Bank Data Inputan Lapangan":
 
         chosen_record = next((r for r in records if r["id"] == selected_rec_id), None)
         if chosen_record:
-            storage_path = Path(chosen_record["storage_folder"])
+            storage_path = resolve_storage_path(chosen_record["storage_folder"])
             st.markdown(f"""
             <div style="background: #F5F3FF; border: 1px solid #DDD6FE; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">

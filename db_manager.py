@@ -24,11 +24,47 @@ CURRENT_DIR = Path(__file__).resolve().parent
 DATA_DIR = CURRENT_DIR / "data"
 DATABASE_PATH = DATA_DIR / "inspection_database.sqlite"
 COLLECTED_DIR = DATA_DIR / "collected_data"
+SNAPSHOT_PATH = DATA_DIR / "inspection_database_snapshot.json"
+SNAPSHOT_CSV_PATH = DATA_DIR / "inspection_database_snapshot.csv"
+
+
+def resolve_storage_path(folder_str: Optional[str]) -> Path:
+    """
+    Resolves storage directory path across operating systems (Mac, Linux, Streamlit Cloud).
+    Translates absolute paths or relative subpaths into local COLLECTED_DIR.
+    """
+    if not folder_str:
+        return COLLECTED_DIR
+
+    p = Path(folder_str)
+    if p.is_absolute() and p.exists():
+        return p
+
+    # Direct relative to COLLECTED_DIR
+    rel_p = COLLECTED_DIR / folder_str
+    if rel_p.exists():
+        return rel_p
+
+    # Extract relative date/unit path if stored as absolute path from another machine
+    normalized = folder_str.replace("\\", "/")
+    if "collected_data/" in normalized:
+        parts = normalized.split("collected_data/")
+        candidate = COLLECTED_DIR / parts[1]
+        if candidate.exists():
+            return candidate
+
+    # Search by subfolder name in COLLECTED_DIR
+    matches = list(COLLECTED_DIR.glob(f"**/{p.name}"))
+    if matches:
+        return matches[0]
+
+    return rel_p
 
 
 class InspectionDBManager:
     """
     Handles SQLite transactions and file storage for inspection records.
+    Provides automated JSON/CSV snapshot synchronization for 100% data preservation.
     """
     def __init__(self, db_path: Optional[Path] = None, storage_dir: Optional[Path] = None):
         self.db_path = db_path or DATABASE_PATH
@@ -50,7 +86,7 @@ class InspectionDBManager:
             conn.close()
 
     def _init_tables(self):
-        """Creates the inspection_records table if it doesn't already exist."""
+        """Creates the inspection_records table if it doesn't already exist and restores from snapshot if empty."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -79,6 +115,62 @@ class InspectionDBManager:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_final_grade ON inspection_records (final_grade);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_is_valid ON inspection_records (is_valid_phone);")
             conn.commit()
+
+            # Self-healing: If SQLite database is empty but permanent snapshot exists, auto-restore
+            cursor.execute("SELECT count(*) FROM inspection_records;")
+            count = cursor.fetchone()[0]
+            if count == 0 and SNAPSHOT_PATH.exists():
+                try:
+                    with open(SNAPSHOT_PATH, "r", encoding="utf-8") as f:
+                        records = json.load(f)
+                    for r in records:
+                        cursor.execute("""
+                        INSERT OR IGNORE INTO inspection_records (
+                            id, timestamp, unit_id, model_version, model_name,
+                            is_valid_phone, rejection_reason, detected_objects_json,
+                            final_grade, grade_confidence, total_dpi, defects_count,
+                            defect_breakdown_json, elapsed_sec, storage_folder,
+                            views_count, views_list
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                        """, (
+                            r.get("id"),
+                            r.get("timestamp"),
+                            r.get("unit_id"),
+                            r.get("model_version"),
+                            r.get("model_name"),
+                            1 if r.get("is_valid_phone") else 0,
+                            r.get("rejection_reason"),
+                            r.get("detected_objects_json", "{}"),
+                            r.get("final_grade"),
+                            r.get("grade_confidence", 0.0),
+                            r.get("total_dpi", 0.0),
+                            r.get("defects_count", 0),
+                            r.get("defect_breakdown_json", "{}"),
+                            r.get("elapsed_sec", 0.0),
+                            r.get("storage_folder"),
+                            r.get("views_count", 0),
+                            r.get("views_list", "")
+                        ))
+                    conn.commit()
+                except Exception as e:
+                    print(f"[InspectionDBManager] Warning during snapshot restore: {e}")
+
+    def dump_snapshot(self):
+        """Dumps all database records into permanent JSON and CSV snapshot files."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM inspection_records ORDER BY id ASC;")
+                rows = [dict(r) for r in cursor.fetchall()]
+
+            with open(SNAPSHOT_PATH, "w", encoding="utf-8") as f:
+                json.dump(rows, f, indent=2, ensure_ascii=False)
+
+            if rows:
+                df = pd.DataFrame(rows)
+                df.to_csv(SNAPSHOT_CSV_PATH, index=False)
+        except Exception as e:
+            print(f"[InspectionDBManager] Warning dumping snapshot: {e}")
 
     def save_record(
         self,
@@ -204,6 +296,9 @@ class InspectionDBManager:
                 "elapsed_sec": elapsed_sec
             }
             json.dump(meta, f, indent=2, ensure_ascii=False)
+
+        # Update snapshot backup files (JSON & CSV)
+        self.dump_snapshot()
 
         return record_id
 

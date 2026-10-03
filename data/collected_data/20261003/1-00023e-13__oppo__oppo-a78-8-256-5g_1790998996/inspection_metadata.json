@@ -1,0 +1,21 @@
+{
+  "record_id": 13,
+  "timestamp": "2026-10-03 10:43:16",
+  "unit_id": "1-00023e-13__oppo__oppo-a78-8-256-5g",
+  "model_version": "v3",
+  "model_name": "Model Versi 3 (Housing-Only Skala Penuh 1.918 Unit - Random Forest 18 Fitur)",
+  "is_valid_phone": true,
+  "rejection_reason": null,
+  "final_grade": "B",
+  "grade_confidence": 0.85,
+  "total_dpi": 11.14,
+  "defects_count": 9,
+  "defect_breakdown": {
+    "scratch": 9,
+    "dent": 0,
+    "chip": 0,
+    "crack": 0,
+    "broken": 0
+  },
+  "elapsed_sec": 0.0
+}

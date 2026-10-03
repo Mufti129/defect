@@ -1,0 +1,21 @@
+{
+  "record_id": 20,
+  "timestamp": "2026-10-03 10:53:40",
+  "unit_id": "1-00033e-13__oppo__oppo-a18-4-128",
+  "model_version": "v3",
+  "model_name": "Model Versi 3 (Housing-Only Skala Penuh 1.918 Unit - Random Forest 18 Fitur)",
+  "is_valid_phone": true,
+  "rejection_reason": null,
+  "final_grade": "B",
+  "grade_confidence": 0.85,
+  "total_dpi": 9.17,
+  "defects_count": 4,
+  "defect_breakdown": {
+    "scratch": 3,
+    "dent": 0,
+    "chip": 1,
+    "crack": 0,
+    "broken": 0
+  },
+  "elapsed_sec": 0.0
+}

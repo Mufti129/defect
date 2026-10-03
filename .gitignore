@@ -7,5 +7,4 @@ env/
 tmp/
 *.tmp
 sample_card_output.jpg
-data/*.sqlite
-data/collected_data/
+
