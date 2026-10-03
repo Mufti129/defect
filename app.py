@@ -393,9 +393,9 @@ st.sidebar.markdown(f"""
 # Special Live Training Box for V5 (White & Purple Flutter Style)
 if selected_version == "v5":
     v5_data = get_cached_v5_status()
-    cur_ep = v5_data.get("current_epoch", 17)
+    cur_ep = v5_data.get("current_epoch", 18)
     tot_ep = v5_data.get("total_epochs", 30)
-    prog_pct = v5_data.get("overall_progress_percent", 55.2)
+    prog_pct = v5_data.get("overall_progress_percent", 57.2)
 
     st.sidebar.markdown(f"""
     <div style="background: linear-gradient(135deg, #FAF5FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(109, 40, 217, 0.08);">
@@ -405,7 +405,7 @@ if selected_version == "v5":
         </div>
         <div style="color: #4C1D95; font-size: 0.80rem; margin-bottom: 6px; line-height: 1.45;">
             • <b>Progres:</b> {prog_pct:.1f}% ({cur_ep}/{tot_ep} Epoch)<br>
-            • <b>Bobot Aktif:</b> Checkpoint Terbaru (Epoch 16 — Recall: 68.4%, mAP50: 36.1%)<br>
+            • <b>Bobot Aktif:</b> Checkpoint Terbaru (Epoch 17 — Recall: 69.2%, mAP50: 36.1%)<br>
             • <b>Akselerasi:</b> Apple Silicon MPS (Aktif)
         </div>
         <i style="color: #6B7280; font-size: 0.74rem;">Bobot final akan dimutakhirkan penuh setelah 30 epoch selesai.</i>

@@ -49,8 +49,8 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "arch": "YOLOv8s Detect (1024x1024, 11M Params)",
         "dataset": "dataset_v5_full (1.918 Unit Bodi, Resolusi Asli)",
         "focus": "4 Sisi Housing (Top, Bottom, Left, Right)",
-        "status": "Pelatihan Berjalan (Epoch 16/30 Selesai - Recall 68.4%, mAP50 36.1%)",
-        "description": "Model resolusi tinggi 1024x1024 arsitektur YOLOv8s untuk ketajaman tekstur cacat mikro pada housing smartphone. Menggunakan checkpoint bobot terbaik dari proses pelatihan yang sedang berjalan (Epoch 16/30, Recall 68.4%, mAP50 36.1%)."
+        "status": "Pelatihan Berjalan (Epoch 17/30 Selesai - Recall 69.2%, mAP50 35.4%, Best mAP50 36.1%)",
+        "description": "Model resolusi tinggi 1024x1024 arsitektur YOLOv8s untuk ketajaman tekstur cacat mikro pada housing smartphone. Menggunakan checkpoint bobot terbaik dari proses pelatihan yang sedang berjalan (Epoch 17/30, Recall 69.2%, mAP50 36.1%)."
     },
     "v4": {
         "id": "v4",
