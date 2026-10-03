@@ -129,7 +129,8 @@ COCO_INDONESIAN_MAP = {
 # All COCO classes except cell phone are non-phone objects
 NON_PHONE_CLASSES = {k: v for k, v in COCO_INDONESIAN_MAP.items() if k != "cell phone"}
 
-# Specific arbitrary non-phone categories guarded by system (human, animals, laptop, bottle, car, plant)
+# Specific arbitrary non-phone categories guarded by system (human, animals, laptop, bottle, car, plant, food)
+# NOTE: Office furniture (chair, desk/dining table) is intentionally excluded to prevent false rejections on inspection tables
 DISALLOWED_COCO_CLASSES = {
     # 1. Manusia / Orang (Selfie / Wajah / Subjek Manusia)
     "person",
@@ -141,8 +142,8 @@ DISALLOWED_COCO_CLASSES = {
     "bottle", "cup", "wine glass", "bowl",
     # 5. Kendaraan
     "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat",
-    # 6. Tumbuhan & Perabot
-    "potted plant", "vase", "chair", "couch", "bed", "dining table",
+    # 6. Tumbuhan & Flora
+    "potted plant", "vase",
     # 7. Makanan
     "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake"
 }
@@ -339,19 +340,27 @@ class ObjectGuardrail:
                 if cls_name not in DISALLOWED_COCO_CLASSES:
                     continue
 
-                # Tolerated operator hands/fingers only when holding a legitimate phone
-                is_operator_hand = (
-                    cls_name == "person" and (
-                        (has_phone and area_ratio < 0.25) or
-                        (view_side.lower() in ["top", "bottom", "left", "right"] and area_ratio < 0.15 and conf < 0.50)
-                    )
-                )
-                if is_operator_hand:
-                    # Draw subtle amber box for operator holding phone
+                # Human presence validation:
+                # In 4-side housing photography (top, bottom, left, right), operators physically hold or position
+                # the phone on the inspection mat. The operator's hands, sleeves, or upper body are naturally visible
+                # in the frame, and will be cleanly eliminated by Stage 1 (Phone Body Localizer & Auto-Cropper).
+                # Unless the human subject completely dominates the frame as an obvious portrait/selfie (area_ratio >= 0.70),
+                # detected person on 4-side views is classified as the legitimate operator and never rejected.
+                is_housing_side = view_side.lower() in ["top", "bottom", "left", "right"]
+                is_operator = False
+
+                if cls_name == "person":
+                    if is_housing_side and area_ratio < 0.70:
+                        is_operator = True
+                    elif has_phone and area_ratio < 0.65:
+                        is_operator = True
+
+                if is_operator:
+                    # Draw professional amber box for operator holding/positioning the smartphone
                     cv2.rectangle(annotated_img, (bx1, by1), (bx2, by2), (200, 180, 0), 2)
                     self._draw_label_box(
                         annotated_img,
-                        f"TANGAN OPERATOR ({conf*100:.0f}%)",
+                        f"OPERATOR / TANGAN ({conf*100:.0f}%)",
                         bx1, by1, bx2, by2,
                         (180, 150, 0)
                     )

@@ -267,7 +267,8 @@ class StreamlitInspectionEngine:
                 stage1_meta[side] = {
                     "bbox": list(crop_res["bbox"]),
                     "tilt_angle": float(round(crop_res["tilt_angle"], 2)),
-                    "confidence": str(crop_res["confidence"])
+                    "confidence": str(crop_res["confidence"]),
+                    "crop_resolution": f"{crop_res['cropped_img'].shape[1]}x{crop_res['cropped_img'].shape[0]}"
                 }
         else:
             inspected_views = view_images
