@@ -15,6 +15,8 @@ import json
 import time
 import shutil
 import tempfile
+import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -266,17 +268,17 @@ st.markdown("""
 # Sidebar Navigation & Settings (Corporate Flutter Style)
 # ---------------------------------------------------------
 st.sidebar.markdown("""
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 4px 0;">
-    <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #6D28D9 0%, #7C3AED 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(109, 40, 217, 0.25); flex-shrink: 0;">
+<div style="background: #09090B; border: 1.5px solid #27272A; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);">
+    <div style="width: 44px; height: 44px; background: #18181B; border: 1px solid #3F3F46; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="5" y="2" width="14" height="20" rx="3" stroke="white" stroke-width="2"/>
-            <circle cx="12" cy="18" r="1.2" fill="white"/>
-            <line x1="9" y1="5" x2="15" y2="5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+            <rect x="5" y="2" width="14" height="20" rx="3" stroke="#38BDF8" stroke-width="2"/>
+            <circle cx="12" cy="18" r="1.2" fill="#38BDF8"/>
+            <line x1="9" y1="5" x2="15" y2="5" stroke="#38BDF8" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
     </div>
     <div>
-        <div style="font-size: 1.15rem; font-weight: 800; color: #4C1D95; letter-spacing: -0.01em; line-height: 1.2;">Sistem Taksiran AI</div>
-        <div style="font-size: 0.72rem; color: #7C3AED; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;">PGI Computer Vision</div>
+        <div style="font-size: 1.15rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.01em; line-height: 1.25;">Sistem Taksiran AI</div>
+        <div style="font-size: 0.74rem; color: #38BDF8; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin-top: 1px;">Mufti Computer Vision</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -328,7 +330,7 @@ conf_thresh_slider = st.sidebar.slider(
 st.sidebar.caption(
     "**Panduan Sensitivitas:**\n"
     "• `0.05 - 0.12`: Sangat Peka (Tangkap lecet mikro & goresan tipis)\n"
-    "• `0.15`: Seimbang (Default Standar PGI)\n"
+    "• `0.15`: Seimbang (Default Standar Mufti CV)\n"
     "• `0.20 - 0.50`: Ketat (Hanya cacat kontras tinggi & terisolasi)"
 )
 
@@ -491,61 +493,306 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                     "unit": "1-00013e-13__oppo__oppo-a5i-4-128",
                     "desc": "Menghasilkan polygon & bounding box cacat pecah/sompal bodi pada sudut atas (Top). Memicu Veto Operasional Grade D."
                 },
-                "D2: iPhone X — Bodi Pecah Berat & Retak (4 Broken, 1 Crack, 1 Chip)": {
+                "D2: Oppo F9 — Cacat Pecah & Sompal Sudut Frame": {
+                    "grade": "grade_D",
+                    "unit": "1-00023e-13__oppo__oppo-f9-4-64",
+                    "desc": "Kerusakan struktural berat pada frame bodi dengan dent dan sompal bodi tajam. Veto Grade D."
+                },
+                "D3: Samsung Galaxy A07 — Keretakan Bodi & Bezel Rusak": {
+                    "grade": "grade_D",
+                    "unit": "1-00023e-13__samsung__samsung-a07-4-64",
+                    "desc": "Pecah pada bodi samping dengan kerusakan material frame melebihi toleransi. Veto Grade D."
+                },
+                "D4: iPhone X — Bodi Pecah Berat & Retak (Broken Fisik)": {
                     "grade": "grade_D",
                     "unit": "1-00033e-13__apple__iphone-x-64gb",
                     "desc": "Menghasilkan anotasi masif kerusakan fisik bodi pada sisi kiri & kanan. Memicu Veto Operasional Grade D."
+                },
+                "D5: Oppo A18 (Unit 1) — Deformasi Sudut & Sompal Bodi": {
+                    "grade": "grade_D",
+                    "unit": "1-00033e-13__oppo__oppo-a18-4-128",
+                    "desc": "Lekukan penyok struktural parah disertai sompal pada penampang bodi. Veto Grade D."
+                },
+                "D6: Oppo A5 2020 — Kerusakan Bezel Bawah & Speaker": {
+                    "grade": "grade_D",
+                    "unit": "1-00033e-13__oppo__oppo-a5-2020-3-64",
+                    "desc": "Kerusakan fisik berat pada bezel bawah dekat port charger dan speaker grill. Veto Grade D."
+                },
+                "D7: Samsung Galaxy A51 — Pecah Frame & Sompal Cat Berat": {
+                    "grade": "grade_D",
+                    "unit": "1-00033e-13__samsung__samsung-a51-6-128",
+                    "desc": "Kerusakan berat pada frame polikarbonat dengan sompal mendalam. Veto Grade D."
+                },
+                "D8: Oppo A18 (Unit 2) — Retak Housing & Sompal Parah": {
+                    "grade": "grade_D",
+                    "unit": "1-00043e-13__oppo__oppo-a18-4-128",
+                    "desc": "Cacat retak struktural bodi housing melintang. Memicu Veto Operasional Grade D."
+                },
+                "D9: Oppo A5 8/128 — Bodi Terkelupas & Sompal Keras": {
+                    "grade": "grade_D",
+                    "unit": "1-00043e-13__oppo__oppo-a5-8-128",
+                    "desc": "Frame samping sompal terkelupas akibat benturan keras. Veto Grade D."
+                },
+                "D10: Oppo A54 (Unit 1) — Cacat Pecah Sudut Kanan Bodi": {
+                    "grade": "grade_D",
+                    "unit": "1-00043e-13__oppo__oppo-a54-4-128",
+                    "desc": "Sompal dan pecah pada housing sudut kanan bawah melebihi 3mm. Veto Grade D."
+                },
+                "D11: Oppo A54 (Unit 2) — Sompal Berat & Bezel Rusak": {
+                    "grade": "grade_D",
+                    "unit": "1-00043e-13__oppo__oppo-a54-6-128",
+                    "desc": "Kerusakan struktural bodi dengan sompal berat di sudut samping atas. Veto Grade D."
+                },
+                "D12: Samsung Galaxy A02s — Pecah Frame & Sompal Housing": {
+                    "grade": "grade_D",
+                    "unit": "1-00043e-13__samsung__samsung-a02s-4-64",
+                    "desc": "Pecah bodi samping dengan material plastik terkelupas masif. Veto Grade D."
+                },
+                "D13: Samsung Galaxy A07 (Unit 2) — Kerusakan Bodi Ekstrem": {
+                    "grade": "grade_D",
+                    "unit": "1-00043e-13__samsung__samsung-a07-4-64",
+                    "desc": "Bezel samping melengkung dan pecah struktural akibat jatuh keras. Veto Grade D."
+                },
+                "D14: Oppo A16 — Sompal Sudut Port Charger & Bawah": {
+                    "grade": "grade_D",
+                    "unit": "1-00053e-13__oppo__oppo-a16-3-32",
+                    "desc": "Pecah pada bodi bawah dekat port USB dan jack audio. Veto Grade D."
+                },
+                "D15: Oppo A38 — Deformasi Struktural & Sompal Frame": {
+                    "grade": "grade_D",
+                    "unit": "1-00063e-13__oppo__oppo-a38-4-128",
+                    "desc": "Penyok berat dan sompal tajam pada sudut frame bodi. Veto Grade D."
                 }
             },
             "Grade C (Aus Nyata Jamak / DPI Tinggi)": {
-                "C1: Oppo A5s — Bodi Baret Jamak Merata (14 Titik Goresan Terukur)": {
-                    "grade": "grade_C",
-                    "unit": "1-00033e-13__oppo__oppo-a5s-3-32",
-                    "desc": "Menghasilkan visualisasi 14 goresan bodi merata di frame samping & bawah. Terklasifikasi Grade C secara akurat."
-                },
-                "C2: Samsung A07 — Cacat Bodi Jamak (5 Goresan & 2 Sompal Cat/Chip)": {
-                    "grade": "grade_C",
-                    "unit": "1-00033e-13__samsung__samsung-a07-4-64",
-                    "desc": "Menghasilkan kombinasi bounding box goresan bodi dan cat terkelupas (chip). Terklasifikasi Grade C."
-                },
-                "C3: Oppo A15 — Aus Pemakaian Moderat (Goresan Bodi Samping)": {
+                "C1: Oppo A15 (Unit 1) — Aus Pemakaian Moderat (Goresan Bodi Samping)": {
                     "grade": "grade_C",
                     "unit": "1-00013e-13__oppo__oppo-a15-3-32",
                     "desc": "Menghasilkan deteksi goresan nyata pada bodi samping dengan penalti DPI sedang."
+                },
+                "C2: Oppo A6x — Goresan Jamak Bodi Samping & Bawah": {
+                    "grade": "grade_C",
+                    "unit": "1-00013e-13__oppo__oppo-a6x-4-64",
+                    "desc": "Baret pemakaian kasar pada frame plastik bodi samping dan bawah. Terklasifikasi Grade C."
+                },
+                "C3: Oppo A18 — Toleransi Lecet Mikro (< 2.0 mm)": {
+                    "grade": "grade_C",
+                    "unit": "1-00023e-13__oppo__oppo-a18-4-128",
+                    "desc": "Menghasilkan deteksi 1 goresan mikro tipis (< 2mm). Terbukti tetap lolos Grade A sesuai batas toleransi fisik SOP."
+                },
+                "C4: Samsung Galaxy A14 4G — Goresan Bezel & Titik Aus": {
+                    "grade": "grade_C",
+                    "unit": "1-00023e-13__samsung__samsung-a14-4-128-4g",
+                    "desc": "Bezel bodi samping mengalami baret jamak akibat pemakaian tanpa casing. Grade C."
+                },
+                "C5: Oppo A16 — Baret Samping Ringan (3 Baret Halus + 1 Dent)": {
+                    "grade": "grade_C",
+                    "unit": "1-00033e-13__oppo__oppo-a16-4-64",
+                    "desc": "Menghasilkan 3 baret pemakaian normal dan 1 penyok bodi ringan. Terklasifikasi Grade B."
+                },
+                "C6: Oppo A58 — Baret Pemakaian Kasar & Chip Mikro": {
+                    "grade": "grade_C",
+                    "unit": "1-00033e-13__oppo__oppo-a58-6-128",
+                    "desc": "Kombinasi 6 titik goresan bodi dan lecet cat mikro pada sudut frame. Grade C."
+                },
+                "C7: Oppo A5s — Aus Wajar Pemakaian Harian Ringan": {
+                    "grade": "grade_C",
+                    "unit": "1-00033e-13__oppo__oppo-a5s-3-32",
+                    "desc": "Baret tipis wajar pada bodi samping dengan akumulasi penalti DPI rendah. Grade B."
+                },
+                "C8: Samsung Galaxy A07 — Baret Halus Sudut Housing": {
+                    "grade": "grade_C",
+                    "unit": "1-00033e-13__samsung__samsung-a07-4-64",
+                    "desc": "Lecet halus minor pada sudut bawah bodi akibat pemakaian normal. Grade B."
+                },
+                "C9: iPhone 7 Plus — Kondisi Mint Terawat (Zero Defect)": {
+                    "grade": "grade_C",
+                    "unit": "1-00043e-13__apple__iphone-7-plus-32gb",
+                    "desc": "Bodi housing bersih mulus, terklasifikasi Grade A murni dengan keyakinan tinggi."
+                },
+                "C10: iPhone X — Baret Bezel Stainless Nyata Jamak": {
+                    "grade": "grade_C",
+                    "unit": "1-00043e-13__apple__iphone-x-64gb",
+                    "desc": "Frame stainless steel samping memiliki goresan nyata yang melampaui batas Grade B. Grade C."
+                },
+                "C11: Oppo A15 (Unit 2) — Aus Bodi Merata & Baret Bezel": {
+                    "grade": "grade_C",
+                    "unit": "1-00043e-13__oppo__oppo-a15-3-32",
+                    "desc": "Goresan aus nyata pada bodi samping dan bezel bawah port. Terklasifikasi Grade C."
+                },
+                "C12: Oppo A3x — Baret Gesekan Meja & Frame Aus": {
+                    "grade": "grade_C",
+                    "unit": "1-00043e-13__oppo__oppo-a3x-4-64",
+                    "desc": "Bodi samping mengalami abrasi jamak akibat gesekan permukaan keras berulang. Grade C."
+                },
+                "C13: Oppo A60 — Cacat Aus Nyata & Chip Cat Sudut": {
+                    "grade": "grade_C",
+                    "unit": "1-00043e-13__oppo__oppo-a60-8-128",
+                    "desc": "Baret memanjang pada bodi samping kanan serta lecet cat sudut frame. Grade C."
+                },
+                "C14: Oppo Reno 11F 5G — Goresan Housing Jamak & Dent": {
+                    "grade": "grade_C",
+                    "unit": "1-00043e-13__oppo__oppo-reno-11f-8-256",
+                    "desc": "Goresan bodi nyata dan penyok mikro pada housing samping. Terklasifikasi Grade C."
+                },
+                "C15: Samsung Galaxy A05 — Baret Kasar Bodi Samping": {
+                    "grade": "grade_C",
+                    "unit": "1-00043e-13__samsung__samsung-a05-6-128",
+                    "desc": "Aus pemakaian harian berat dengan baret kasar pada frame bodi plastik. Grade C."
                 }
             },
             "Grade B (Aus Wajar / Pemakaian Normal)": {
-                "B1: Oppo A78 5G — Aus Wajar Pemakaian Normal (5 Baret Halus + 1 Dent)": {
+                "B1: iPhone 11 64GB — Baret Halus Pemakaian Harian": {
+                    "grade": "grade_B",
+                    "unit": "1-00023e-13__apple__iphone-11-64gb",
+                    "desc": "Baret pemakaian wajar pada bodi samping aluminium. Sesuai batas toleransi Grade B."
+                },
+                "B2: iPhone 13 Pro Max — Goresan Bezel Stainless Wajar": {
+                    "grade": "grade_B",
+                    "unit": "1-00023e-13__apple__iphone-13-pro-max-128gb",
+                    "desc": "Menghasilkan deteksi baret pemakaian normal pada bezel samping kanan dan bawah. Terklasifikasi Grade B."
+                },
+                "B3: Oppo A18 — Toleransi Lecet Mikro (< 2.0 mm)": {
+                    "grade": "grade_B",
+                    "unit": "1-00023e-13__oppo__oppo-a18-4-128",
+                    "desc": "Menghasilkan deteksi 1 goresan mikro tipis (< 2mm). Terbukti tetap lolos Grade A sesuai batas toleransi fisik SOP."
+                },
+                "B4: Oppo A5 — Baret Ringan Normal Dekat Port": {
+                    "grade": "grade_B",
+                    "unit": "1-00023e-13__oppo__oppo-a5-8-128",
+                    "desc": "Goresan halus wajar di sekitar port pengisian daya dan bodi bawah. Grade B."
+                },
+                "B5: Oppo A78 5G — Aus Wajar Pemakaian Normal (Baret Halus & Dent Mikro)": {
                     "grade": "grade_B",
                     "unit": "1-00023e-13__oppo__oppo-a78-8-256-5g",
                     "desc": "Menghasilkan visualisasi baret halus dan 1 penyok mikro pada housing samping. Sesuai toleransi Grade B."
                 },
-                "B2: Oppo A16 — Baret Samping Ringan (3 Baret Halus + 1 Dent)": {
+                "B6: Samsung Galaxy S22 Ultra — Baret Halus Bezel Metal": {
+                    "grade": "grade_B",
+                    "unit": "1-00023e-13__samsung__samsung-s22-ultra-12-256",
+                    "desc": "Goresan mikro pemakaian wajar pada sudut bezel metal atas dan bawah. Grade B."
+                },
+                "B7: iPhone 11 128GB — Baret Minor Bezel Samping": {
+                    "grade": "grade_B",
+                    "unit": "1-00033e-13__apple__iphone-11-128gb",
+                    "desc": "Baret halus pemakaian normal pada frame aluminium bodi samping kiri. Grade B."
+                },
+                "B8: iPhone 13 128GB — Baret Halus Housing Kamera & Samping": {
+                    "grade": "grade_B",
+                    "unit": "1-00033e-13__apple__iphone-13-128gb",
+                    "desc": "Goresan halus tipis pemakaian normal pada bezel samping kanan. Grade B."
+                },
+                "B9: Oppo A16 — Baret Samping Ringan (3 Baret Halus + 1 Dent)": {
                     "grade": "grade_B",
                     "unit": "1-00033e-13__oppo__oppo-a16-4-64",
                     "desc": "Menghasilkan 3 baret pemakaian normal dan 1 penyok bodi ringan. Terklasifikasi Grade B."
                 },
-                "B3: iPhone 13 Pro Max — Goresan Bezel Stainless (5 Baret Halus + 1 Dent)": {
+                "B10: Oppo A5s — Aus Wajar Pemakaian Harian Ringan": {
                     "grade": "grade_B",
-                    "unit": "1-00023e-13__apple__iphone-13-pro-max-128gb",
-                    "desc": "Menghasilkan deteksi baret pemakaian normal pada bezel samping kanan dan bawah. Terklasifikasi Grade B."
+                    "unit": "1-00033e-13__oppo__oppo-a5s-3-32",
+                    "desc": "Baret tipis wajar pada bodi samping dengan akumulasi penalti DPI rendah. Grade B."
+                },
+                "B11: Samsung Galaxy A07 — Baret Halus Sudut Housing": {
+                    "grade": "grade_B",
+                    "unit": "1-00033e-13__samsung__samsung-a07-4-64",
+                    "desc": "Lecet halus minor pada sudut bawah bodi akibat pemakaian normal. Grade B."
+                },
+                "B12: Samsung Galaxy A16 5G — Goresan Mikro Bezel Samping": {
+                    "grade": "grade_B",
+                    "unit": "1-00033e-13__samsung__samsung-a16-8-256-5g",
+                    "desc": "Goresan mikro tipis pada bezel samping bodi dalam batas toleransi Grade B."
+                },
+                "B13: Samsung Galaxy Note 10 — Baret Halus Frame Metal": {
+                    "grade": "grade_B",
+                    "unit": "1-00033e-13__samsung__samsung-note-10-12-256",
+                    "desc": "Baret pemakaian wajar pada frame metal bodi kanan dan slot stylus. Grade B."
+                },
+                "B14: Samsung Galaxy S23 — Baret Pemakaian Ringan Armor Aluminum": {
+                    "grade": "grade_B",
+                    "unit": "1-00033e-13__samsung__samsung-s23-8-256",
+                    "desc": "Goresan halus tipis pada bodi samping dalam toleransi wajar Grade B."
+                },
+                "B15: iPhone 12 Pro 512GB — Goresan Halus Bezel Stainless": {
+                    "grade": "grade_B",
+                    "unit": "1-00043e-13__apple__iphone-12-pro-512gb",
+                    "desc": "Baret halus pemakaian wajar pada frame stainless steel bodi samping. Grade B."
                 }
             },
             "Grade A (Like New / Mint / Bebas Cacat)": {
-                "A1: iPhone 16e — Like New Flawless (Bodi Bersih Sempurna / Zero False Positive)": {
+                "A1: Oppo A17 — Kondisi Mulus Terawat (Bodi Prima)": {
+                    "grade": "grade_A",
+                    "unit": "1-00022e-13__oppo__oppo-a17-4-64",
+                    "desc": "Housing bodi bersih terawat tanpa cacat nyata, terklasifikasi Grade A."
+                },
+                "A2: iPhone 15 Pro Max — Titanium Frame Pristine": {
+                    "grade": "grade_A",
+                    "unit": "1-00023e-13__apple__iphone-15-pro-max-256gb",
+                    "desc": "Bodi titanium bersih mulus tanpa cacat fisik terukur. Grade A Like New."
+                },
+                "A3: iPhone 16 128GB (Unit 1) — Like New Bebas Cacat": {
+                    "grade": "grade_A",
+                    "unit": "1-00023e-13__apple__iphone-16-128gb",
+                    "desc": "Bodi housing bebas goresan dan benturan, kondisi prima Grade A."
+                },
+                "A4: iPhone 16e — Like New Flawless (Zero False Positive)": {
                     "grade": "grade_A",
                     "unit": "1-00023e-13__apple__iphone-16e-128gb",
                     "desc": "Kondisi bodi sangat mulus Like New. Membuktikan eliminasi glare bekerja sempurna tanpa false positive (0 cacat, DPI 0.0)."
                 },
-                "A2: iPhone 7 Plus — Kondisi Mint Terawat (Zero Defect)": {
+                "A5: iPhone XS Max — Kondisi Koleksi Bersih Mulus": {
+                    "grade": "grade_A",
+                    "unit": "1-00023e-13__apple__iphone-xs-max-64gb",
+                    "desc": "Stainless bezel dan housing terawat sangat baik tanpa cacat terdeteksi. Grade A."
+                },
+                "A6: Oppo A18 — Toleransi Lecet Mikro (< 2.0 mm)": {
+                    "grade": "grade_A",
+                    "unit": "1-00023e-13__oppo__oppo-a18-4-128",
+                    "desc": "Menghasilkan deteksi 1 goresan mikro tipis (< 2mm). Terbukti tetap lolos Grade A sesuai batas toleransi fisik SOP."
+                },
+                "A7: iPhone 16 128GB (Unit 2) — Like New Mulus Sempurna": {
+                    "grade": "grade_A",
+                    "unit": "1-00033e-13__apple__iphone-16-128gb",
+                    "desc": "Frame bodi bersih mulus tanpa penalti DPI. Terklasifikasi Grade A murni."
+                },
+                "A8: iPhone XR — Bodi Aluminium Prima Terawat": {
+                    "grade": "grade_A",
+                    "unit": "1-00033e-13__apple__iphone-xr-64gb",
+                    "desc": "Housing bodi bersih tanpa goresan terdeteksi. Lolos Grade A dengan skor prima."
+                },
+                "A9: iPhone 13 128GB (Unit 1) — Bebas Cacat Like New": {
+                    "grade": "grade_A",
+                    "unit": "1-00043e-13__apple__iphone-13-128gb",
+                    "desc": "Kondisi fisik bodi 4 sisi sangat mulus tanpa cacat fisik. Grade A."
+                },
+                "A10: iPhone 15 128GB — Frame Mulus Sempurna": {
+                    "grade": "grade_A",
+                    "unit": "1-00043e-13__apple__iphone-15-128gb",
+                    "desc": "Housing samping dan penampang bodi bersih total dari goresan. Grade A."
+                },
+                "A11: iPhone 7 Plus — Kondisi Mint Terawat (Zero Defect)": {
                     "grade": "grade_A",
                     "unit": "1-00043e-13__apple__iphone-7-plus-32gb",
                     "desc": "Bodi housing bersih mulus, terklasifikasi Grade A murni dengan keyakinan tinggi."
                 },
-                "A3: Oppo A18 — Toleransi Lecet Mikro (< 2.0 mm / Lolos Grade A)": {
+                "A12: Samsung Galaxy A06 — Kondisi Bodi Baru Terawat": {
                     "grade": "grade_A",
-                    "unit": "1-00023e-13__oppo__oppo-a18-4-128",
-                    "desc": "Menghasilkan deteksi 1 goresan mikro tipis (< 2mm). Terbukti tetap lolos Grade A sesuai batas toleransi fisik SOP."
+                    "unit": "1-00043e-13__samsung__samsung-a06-4-64",
+                    "desc": "Housing plastik mulus tanpa baret nyata, terklasifikasi Grade A."
+                },
+                "A13: iPhone 13 Mini — Sangat Terawat Like New": {
+                    "grade": "grade_A",
+                    "unit": "1-00063e-13__apple__iphone-13-mini-128gb",
+                    "desc": "Dimensi bodi kompak bersih tanpa lecet bodi samping. Grade A."
+                },
+                "A14: iPhone 11 128GB — Housing Mulus Bebas Cacat": {
+                    "grade": "grade_A",
+                    "unit": "1-00073e-13__apple__iphone-11-128gb",
+                    "desc": "Housing bodi aluminium bersih mulus terawat. Grade A."
+                },
+                "A15: iPhone 13 128GB (Unit 2) — Kondisi Prima Terawat": {
+                    "grade": "grade_A",
+                    "unit": "1-00083e-13__apple__iphone-13-128gb",
+                    "desc": "Housing 4 sisi terverifikasi bersih tanpa baret kasat mata. Grade A."
                 }
             }
         }
@@ -602,8 +849,27 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
                     st.image(path, caption=side.upper(), use_container_width=True)
 
     elif input_mode == "Unggah Foto 4-Sisi Mandiri":
-        # Manual Upload Mode
-        unit_id_input = st.text_input("Unit ID / No. Seri Smartphone:", value="HP-INSPECTION-001")
+        # Manual Upload Mode with Auto-generated Unique Unit ID
+        if "manual_unit_id" not in st.session_state or not st.session_state["manual_unit_id"]:
+            rand_suffix = uuid.uuid4().hex[:6].upper()
+            st.session_state["manual_unit_id"] = f"HP-{datetime.now().strftime('%Y%m%d')}-{rand_suffix}"
+
+        col_id_in, col_id_btn = st.columns([3.8, 1.2])
+        with col_id_in:
+            unit_id_input = st.text_input(
+                "Unit ID / No. Seri Smartphone (Otomatis Unik):",
+                value=st.session_state["manual_unit_id"],
+                help="Unit ID dibuat secara otomatis dengan nilai unik (format HP-YYYYMMDD-XXXXXX). Pengguna tidak perlu mengetik manual."
+            )
+            st.session_state["manual_unit_id"] = unit_id_input
+        with col_id_btn:
+            st.write("")
+            st.write("")
+            if st.button("Buat ID Baru", help="Hasilkan kode Unit ID unik acak baru"):
+                rand_suffix = uuid.uuid4().hex[:6].upper()
+                st.session_state["manual_unit_id"] = f"HP-{datetime.now().strftime('%Y%m%d')}-{rand_suffix}"
+                st.rerun()
+
         st.markdown("**Unggah Foto Sisi Bodi Smartphone (Top, Bottom, Left, Right):**")
 
         up_col1, up_col2, up_col3, up_col4 = st.columns(4)
@@ -1588,7 +1854,7 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
             Pedoman resmi, arsitektur keputusan 2-tier (Fast-Fail Safety Veto & Machine Learning 18 Fitur), serta batas toleransi metrik fisik sub-milimeter untuk taksiran kondisi fisik smartphone.
         </div>
         <div class="appbar-tags">
-            <span class="appbar-tag-pill">Standar PGI Computer Vision</span>
+            <span class="appbar-tag-pill">Standar Mufti Computer Vision</span>
             <span class="appbar-tag-pill">Fast-Fail Safety Veto</span>
             <span class="appbar-tag-pill">Hierarki Keputusan 2-Tier</span>
             <span class="appbar-tag-pill">Toleransi Sub-Milimeter (mm)</span>
@@ -1608,8 +1874,8 @@ elif nav_choice == "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)":
 
     with rule_tab1:
         st.markdown("""
-        ### Prinsip Dasar & Filosofi Penilaian Kondisi Fisik Bodi PGI
-        Sistem Computer Vision PGI dirancang untuk menghilangkan subjektivitas penaksir di cabang pegadaian dengan menerapkan **standar metrik fisik terukur sub-milimeter** ($mm$ dan $mm^2$) pada 4 sisi housing bodi smartphone (*Top, Bottom, Left, Right*).
+        ### Prinsip Dasar & Filosofi Penilaian Kondisi Fisik Bodi Mufti CV
+        Sistem Computer Vision Mufti dirancang untuk menghilangkan subjektivitas penaksir dengan menerapkan **standar metrik fisik terukur sub-milimeter** ($mm$ dan $mm^2$) pada 4 sisi housing bodi smartphone (*Top, Bottom, Left, Right*).
         
         Sistem menggunakan pendekatan **Hierarki Keputusan 2-Tahap (*Two-Tier Decision Pipeline*)**:
         """)
@@ -2639,7 +2905,7 @@ elif nav_choice == "Panduan SOP & Arsitektur Sistem":
     st.markdown("""
     <div class="flutter-appbar">
         <div class="appbar-title">
-            Arsitektur Sistem & Rekomendasi SOP PGI
+            Arsitektur Sistem & Rekomendasi SOP Mufti CV
         </div>
         <div class="appbar-subtitle">
             Standar operasional prosedur pemeriksaan 2 tahap dan ambang batas metrik fisik grading bodi smartphone.

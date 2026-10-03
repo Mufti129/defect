@@ -51,7 +51,7 @@ Aplikasi akan otomatis mendeteksi environment dan membuka antarmuka di:
 
 ## 🐳 Cara Deploy Menggunakan Docker
 
-Jika Anda ingin mendeploy aplikasi ini ke cloud server (AWS EC2, Google Cloud Run, Railway, atau VPS internal PGI):
+Jika Anda ingin mendeploy aplikasi ini ke cloud server (AWS EC2, Google Cloud Run, Railway, atau VPS internal Mufti CV):
 
 1. **Build Docker Image:**
    ```bash
