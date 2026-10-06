@@ -38,6 +38,20 @@ import tempfile
 # MODEL REGISTRY: Definisi 5 Versi Model AI Smartphone Defect Detection
 # -------------------------------------------------------------------------
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "v6": {
+        "id": "v6",
+        "name": "Model Versi 6 (High-Accuracy Defect Detector — YOLOv8s Transfer Learning)",
+        "short_name": "Versi 6 (YOLOv8s 800px)",
+        "badge": "TRAINING IN PROGRESS (V6)",
+        "badge_color": "#EC4899",
+        "yolo_file": "phone_defect_model_v6_best.pt",
+        "ml_file": "ml_grading_model_v3.joblib",
+        "arch": "YOLOv8s Detect (800x800, 11.2M Params — Transfer Fine-Tuned dari V5)",
+        "dataset": "dataset_v6 (3.936 Citra Bodi Bersih / 22.900 Bounding Box Riil)",
+        "focus": "4 Sisi Housing (Top, Bottom, Left, Right)",
+        "status": "Pelatihan 40 Epochs Sedang Berjalan (Auto-Sync Real-Time)",
+        "description": "Model generasi ke-6 yang di-fine-tune dari bobot terbaik V5 pada dataset V6 terverifikasi bebas noise tangan operator, dengan augmentasi patch cacat minoritas dan loss balancing untuk memaksimalkan presisi deteksi lecet mikro dan cuil bezel."
+    },
     "v5": {
         "id": "v5",
         "name": "Model Versi 5 (Housing-Only YOLOv8s 800px - Bobot Terbaik Final)",

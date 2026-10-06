@@ -1,0 +1,21 @@
+{
+  "record_id": 30,
+  "timestamp": "2026-10-06 08:50:14",
+  "unit_id": "1-00023e-13__samsung__samsung-a07-4-64",
+  "model_version": "v5",
+  "model_name": "Model Versi 5 (Housing-Only YOLOv8s 1024px - Checkpoint Terbaru)",
+  "is_valid_phone": true,
+  "rejection_reason": null,
+  "final_grade": "C",
+  "grade_confidence": 0.3769,
+  "total_dpi": 27.35,
+  "defects_count": 13,
+  "defect_breakdown": {
+    "scratch": 12,
+    "dent": 1,
+    "chip": 0,
+    "crack": 0,
+    "broken": 0
+  },
+  "elapsed_sec": 0.0
+}

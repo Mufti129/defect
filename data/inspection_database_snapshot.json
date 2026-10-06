@@ -492,5 +492,43 @@
     "storage_folder": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/streamlit_inspection_app/data/collected_data/20261006/TEST_UNIT_V5_1791248491",
     "views_count": 1,
     "views_list": "right"
+  },
+  {
+    "id": 29,
+    "timestamp": "2026-10-06 08:49:33",
+    "unit_id": "1-00013e-13__oppo__oppo-a5i-4-128",
+    "model_version": "v5",
+    "model_name": "Model Versi 5 (Housing-Only YOLOv8s 1024px - Checkpoint Terbaru)",
+    "is_valid_phone": 1,
+    "rejection_reason": null,
+    "detected_objects_json": "{}",
+    "final_grade": "D",
+    "grade_confidence": 1.0,
+    "total_dpi": 50.33,
+    "defects_count": 8,
+    "defect_breakdown_json": "{\"scratch\": 5, \"dent\": 0, \"chip\": 1, \"crack\": 0, \"broken\": 2}",
+    "elapsed_sec": 0.0,
+    "storage_folder": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/streamlit_inspection_app/data/collected_data/20261006/1-00013e-13__oppo__oppo-a5i-4-128_1791251373",
+    "views_count": 4,
+    "views_list": "top, bottom, left, right"
+  },
+  {
+    "id": 30,
+    "timestamp": "2026-10-06 08:50:14",
+    "unit_id": "1-00023e-13__samsung__samsung-a07-4-64",
+    "model_version": "v5",
+    "model_name": "Model Versi 5 (Housing-Only YOLOv8s 1024px - Checkpoint Terbaru)",
+    "is_valid_phone": 1,
+    "rejection_reason": null,
+    "detected_objects_json": "{}",
+    "final_grade": "C",
+    "grade_confidence": 0.3769,
+    "total_dpi": 27.35,
+    "defects_count": 13,
+    "defect_breakdown_json": "{\"scratch\": 12, \"dent\": 1, \"chip\": 0, \"crack\": 0, \"broken\": 0}",
+    "elapsed_sec": 0.0,
+    "storage_folder": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/streamlit_inspection_app/data/collected_data/20261006/1-00023e-13__samsung__samsung-a07-4-64_1791251414",
+    "views_count": 4,
+    "views_list": "top, bottom, left, right"
   }
 ]
