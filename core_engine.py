@@ -40,17 +40,17 @@ import tempfile
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
     "v5": {
         "id": "v5",
-        "name": "Model Versi 5 (Housing-Only YOLOv8s 1024px - Checkpoint Terbaru)",
-        "short_name": "Versi 5 (YOLOv8s 1024px)",
-        "badge": "TERBARU (CHECKPOINT TERBAIK)",
-        "badge_color": "#8B5CF6",
+        "name": "Model Versi 5 (Housing-Only YOLOv8s 800px - Bobot Terbaik Final)",
+        "short_name": "Versi 5 (YOLOv8s 800px)",
+        "badge": "FINAL PRODUKSI (TERBAIK)",
+        "badge_color": "#10B981",
         "yolo_file": "phone_defect_model_v5_best.pt",
         "ml_file": "ml_grading_model_v3.joblib",
-        "arch": "YOLOv8s Detect (1024x1024, 11M Params)",
-        "dataset": "dataset_v5_full (1.918 Unit Bodi, Resolusi Asli)",
+        "arch": "YOLOv8s Detect (800x800, 11.2M Params, 66.8 Jam Pelatihan)",
+        "dataset": "dataset_v5_full (5.346 Foto Cacat Bodi Murni)",
         "focus": "4 Sisi Housing (Top, Bottom, Left, Right)",
-        "status": "Pelatihan Berjalan (Epoch 17/30 Selesai - Recall 69.2%, mAP50 35.4%, Best mAP50 36.1%)",
-        "description": "Model resolusi tinggi 1024x1024 arsitektur YOLOv8s untuk ketajaman tekstur cacat mikro pada housing smartphone. Menggunakan checkpoint bobot terbaik dari proses pelatihan yang sedang berjalan (Epoch 17/30, Recall 69.2%, mAP50 36.1%)."
+        "status": "Tuntas 30 Epochs (Recall 67.3% [Peak 75.6%], mAP50 38.8%, mAP50-95 32.6%)",
+        "description": "Model resolusi tinggi 800x800 arsitektur YOLOv8s untuk ketajaman tekstur cacat mikro pada housing smartphone. Telah tuntas dilatih 30 epochs dengan bobot terbaik final (mAP@0.5 38.84%, Recall 67.34%, mAP50-95 32.58%, Val Box Loss 0.648)."
     },
     "v4": {
         "id": "v4",

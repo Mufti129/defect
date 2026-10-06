@@ -1,12 +1,23 @@
 {
-  "status": "TRAINING_IN_PROGRESS",
-  "current_epoch": 18,
+  "status": "TRAINING_COMPLETED",
+  "epoch": 30,
   "total_epochs": 30,
-  "current_batch": 200,
-  "total_batches_per_epoch": 1337,
-  "epoch_progress_percent": 15.0,
-  "overall_progress_percent": 57.17,
-  "qty_images_processed_this_epoch": 800,
-  "total_train_images": 5346,
-  "last_update": "2026-10-03 13:01:14"
+  "progress_pct": 100.0,
+  "best_fitness": 0.32577,
+  "metrics": {
+    "mAP50": 0.38844,
+    "mAP50_95": 0.32577,
+    "recall": 0.67337,
+    "peak_recall": 0.75569,
+    "precision": 0.32622,
+    "val_box_loss": 0.64811,
+    "val_cls_loss": 1.34954,
+    "train_box_loss": 0.68206,
+    "train_cls_loss": 1.42732
+  },
+  "best_epoch": 30,
+  "peak_recall_epoch": 19,
+  "resolution": "800x800",
+  "device": "mps",
+  "timestamp": "2026-10-06T08:26:00"
 }

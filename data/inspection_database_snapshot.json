@@ -473,5 +473,24 @@
     "storage_folder": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/streamlit_inspection_app/data/collected_data/20261003/TEST_SOP_MANUAL_001_1791002571",
     "views_count": 4,
     "views_list": "top, bottom, left, right"
+  },
+  {
+    "id": 28,
+    "timestamp": "2026-10-06 08:01:31",
+    "unit_id": "TEST_UNIT_V5",
+    "model_version": "v5",
+    "model_name": "Model Versi 5 (Housing-Only YOLOv8s 800px - Bobot Terbaik Final)",
+    "is_valid_phone": 1,
+    "rejection_reason": null,
+    "detected_objects_json": "{}",
+    "final_grade": "A",
+    "grade_confidence": 0.3674,
+    "total_dpi": 0.0,
+    "defects_count": 0,
+    "defect_breakdown_json": "{\"scratch\": 0, \"dent\": 0, \"chip\": 0, \"crack\": 0, \"broken\": 0}",
+    "elapsed_sec": 0.0,
+    "storage_folder": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/streamlit_inspection_app/data/collected_data/20261006/TEST_UNIT_V5_1791248491",
+    "views_count": 1,
+    "views_list": "right"
   }
 ]
