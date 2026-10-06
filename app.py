@@ -401,10 +401,17 @@ def get_cached_v5_status():
     if v5_status_file.exists():
         try:
             with open(v5_status_file, "r") as f:
-                return json.load(f)
+                data = json.load(f)
+                return {
+                    "epoch": data.get("epoch", 30),
+                    "total_epochs": data.get("total_epochs", 30),
+                    "progress_pct": data.get("progress_pct", 100.0),
+                    "status": data.get("status", "TRAINING_COMPLETED"),
+                    "metrics": data.get("metrics", {})
+                }
         except Exception:
             pass
-    return {"current_epoch": 17, "total_epochs": 30, "overall_progress_percent": 55.2}
+    return {"epoch": 30, "total_epochs": 30, "progress_pct": 100.0, "status": "TRAINING_COMPLETED"}
 
 @st.cache_data(ttl=15)
 def get_cached_db_stats():
@@ -429,28 +436,48 @@ st.sidebar.markdown(f"""
 - **Status:** `{active_cfg['status']}`
 """)
 
-# Special Live Training Box for V5 (White & Purple Flutter Style)
+# Special Status Card for V5 (Green Completed Style) & V6 (Live Tracker)
 if selected_version == "v5":
-    v5_data = get_cached_v5_status()
-    cur_ep = v5_data.get("current_epoch", 18)
-    tot_ep = v5_data.get("total_epochs", 30)
-    prog_pct = v5_data.get("overall_progress_percent", 57.2)
-
-    st.sidebar.markdown(f"""
-    <div style="background: linear-gradient(135deg, #FAF5FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(109, 40, 217, 0.08);">
+    st.sidebar.markdown("""
+    <div style="background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%); border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.08);">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-            <b style="color: #6D28D9; font-size: 0.86rem;">Progres Pelatihan Model V5</b>
-            <span style="background: #EDE9FE; color: #6D28D9; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">Epoch {cur_ep}/{tot_ep}</span>
+            <b style="color: #064E3B; font-size: 0.86rem;">Status Model Versi 5</b>
+            <span style="background: #DCFCE7; color: #166534; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">30/30 Epochs (100%)</span>
         </div>
-        <div style="color: #4C1D95; font-size: 0.80rem; margin-bottom: 6px; line-height: 1.45;">
-            • <b>Progres:</b> {prog_pct:.1f}% ({cur_ep}/{tot_ep} Epoch)<br>
-            • <b>Bobot Aktif:</b> Checkpoint Terbaru (Epoch 17 — Recall: 69.2%, mAP50: 36.1%)<br>
-            • <b>Akselerasi:</b> Apple Silicon MPS (Aktif)
+        <div style="color: #047857; font-size: 0.80rem; margin-bottom: 6px; line-height: 1.45;">
+            • <b>Status:</b> Pelatihan 30 Epochs Tuntas (100.0%)<br>
+            • <b>Bobot Aktif:</b> Bobot Final Terbaik (mAP50: 38.84%, mAP50-95: 32.58%)<br>
+            • <b>Peak Recall:</b> 75.57% (Epoch 19) | Val Box Loss: 0.648<br>
+            • <b>Resolusi:</b> 800x800 px (Housing-Only)
         </div>
-        <i style="color: #6B7280; font-size: 0.74rem;">Bobot final akan dimutakhirkan penuh setelah 30 epoch selesai.</i>
+        <i style="color: #059669; font-size: 0.74rem;">Model siap dan aktif digunakan untuk inferensi produksi.</i>
     </div>
     """, unsafe_allow_html=True)
-    st.sidebar.progress(float(prog_pct) / 100.0)
+    st.sidebar.progress(1.0)
+elif selected_version == "v6":
+    v6_data = _get_v6_live_status_dict()
+    if v6_data:
+        cur_ep = v6_data.get("current_epoch", 1)
+        tot_ep = v6_data.get("total_epochs", 40)
+        prog_tot = v6_data.get("overall_progress_percent", 0.0)
+        cur_batch = v6_data.get("current_batch", 0)
+        tot_batch = v6_data.get("total_batches_per_epoch", 859)
+        st.sidebar.markdown(f"""
+        <div style="background: linear-gradient(135deg, #FDF2F8 0%, #FFFFFF 100%); border: 1.5px solid #FBCFE8; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(236, 72, 153, 0.08);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <b style="color: #831843; font-size: 0.86rem;">Progres Pelatihan Model V6</b>
+                <span style="background: #FCE7F3; color: #BE185D; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">Epoch {cur_ep}/{tot_ep}</span>
+            </div>
+            <div style="color: #9D174D; font-size: 0.80rem; margin-bottom: 6px; line-height: 1.45;">
+                • <b>Status:</b> Training Sedang Berjalan ({prog_tot:.1f}%)<br>
+                • <b>Batch:</b> {cur_batch}/{tot_batch} per Epoch<br>
+                • <b>Target:</b> 40 Epochs (4K Enhanced Dataset)<br>
+                • <b>Akselerasi:</b> Apple Silicon Metal MPS (Aktif)
+            </div>
+            <i style="color: #BE185D; font-size: 0.74rem;">Pemantauan live real-time di Streamlit & GitHub.</i>
+        </div>
+        """, unsafe_allow_html=True)
+        st.sidebar.progress(min(max(float(prog_tot) / 100.0, 0.0), 1.0))
 
 
 # ---------------------------------------------------------
