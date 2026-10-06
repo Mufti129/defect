@@ -1,12 +1,12 @@
 {
   "status": "TRAINING_IN_PROGRESS",
   "model_version": "V6",
-  "current_epoch": 2,
+  "current_epoch": 4,
   "total_epochs": 40,
-  "current_batch": 280,
+  "current_batch": 760,
   "total_batches_per_epoch": 859,
-  "epoch_progress_percent": 32.6,
-  "overall_progress_percent": 3.32,
+  "epoch_progress_percent": 88.5,
+  "overall_progress_percent": 9.71,
   "temporary_best_weights": {
     "path": "weights/phone_defect_model_v6_best.pt",
     "size_mb": 21.46,
@@ -16,18 +16,45 @@
       "scratch",
       "chip"
     ],
-    "origin_epoch": 1
+    "origin_best_epoch": 3,
+    "best_mAP50": 1.69,
+    "precision": 78.72,
+    "recall": 3.99
   },
-  "epoch_1_evaluation": {
-    "precision": 77.38,
-    "recall": 2.43,
-    "mAP50": 0.78,
-    "mAP50_95": 0.18,
-    "train_box_loss": 3.6116,
-    "train_cls_loss": 10.4769,
-    "val_box_loss": 3.662,
-    "val_cls_loss": 9.4184,
-    "status": "Warm-up transfer phase completed. Model is establishing fine feature gradients without overfitting."
-  },
-  "last_update": "2026-10-06 11:34:43"
+  "history": [
+    {
+      "epoch": 1,
+      "precision": 77.38,
+      "recall": 2.43,
+      "mAP50": 0.78,
+      "mAP50_95": 0.18,
+      "train_box_loss": 3.6116,
+      "train_cls_loss": 10.4769,
+      "val_box_loss": 3.662,
+      "val_cls_loss": 9.4184
+    },
+    {
+      "epoch": 2,
+      "precision": 78.45,
+      "recall": 3.68,
+      "mAP50": 1.47,
+      "mAP50_95": 0.37,
+      "train_box_loss": 3.1225,
+      "train_cls_loss": 9.3107,
+      "val_box_loss": 3.4664,
+      "val_cls_loss": 8.6911
+    },
+    {
+      "epoch": 3,
+      "precision": 78.72,
+      "recall": 3.99,
+      "mAP50": 1.69,
+      "mAP50_95": 0.43,
+      "train_box_loss": 3.016,
+      "train_cls_loss": 9.0174,
+      "val_box_loss": 3.3542,
+      "val_cls_loss": 8.4796
+    }
+  ],
+  "last_update": "2026-10-06 15:08:17"
 }

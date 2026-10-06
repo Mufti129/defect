@@ -59,14 +59,67 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-    /* Hide Streamlit Brandings & Footers */
+    /* Hide Streamlit Brandings & Footers while preserving Sidebar Navigation */
     #MainMenu {visibility: hidden !important; display: none !important;}
     footer {visibility: hidden !important; display: none !important;}
-    header {visibility: hidden !important; display: none !important;}
-    [data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
     [data-testid="stDecoration"] {display: none !important; visibility: hidden !important;}
-    [data-testid="stStatusWidget"] {display: none !important; visibility: hidden !important;}
+    [data-testid="stStatusWidget"] {visibility: hidden !important; display: none !important;}
     .viewerBadge_container__1QSob, [class*="viewerBadge"] {display: none !important; visibility: hidden !important;}
+
+    /* Keep Sidebar & Collapse Toggle 100% Accessible & Ultra-Visible */
+    [data-testid="stHeader"] {
+        background: transparent !important;
+        pointer-events: none !important;
+    }
+    [data-testid="stHeader"] > div:not(:first-child) {
+        display: none !important;
+    }
+
+    /* High Visibility Sidebar Toggle & Re-open Button */
+    [data-testid="stSidebarCollapseButton"], 
+    [data-testid="collapsedControl"],
+    [data-testid="stHeader"] button,
+    button[kind="header"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        background: #1E293B !important;
+        border: 1.5px solid #8B5CF6 !important;
+        border-radius: 10px !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 14px rgba(139, 92, 246, 0.45) !important;
+        padding: 6px 10px !important;
+        z-index: 9999999 !important;
+        transition: all 0.2s ease-in-out !important;
+        cursor: pointer !important;
+    }
+
+    [data-testid="stSidebarCollapseButton"]:hover, 
+    [data-testid="collapsedControl"]:hover,
+    button[kind="header"]:hover {
+        background: #7C3AED !important;
+        border-color: #A78BFA !important;
+        transform: scale(1.08) !important;
+    }
+
+    [data-testid="collapsedControl"] svg,
+    [data-testid="stSidebarCollapseButton"] svg {
+        fill: #FFFFFF !important;
+        stroke: #FFFFFF !important;
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    [data-testid="stSidebar"] {
+        visibility: visible !important;
+        display: block !important;
+        z-index: 99999 !important;
+    }
+    [data-testid="stSidebarNav"] {
+        display: block !important;
+        visibility: visible !important;
+    }
 
     /* Flutter App Bar / Hero Header */
     .flutter-appbar {
