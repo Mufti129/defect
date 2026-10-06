@@ -1,10 +1,33 @@
 {
   "status": "TRAINING_IN_PROGRESS",
-  "current_epoch": 1,
+  "model_version": "V6",
+  "current_epoch": 2,
   "total_epochs": 40,
-  "current_batch": 80,
+  "current_batch": 280,
   "total_batches_per_epoch": 859,
-  "epoch_progress_percent": 9.3,
-  "overall_progress_percent": 0.23,
-  "last_update": "2026-10-06 09:36:38"
+  "epoch_progress_percent": 32.6,
+  "overall_progress_percent": 3.32,
+  "temporary_best_weights": {
+    "path": "weights/phone_defect_model_v6_best.pt",
+    "size_mb": 21.46,
+    "classes": [
+      "dent",
+      "broken",
+      "scratch",
+      "chip"
+    ],
+    "origin_epoch": 1
+  },
+  "epoch_1_evaluation": {
+    "precision": 77.38,
+    "recall": 2.43,
+    "mAP50": 0.78,
+    "mAP50_95": 0.18,
+    "train_box_loss": 3.6116,
+    "train_cls_loss": 10.4769,
+    "val_box_loss": 3.662,
+    "val_cls_loss": 9.4184,
+    "status": "Warm-up transfer phase completed. Model is establishing fine feature gradients without overfitting."
+  },
+  "last_update": "2026-10-06 11:34:43"
 }

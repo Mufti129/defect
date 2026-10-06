@@ -59,9 +59,14 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Plus Jakarta Sans", sans-serif;
-    }
+    /* Hide Streamlit Brandings & Footers */
+    #MainMenu {visibility: hidden !important; display: none !important;}
+    footer {visibility: hidden !important; display: none !important;}
+    header {visibility: hidden !important; display: none !important;}
+    [data-testid="stHeader"] {display: none !important; visibility: hidden !important;}
+    [data-testid="stDecoration"] {display: none !important; visibility: hidden !important;}
+    [data-testid="stStatusWidget"] {display: none !important; visibility: hidden !important;}
+    .viewerBadge_container__1QSob, [class*="viewerBadge"] {display: none !important; visibility: hidden !important;}
 
     /* Flutter App Bar / Hero Header */
     .flutter-appbar {
