@@ -1,12 +1,12 @@
 {
   "status": "TRAINING_IN_PROGRESS",
   "model_version": "V6",
-  "current_epoch": 14,
+  "current_epoch": 16,
   "total_epochs": 40,
-  "current_batch": 680,
+  "current_batch": 100,
   "total_batches_per_epoch": 859,
-  "epoch_progress_percent": 79.2,
-  "overall_progress_percent": 34.48,
+  "epoch_progress_percent": 11.6,
+  "overall_progress_percent": 37.79,
   "temporary_best_weights": {
     "path": "weights/phone_defect_model_v6_best.pt",
     "size_mb": 21.46,
@@ -16,11 +16,12 @@
       "scratch",
       "chip"
     ],
-    "origin_best_epoch": 13,
-    "best_mAP50": 3.19,
-    "best_mAP50_95": 0.89,
-    "precision": 37.62,
-    "recall": 6.22
+    "origin_best_epoch": 15,
+    "best_mAP50": 3.56,
+    "best_mAP50_95": 1.0,
+    "precision": 36.86,
+    "recall": 6.22,
+    "val_box_loss": 3.0416
   },
   "history": [
     {
@@ -165,7 +166,29 @@
       "train_cls_loss": 7.925,
       "val_box_loss": 3.1172,
       "val_cls_loss": 7.8735
+    },
+    {
+      "epoch": 14,
+      "precision": 30.66,
+      "recall": 5.4,
+      "mAP50": 3.45,
+      "mAP50_95": 0.94,
+      "train_box_loss": 2.6664,
+      "train_cls_loss": 7.8195,
+      "val_box_loss": 3.075,
+      "val_cls_loss": 7.8293
+    },
+    {
+      "epoch": 15,
+      "precision": 36.86,
+      "recall": 6.22,
+      "mAP50": 3.56,
+      "mAP50_95": 1.0,
+      "train_box_loss": 2.6614,
+      "train_cls_loss": 7.8483,
+      "val_box_loss": 3.0416,
+      "val_cls_loss": 7.8563
     }
   ],
-  "last_update": "2026-10-07 07:58:44"
+  "last_update": "2026-10-07 16:06:32"
 }
