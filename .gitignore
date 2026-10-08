@@ -1,10 +1,53 @@
+# Python & Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
-.DS_Store
 .venv/
+.venv*/
 env/
-tmp/
-*.tmp
-sample_card_output.jpg
+venv/
+ENV/
 
+# OS Specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Heavy Datasets & Raw Images (Avoid pushing GBs of dataset images to Git)
+raw_images/
+Hasil_Crop_Raw/
+dataset_v4_real/
+dataset_v5/
+dataset_v5_full/
+dataset_v5_pilot/
+dataset_v6/
+dataset_yolo_seg/
+archive_legacy/
+uploaded_inspections/
+inspection_results/
+scratch/
+
+# Training artifacts & runs
+runs/
+runs_v5_training/
+
+# Large Model Weights (>50MB / binary weights)
+*.onnx
+*.engine
+yolov8s-worldv2.pt
+weights/clip/
+weights/features_cache_large.joblib
+weights_v3_housing_only/
+weights_v4/
+weights_v5/
+weights_v6/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
