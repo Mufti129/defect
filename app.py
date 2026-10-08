@@ -3144,10 +3144,10 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
 
             st.markdown("#### Live Monitoring Grafik Pelatihan Model V6:")
             v6_chart_t1, v6_chart_t2, v6_chart_t3, v6_chart_t4 = st.tabs([
-                "📈 Kurva Metrik Deteksi Live (mAP50, mAP50-95, Recall)",
-                "📉 Kurva Loss Pelatihan & Validasi Live",
-                "🖼️ Dashboard Grafik Visual (High-Res)",
-                "📋 Log Evaluasi Real-Time Per Epoch"
+                "Kurva Metrik Deteksi Live (mAP50, mAP50-95, Recall)",
+                "Kurva Loss Pelatihan & Validasi Live",
+                "Dashboard Visual Metrik & Loss (High-Res)",
+                "Log Evaluasi Real-Time Per Epoch"
             ])
 
             with v6_chart_t1:
