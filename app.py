@@ -2680,30 +2680,103 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
             Batch Inspection & Pengujian Massal
         </div>
         <div class="appbar-subtitle">
-            Jalankan pengujian grading otomatis pada puluhan unit smartphone sekaligus dari direktori penyimpanan lokal.
+            Jalankan evaluasi grading otomatis pada puluhan unit smartphone sekaligus dari berbagai sumber data.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     render_model_banner()
 
-    default_batch_path = str(PROJECT_DIR / "Hasil_Crop_Raw" / "grade_B")
-    batch_dir_str = st.text_input("Path Folder Target Pengujian:", value=default_batch_path)
-    limit_units = st.slider("Jumlah Unit yang Akan Diuji:", min_value=2, max_value=50, value=10)
+    source_option = st.radio(
+        "Pilih Sumber Data Pengujian:",
+        options=[
+            "Preset Sampel Bawaan Sistem (Demo Samples)",
+            "Upload Arsip File ZIP (Unit Pengguna)",
+            "Direktori Path Lokal / Server"
+        ],
+        index=0,
+        horizontal=True
+    )
+
+    target_directory = None
+
+    if source_option == "Preset Sampel Bawaan Sistem (Demo Samples)":
+        preset_options = {
+            "Sampel Grade A (Unit Kondisi Mulus)": PROJECT_DIR / "demo_samples" / "grade_A",
+            "Sampel Grade B (Unit Cacat Ringan)": PROJECT_DIR / "demo_samples" / "grade_B",
+            "Sampel Grade C (Unit Cacat Sedang)": PROJECT_DIR / "demo_samples" / "grade_C",
+            "Sampel Grade D (Unit Cacat Berat)": PROJECT_DIR / "demo_samples" / "grade_D",
+        }
+        selected_preset_label = st.selectbox(
+            "Pilih Kategori Sampel:",
+            options=list(preset_options.keys())
+        )
+        chosen_preset_path = preset_options[selected_preset_label]
+        if not chosen_preset_path.exists() or len(list(chosen_preset_path.glob("*"))) == 0:
+            grade_key = chosen_preset_path.name
+            alt_path = PROJECT_DIR / "Hasil_Crop_Raw" / grade_key
+            if alt_path.exists():
+                chosen_preset_path = alt_path
+        target_directory = chosen_preset_path
+        st.caption(f"Direktori aktif: {target_directory}")
+
+    elif source_option == "Upload Arsip File ZIP (Unit Pengguna)":
+        st.info("Unggah file ZIP yang berisi sub-folder unit. Setiap sub-folder wajib berisi foto sudut: top.jpg, bottom.jpg, left.jpg, right.jpg, front.jpg, back.jpg.")
+        uploaded_zip = st.file_uploader(
+            "Pilih File ZIP:",
+            type=["zip"],
+            help="Arsip ZIP berisi subfolder unit smartphone"
+        )
+        if uploaded_zip is not None:
+            import zipfile
+            import tempfile
+            temp_extract_dir = tempfile.mkdtemp(prefix="batch_upload_")
+            try:
+                with zipfile.ZipFile(uploaded_zip, "r") as zip_ref:
+                    zip_ref.extractall(temp_extract_dir)
+                target_directory = Path(temp_extract_dir)
+                st.success("File ZIP berhasil diekstrak dan siap diproses.")
+            except Exception as e:
+                st.error(f"Gagal mengekstrak file ZIP: {str(e)}")
+                target_directory = None
+
+    elif source_option == "Direktori Path Lokal / Server":
+        default_batch_path = str(PROJECT_DIR / "demo_samples" / "grade_B")
+        if not (PROJECT_DIR / "demo_samples" / "grade_B").exists():
+            default_batch_path = str(PROJECT_DIR / "Hasil_Crop_Raw" / "grade_B")
+        batch_dir_str = st.text_input(
+            "Path Direktori Target Pengujian:", 
+            value=default_batch_path,
+            help="Hanya dapat diakses jika aplikasi dijalankan pada mesin lokal atau server yang sama."
+        )
+        target_directory = Path(batch_dir_str)
+
+    limit_units = st.slider("Jumlah Unit Maksimal yang Akan Diuji:", min_value=2, max_value=50, value=10)
 
     start_batch = st.button(f"Mulai Batch Testing ({active_cfg['short_name']})", type="primary")
 
     if start_batch:
-        b_path = Path(batch_dir_str)
-        if not b_path.exists():
-            st.error(f"Folder '{batch_dir_str}' tidak ditemukan.")
+        if target_directory is None:
+            st.error("Silakan tentukan atau unggah sumber data terlebih dahulu.")
+        elif not target_directory.exists():
+            st.error(f"Direktori '{target_directory}' tidak ditemukan pada sistem.")
         else:
-            unit_dirs = sorted([d for d in b_path.iterdir() if d.is_dir()])[:limit_units]
+            unit_dirs = sorted([d for d in target_directory.iterdir() if d.is_dir() and not d.name.startswith(".")])
             if not unit_dirs:
-                st.warning("Tidak ada sub-folder unit ditemukan dalam direktori tersebut.")
+                nested_dirs = []
+                for sub in target_directory.iterdir():
+                    if sub.is_dir() and not sub.name.startswith("."):
+                        nested_dirs.extend([d for d in sub.iterdir() if d.is_dir() and not d.name.startswith(".")])
+                if nested_dirs:
+                    unit_dirs = sorted(nested_dirs)
+
+            unit_dirs = unit_dirs[:limit_units]
+
+            if not unit_dirs:
+                st.warning("Tidak ada sub-folder unit smartphone yang valid ditemukan dalam direktori.")
             else:
                 engine = get_cached_engine(selected_version)
-                st.info(f"Memulai evaluasi pada {len(unit_dirs)} unit menggunakan **{active_cfg['short_name']}** (Sensitivitas: {conf_thresh_slider:.2f})...")
+                st.info(f"Memulai evaluasi pada {len(unit_dirs)} unit menggunakan model {active_cfg['short_name']} (Sensitivitas: {conf_thresh_slider:.2f})...")
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
@@ -2714,12 +2787,11 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
                     status_text.text(f"Memproses unit {i+1}/{len(unit_dirs)}: {u_dir.name}")
                     v_dict = {}
                     for side in ["top", "bottom", "left", "right", "front", "back"]:
-                        p_jpg = u_dir / f"{side}.jpg"
-                        p_png = u_dir / f"{side}.png"
-                        if p_jpg.exists():
-                            v_dict[side] = str(p_jpg)
-                        elif p_png.exists():
-                            v_dict[side] = str(p_png)
+                        for ext in [".jpg", ".png", ".jpeg", ".JPG", ".PNG", ".JPEG"]:
+                            p_file = u_dir / f"{side}{ext}"
+                            if p_file.exists():
+                                v_dict[side] = str(p_file)
+                                break
 
                     if v_dict:
                         t_u0 = time.time()
@@ -2745,25 +2817,28 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
                     progress_bar.progress((i + 1) / len(unit_dirs))
 
                 total_time = time.time() - t_batch_start
-                status_text.text("Batch testing selesai!")
+                status_text.text("Batch testing selesai.")
 
-                st.success(f"Berhasil menguji {len(batch_results)} unit dalam {total_time:.2f} detik (Rata-rata: {total_time/len(batch_results):.2f}s per unit).")
+                if batch_results:
+                    st.success(f"Berhasil menguji {len(batch_results)} unit dalam {total_time:.2f} detik (Rata-rata: {total_time/len(batch_results):.2f}s per unit).")
 
-                df_batch = pd.DataFrame(batch_results)
-                st.dataframe(df_batch, use_container_width=True)
+                    df_batch = pd.DataFrame(batch_results)
+                    st.dataframe(df_batch, use_container_width=True)
 
-                grade_counts = df_batch["Predicted Grade"].value_counts().reset_index()
-                grade_counts.columns = ["Grade", "Jumlah Unit"]
-                st.subheader("Distribusi Grade Hasil Prediksi:")
-                st.bar_chart(grade_counts.set_index("Grade"))
+                    grade_counts = df_batch["Predicted Grade"].value_counts().reset_index()
+                    grade_counts.columns = ["Grade", "Jumlah Unit"]
+                    st.subheader("Distribusi Grade Hasil Prediksi:")
+                    st.bar_chart(grade_counts.set_index("Grade"))
 
-                csv_bytes = df_batch.to_csv(index=False).encode("utf-8")
-                st.download_button(
-                    label="Unduh Ringkasan Hasil Pengujian (CSV)",
-                    data=csv_bytes,
-                    file_name=f"batch_inspection_results_{selected_version}.csv",
-                    mime="text/csv"
-                )
+                    csv_bytes = df_batch.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        label="Unduh Ringkasan Hasil Pengujian (CSV)",
+                        data=csv_bytes,
+                        file_name=f"batch_inspection_results_{selected_version}.csv",
+                        mime="text/csv"
+                    )
+                else:
+                    st.warning("Tidak ditemukan file foto sudut yang valid (top, bottom, left, right, front, back) pada unit yang diuji.")
 
 
 # ---------------------------------------------------------
