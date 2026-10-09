@@ -2691,6 +2691,7 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
         "Pilih Sumber Data Pengujian:",
         options=[
             "Preset Sampel Bawaan Sistem (Demo Samples)",
+            "Google Drive (Link Folder / Folder ID)",
             "Upload Arsip File ZIP (Unit Pengguna)",
             "Direktori Path Lokal / Server"
         ],
@@ -2702,6 +2703,7 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
 
     if source_option == "Preset Sampel Bawaan Sistem (Demo Samples)":
         preset_options = {
+            "Semua Sampel (Grade A, B, C, D)": PROJECT_DIR / "demo_samples",
             "Sampel Grade A (Unit Kondisi Mulus)": PROJECT_DIR / "demo_samples" / "grade_A",
             "Sampel Grade B (Unit Cacat Ringan)": PROJECT_DIR / "demo_samples" / "grade_B",
             "Sampel Grade C (Unit Cacat Sedang)": PROJECT_DIR / "demo_samples" / "grade_C",
@@ -2717,8 +2719,36 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
             alt_path = PROJECT_DIR / "Hasil_Crop_Raw" / grade_key
             if alt_path.exists():
                 chosen_preset_path = alt_path
+            elif (PROJECT_DIR / "Hasil_Crop_Raw").exists():
+                chosen_preset_path = PROJECT_DIR / "Hasil_Crop_Raw"
         target_directory = chosen_preset_path
         st.caption(f"Direktori aktif: {target_directory}")
+
+    elif source_option == "Google Drive (Link Folder / Folder ID)":
+        st.info("Masukkan link folder Google Drive publik/terbuka yang berisi folder grade_A, grade_B, grade_C, grade_D.")
+        default_gdrive_url = "https://drive.google.com/drive/folders/1yhIMWwk9vxStkftLdR3Cbte6Y19bxv-D?usp=drive_link"
+        gdrive_url = st.text_input("Link Folder Google Drive:", value=default_gdrive_url)
+
+        gdrive_cache_dir = PROJECT_DIR / "downloads" / "gdrive_dataset"
+        c_sync, c_info = st.columns([1.5, 2.5])
+        with c_sync:
+            btn_sync_gdrive = st.button("Sinkronkan / Unduh Dataset Google Drive", type="secondary")
+
+        if btn_sync_gdrive:
+            with st.spinner("Mengunduh dataset dari Google Drive via gdown..."):
+                import gdown
+                os.makedirs(str(gdrive_cache_dir), exist_ok=True)
+                try:
+                    gdown.download_folder(url=gdrive_url, output=str(gdrive_cache_dir), quiet=False, use_cookies=False)
+                    st.success("Dataset Google Drive berhasil diunduh dan disinkronkan.")
+                except Exception as e:
+                    st.error(f"Gagal mengunduh folder Google Drive: {str(e)}")
+
+        if gdrive_cache_dir.exists() and len(list(gdrive_cache_dir.glob("*"))) > 0:
+            target_directory = gdrive_cache_dir
+            st.caption(f"Direktori dataset aktif: {target_directory}")
+        else:
+            target_directory = None
 
     elif source_option == "Upload Arsip File ZIP (Unit Pengguna)":
         st.info("Unggah file ZIP yang berisi sub-folder unit. Setiap sub-folder wajib berisi foto sudut: top.jpg, bottom.jpg, left.jpg, right.jpg, front.jpg, back.jpg.")
@@ -2741,9 +2771,9 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
                 target_directory = None
 
     elif source_option == "Direktori Path Lokal / Server":
-        default_batch_path = str(PROJECT_DIR / "demo_samples" / "grade_B")
-        if not (PROJECT_DIR / "demo_samples" / "grade_B").exists():
-            default_batch_path = str(PROJECT_DIR / "Hasil_Crop_Raw" / "grade_B")
+        default_batch_path = str(PROJECT_DIR / "demo_samples")
+        if not (PROJECT_DIR / "demo_samples").exists():
+            default_batch_path = str(PROJECT_DIR / "Hasil_Crop_Raw")
         batch_dir_str = st.text_input(
             "Path Direktori Target Pengujian:", 
             value=default_batch_path,
@@ -2785,18 +2815,51 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
         found_units.sort(key=lambda x: str(x[0]))
         return found_units
 
-    limit_units = st.slider("Jumlah Unit Maksimal yang Akan Diuji:", min_value=2, max_value=100, value=15)
+    # Sampling Method Controls
+    st.write("")
+    st.markdown("**Konfigurasi Pengambilan Sampel Unit:**")
+    sampling_mode = st.radio(
+        "Metode Pengambilan Sampel:",
+        options=[
+            "Proporsional Seragam per-Grade (Balanced 1:1:1:1)",
+            "Berdasarkan Urutan Total Unit"
+        ],
+        index=0,
+        horizontal=True
+    )
+
+    if sampling_mode == "Proporsional Seragam per-Grade (Balanced 1:1:1:1)":
+        units_per_grade = st.slider("Jumlah Unit yang Diuji per-Grade (Grade A, B, C, D):", min_value=1, max_value=25, value=5)
+        st.caption(f"Total yang akan diuji secara seimbang: **{units_per_grade * 4} unit** ({units_per_grade} Grade A + {units_per_grade} Grade B + {units_per_grade} Grade C + {units_per_grade} Grade D).")
+    else:
+        limit_units = st.slider("Jumlah Total Unit Maksimal yang Akan Diuji:", min_value=2, max_value=100, value=20)
 
     start_batch = st.button(f"Mulai Batch Testing ({active_cfg['short_name']})", type="primary")
 
     if start_batch:
         if target_directory is None:
-            st.error("Silakan tentukan atau unggah sumber data terlebih dahulu.")
+            st.error("Silakan tentukan, sinkronkan Google Drive, atau unggah sumber data terlebih dahulu.")
         elif not target_directory.exists():
             st.error(f"Direktori '{target_directory}' tidak ditemukan pada sistem.")
         else:
             all_discovered_units = discover_phone_unit_folders(target_directory)
-            selected_units = all_discovered_units[:limit_units]
+
+            if sampling_mode == "Proporsional Seragam per-Grade (Balanced 1:1:1:1)":
+                grade_buckets = {"A": [], "B": [], "C": [], "D": [], "Other": []}
+                for u_dir, gt_g in all_discovered_units:
+                    if gt_g in grade_buckets:
+                        grade_buckets[gt_g].append((u_dir, gt_g))
+                    else:
+                        grade_buckets["Other"].append((u_dir, gt_g))
+                
+                selected_units = []
+                for g_char in ["A", "B", "C", "D"]:
+                    selected_units.extend(grade_buckets[g_char][:units_per_grade])
+                
+                if not selected_units:
+                    selected_units = all_discovered_units[:(units_per_grade * 4)]
+            else:
+                selected_units = all_discovered_units[:limit_units]
 
             if not selected_units:
                 st.warning("Tidak ditemukan sub-folder unit smartphone yang berisi file foto sudut (top, bottom, left, right, front, back).")
