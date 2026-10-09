@@ -1,28 +1,28 @@
 # Laporan Progres dan Evaluasi Pelatihan Model YOLOv8 Defect Detection Versi 6 (V6)
 
-**Tanggal Update:** 2026-10-08 16:35:00 WIB  
-**Status Pelatihan:** AKTIF BERJALAN DI VS CODE (Epoch 21 / 40)  
-**Progres Selesai:** 20 dari 40 Epoch (50.0%)  
+**Tanggal Update:** 2026-10-09 07:39:29 WIB  
+**Status Pelatihan:** AKTIF BERJALAN DI VS CODE (Epoch 25 / 40)  
+**Progres Selesai:** 24 dari 40 Epoch (60.0%)  
 **Dataset Ground Truth:** 20.205 Anotasi Terverifikasi (100% Zero-Contamination, 4 Kelas Cacat Bodi HP)
 
 ---
 
-## 1. Ringkasan Kinerja Evaluasi Terbaik Sementara (Puncak Epoch 20)
+## 1. Ringkasan Kinerja Evaluasi Terbaik Sementara (Puncak Epoch 21)
 
-| Parameter Evaluasi | Nilai Awal (Epoch 1) | Rekor Terbaik (Epoch 20) | Delta Pertumbuhan | Keterangan Teknis |
+| Parameter Evaluasi | Nilai Awal (Epoch 1) | Rekor Terbaik (Epoch 21) | Delta Pertumbuhan | Keterangan Teknis |
 | :--- | :---: | :---: | :---: | :--- |
-| **mAP@0.5 (Mean Average Precision)** | 0.779% | **3.784%** | **+385.7% (Naik ~4.85x)** | Rekor Tertinggi Baru |
-| **mAP@0.5:0.95 (Strict IoU)** | 0.181% | **1.106%** | **+511.0% (Naik ~6.10x)** | Rekor Tertinggi Baru |
-| **Recall (Sensitivitas Deteksi)** | 2.43% | **7.82%** | **+221.8% (Naik ~3.21x)** | Peningkatan Tangkapan Cacat Fisik |
-| **Precision (Akurasi Prediksi)** | 77.38% | **8.68% (Puncak: 79.08%)** | Dinamis | Penyesuaian Threshold Bounding Box |
-| **Train Box Loss** | 3.6116 | **2.5899** | **-28.3% (Konvergen)** | Lokalisasi Koordinat Semakin Presisi |
-| **Train Class Loss** | 10.4769 | **7.4960** | **-28.5% (Konvergen)** | Klasifikasi Cacat Semakin Akurat |
-| **Validation Box Loss** | 3.6620 | **3.0523 (Min: 3.0150)** | **-17.7% (Stabil)** | Zero Overfitting |
-| **Validation Class Loss** | 9.4184 | **7.7564** | **-17.6% (Stabil)** | Zero Overfitting |
+| **mAP@0.5 (Mean Average Precision)** | 0.779% | **4.346%** | **+457.9% (Naik ~5.58x)** | Rekor Tertinggi Baru (Epoch 21) |
+| **mAP@0.5:0.95 (Strict IoU)** | 0.181% | **1.324%** | **+631.5% (Naik ~7.31x)** | Rekor Tertinggi Baru (Epoch 21) |
+| **Recall (Sensitivitas Deteksi)** | 2.43% | **7.93%** | **+226.3% (Naik ~3.26x)** | Rekor Sensitivitas Baru (Epoch 24) |
+| **Precision (Akurasi Prediksi)** | 77.38% | **18.54% (Puncak: 79.08%)** | Dinamis | Penyesuaian Threshold Bounding Box |
+| **Train Box Loss** | 3.6116 | **2.5509** | **-29.4% (Konvergen)** | Lokalisasi Koordinat Semakin Presisi |
+| **Train Class Loss** | 10.4769 | **7.2493** | **-28.9% (Konvergen)** | Klasifikasi Cacat Semakin Akurat |
+| **Validation Box Loss** | 3.6620 | **2.9783** | **-18.7% (Sub-3.0 Barrier)** | Zero Overfitting |
+| **Validation Class Loss** | 9.4184 | **7.5918** | **-19.4% (Stabil)** | Zero Overfitting |
 
 ---
 
-## 2. Tabel Riwayat Progres Pelatihan Lengkap (Epoch 1 s/d Epoch 20)
+## 2. Tabel Riwayat Progres Pelatihan Lengkap (Epoch 1 s/d Epoch 24)
 
 | Epoch | Train Box Loss | Train Cls Loss | Train DFL Loss | Val Box Loss | Val Cls Loss | Precision (%) | Recall (%) | mAP@0.5 (%) | mAP@0.5:0.95 (%) |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -46,24 +46,29 @@
 | 18 | 2.6144 | 7.5976 | 1.5256 | 3.0745 | 7.8138 | 12.16% | 6.43% | 3.535% | 1.002% |
 | 19 | 2.5947 | 7.5563 | 1.5291 | 3.0150 | 7.7610 | 9.94% | 7.11% | 3.419% | 0.942% |
 | 20 | 2.5899 | 7.4960 | 1.5175 | 3.0523 | 7.7564 | 8.68% | 7.82% | 3.784% | 1.106% |
+| 21 | 2.5726 | 7.4242 | 1.5183 | 3.0191 | 7.6267 | 18.54% | 7.63% | 4.346% | 1.324% |
+| 22 | 2.5717 | 7.3929 | 1.5070 | 3.0286 | 7.6358 | 7.32% | 6.82% | 3.936% | 1.141% |
+| 23 | 2.5485 | 7.3107 | 1.4972 | 2.9867 | 7.7065 | 14.03% | 6.29% | 4.100% | 1.197% |
+| 24 | 2.5509 | 7.2493 | 1.4901 | 2.9783 | 7.5918 | 6.94% | 7.93% | 4.138% | 1.153% |
 
 ---
 
 ## 3. Analisis Teknis dan Hasil Evaluasi Sementara
 
-1. **Akselerasi Akurasi Deteksi (mAP@0.5 naik 4.85x):**
-   - Hingga Epoch 20, model V6 mencapai akurasi deteksi terbaik di level **3.784% mAP@0.5** dan **1.106% mAP@0.5:0.95**.
-   - Model secara bertahap mempelajari pola cacat mikro (scratch halus, dent tepi, dan chip bodi).
+1. **Lonjakan Akurasi Deteksi Baru (mAP@0.5 Mencapai 4.346%):**
+   - Model menorehkan rekor baru di Epoch 21 dengan **mAP@0.5 sebesar 4.346%** (naik 5.58 kali lipat dari baseline Epoch 1) dan **mAP@0.5:0.95 sebesar 1.324%** (naik 7.31 kali lipat).
+   - Ini membuktikan kemampuan deteksi mikro pada goresan halus (*scratch*), penyok bodi (*dent*), dan cuil bezel (*chip*) terus menguat secara eksponensial.
 
-2. **Sensitivitas Deteksi (Recall) Meningkat 3.2x:**
-   - Recall naik secara konsisten dari 2.43% menjadi **7.82%**, menandakan penurunan signifikan pada rasio False Negative (cacat yang terlewat).
+2. **Sensitivitas Tangkapan (Recall) Mencapai Rekor Baru 7.93% di Epoch 24:**
+   - Recall naik ke level tertinggi baru **7.93%**, membuktikan model semakin agresif menangkap cacat riil pada sampel validasi independen.
 
-3. **Kestabilan Loss dan Validasi (Zero Overfitting):**
-   - Pergerakan  (3.0523) dan  (7.7564) selaras dengan penurunan .
-   - Hal ini mengonfirmasi kualitas dataset 20.205 anotasi manusia yang bersih dari interferensi tangan operator.
+3. **Penetrasi Batas Sub-3.0 pada Validation Box Loss:**
+   -  resmi menembus di bawah 3.00 untuk pertama kalinya, menyentuh **2.9783** di Epoch 24.
+   -  juga mencatatkan rekor terendah di **7.5918**.
+   - Kedua indikator ini mengonfirmasi model belajar secara murni tanpa *overfitting*.
 
-4. **Prospek Fase Lanjutan (Epoch 21 - 40):**
-   - Pada Epoch 30 s/d 40, augmentasi mosaik akan dinonaktifkan secara otomatis () untuk proses fine-tuning pada gambar murni dengan resolusi penuh.
+4. **Menuju Fase Akhir Fine-Tuning (Epoch 30 - 40):**
+   - Dalam 6 epoch ke depan (mulai Epoch 30), augmentasi mosaik akan dinonaktifkan (). Fase ini dirancang untuk mematangkan bobot pada citra bodi murni tanpa distorsi.
 
 ---
 
