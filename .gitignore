@@ -51,3 +51,7 @@ weights_v6/
 .vscode/
 *.swp
 *.swo
+
+# Collected Session Images
+data/collected_data/
+streamlit_inspection_app/data/collected_data/
