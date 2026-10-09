@@ -2882,9 +2882,103 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
         df_batch = pd.DataFrame(batch_results)
         st.dataframe(df_batch, use_container_width=True)
 
-        grade_counts = df_batch["Predicted Grade"].value_counts().reset_index()
-        grade_counts.columns = ["Grade", "Jumlah Unit"]
+        # -------------------------------------------------------------
+        # 4x4 Confusion Matrix (Matriks Kesesuaian Aktual vs Prediksi)
+        # -------------------------------------------------------------
+        def _render_batch_cm_table(cm, classes=["A", "B", "C", "D"], counts=[0, 0, 0, 0]):
+            rows_html = ""
+            for i, c_name in enumerate(classes):
+                cnt = counts[i]
+                row_cells = f'<td style="background: #1E293B; padding: 10px 12px; border: 1px solid #334155; text-align: left; white-space: nowrap;"><span style="color: #F8FAFC !important; font-weight: 800; font-size: 0.86rem; display: inline-block;">Aktual Grade {c_name} ({cnt})</span></td>'
+                for j, pred_c in enumerate(classes):
+                    val = cm[i][j]
+                    if i == j:
+                        bg_style = "background: #064E3B; border: 1px solid #059669;"
+                        span_style = "color: #34D399 !important; font-weight: 900; font-size: 1.15rem; display: inline-block;"
+                    elif (i == 0 and j == 3) or (i == 3 and j == 0):
+                        bg_style = "background: #450A0A; border: 1px solid #DC2626;"
+                        span_style = "color: #F87171 !important; font-weight: 900; font-size: 1.10rem; display: inline-block;"
+                    elif abs(i - j) == 1:
+                        bg_style = "background: #451A03; border: 1px solid #D97706;"
+                        span_style = "color: #FBBF24 !important; font-weight: 800; font-size: 1.10rem; display: inline-block;"
+                    else:
+                        bg_style = "background: #0F172A; border: 1px solid #334155;"
+                        span_style = "color: #E2E8F0 !important; font-weight: 700; font-size: 1.05rem; display: inline-block;"
+                    row_cells += f'<td style="{bg_style} padding: 10px 8px; text-align: center;"><span style="{span_style}">{val}</span></td>'
+                rows_html += f"<tr>{row_cells}</tr>"
 
+            header_cells = '<th style="background: #020617; padding: 10px 12px; border: 1px solid #334155; text-align: left; white-space: nowrap;"><span style="color: #FFFFFF !important; font-weight: 900; font-size: 0.86rem; display: inline-block;">Aktual \\ Prediksi</span></th>'
+            for pred_c in classes:
+                header_cells += f'<th style="background: #4C1D95; padding: 10px 8px; border: 1px solid rgba(255,255,255,0.25); text-align: center;"><span style="color: #FFFFFF !important; font-weight: 900; font-size: 0.86rem; display: inline-block;">Pred {pred_c}</span></th>'
+
+            legend_html = """
+            <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; font-size: 0.76rem; font-weight: 700;">
+                <div style="display: flex; align-items: center; gap: 5px;"><span style="display:inline-block; width: 12px; height: 12px; border-radius: 3px; background: #064E3B; border: 1px solid #059669;"></span> <span style="color: #059669;">Prediksi Tepat (Sesuai)</span></div>
+                <div style="display: flex; align-items: center; gap: 5px;"><span style="display:inline-block; width: 12px; height: 12px; border-radius: 3px; background: #451A03; border: 1px solid #D97706;"></span> <span style="color: #D97706;">Deviasi 1 Tingkat</span></div>
+                <div style="display: flex; align-items: center; gap: 5px;"><span style="display:inline-block; width: 12px; height: 12px; border-radius: 3px; background: #450A0A; border: 1px solid #DC2626;"></span> <span style="color: #DC2626;">Inversi Kritis (D ↔ A)</span></div>
+                <div style="display: flex; align-items: center; gap: 5px;"><span style="display:inline-block; width: 12px; height: 12px; border-radius: 3px; background: #0F172A; border: 1px solid #334155;"></span> <span style="color: #64748B;">Lainnya</span></div>
+            </div>
+            """
+
+            return f"""
+            <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.84rem; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.15); border: 1.5px solid #334155;">
+                <thead>
+                    <tr>{header_cells}</tr>
+                </thead>
+                <tbody>
+                    {rows_html}
+                </tbody>
+            </table>
+            {legend_html}
+            """
+
+        # Calculate 4x4 matrix
+        grades = ["A", "B", "C", "D"]
+        g_map = {"A": 0, "B": 1, "C": 2, "D": 3}
+        cm_4x4 = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+        has_gt_data = False
+
+        for row in batch_results:
+            gt_str = str(row.get("Ground Truth", "")).replace("Grade ", "").strip()
+            pred_str = str(row.get("Predicted Grade", "")).replace("Grade ", "").strip()
+            if gt_str in g_map and pred_str in g_map:
+                has_gt_data = True
+                cm_4x4[g_map[gt_str]][g_map[pred_str]] += 1
+
+        if has_gt_data:
+            gt_counts = [sum(cm_4x4[i]) for i in range(4)]
+            total_gt_units = sum(gt_counts)
+            total_correct = sum(cm_4x4[i][i] for i in range(4))
+            accuracy_pct = (total_correct / max(total_gt_units, 1)) * 100.0
+
+            st.write("")
+            st.markdown("---")
+            st.markdown("### Matriks Kesesuaian Evaluasi (4x4 Confusion Matrix)")
+            st.caption("Membandingkan **Aktual Grade (Ground Truth)** dari struktur folder dengan **Realisasi Prediksi Model AI**.")
+
+            col_cm_table, col_cm_summary = st.columns([1.6, 1.0])
+
+            with col_cm_table:
+                cm_html_table = _render_batch_cm_table(cm_4x4, classes=["A", "B", "C", "D"], counts=gt_counts)
+                st.markdown(cm_html_table, unsafe_allow_html=True)
+
+            with col_cm_summary:
+                st.markdown(f"""
+                <div style="background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px;">
+                    <div style="font-size: 0.78rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em;">Tingkat Akurasi Batch</div>
+                    <div style="font-size: 2.15rem; font-weight: 800; color: #0F172A; line-height: 1.15; margin: 4px 0;">{accuracy_pct:.1f}%</div>
+                    <div style="font-size: 0.82rem; color: #475569; font-weight: 600;">{total_correct} dari {total_gt_units} unit terklasifikasi tepat</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.markdown("**Ketepatan Prediksi Per-Grade:**")
+                for g_idx, g_char in enumerate(grades):
+                    g_tot = gt_counts[g_idx]
+                    g_cor = cm_4x4[g_idx][g_idx]
+                    g_rec = (g_cor / max(g_tot, 1)) * 100.0 if g_tot > 0 else 0.0
+                    st.markdown(f"- **Grade {g_char}:** `{g_cor}/{g_tot}` unit ({g_rec:.0f}% Sesuai)")
+
+        st.write("")
         c_chart, c_dl = st.columns([1.5, 1])
         with c_chart:
             st.subheader("Distribusi Grade Hasil Prediksi:")
