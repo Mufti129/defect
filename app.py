@@ -2945,6 +2945,9 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
         df_batch = pd.DataFrame(batch_results)
         st.dataframe(df_batch, use_container_width=True)
 
+        grade_counts = df_batch["Predicted Grade"].value_counts().reset_index()
+        grade_counts.columns = ["Grade", "Jumlah Unit"]
+
         # -------------------------------------------------------------
         # 4x4 Confusion Matrix (Matriks Kesesuaian Aktual vs Prediksi)
         # -------------------------------------------------------------
