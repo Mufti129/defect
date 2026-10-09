@@ -2751,7 +2751,41 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
         )
         target_directory = Path(batch_dir_str)
 
-    limit_units = st.slider("Jumlah Unit Maksimal yang Akan Diuji:", min_value=2, max_value=50, value=10)
+    def discover_phone_unit_folders(root_path: Path):
+        found_units = []
+        valid_sides = {"top", "bottom", "left", "right", "front", "back"}
+        
+        for dirpath, _, filenames in os.walk(str(root_path)):
+            p_dir = Path(dirpath)
+            if p_dir.name.startswith(".") or "__MACOSX" in str(p_dir):
+                continue
+            
+            matched_sides = set()
+            for fn in filenames:
+                stem = Path(fn).stem.lower()
+                ext = Path(fn).suffix.lower()
+                if stem in valid_sides and ext in [".jpg", ".png", ".jpeg", ".JPG", ".PNG", ".JPEG"]:
+                    matched_sides.add(stem)
+                    
+            if len(matched_sides) >= 2 or ("bottom" in matched_sides or "top" in matched_sides or "left" in matched_sides):
+                gt_grade = None
+                for part in p_dir.parts:
+                    part_clean = part.lower().replace(" ", "_").replace("-", "_")
+                    if "grade_a" in part_clean or part_clean == "grade a":
+                        gt_grade = "A"
+                    elif "grade_b" in part_clean or part_clean == "grade b":
+                        gt_grade = "B"
+                    elif "grade_c" in part_clean or part_clean == "grade c":
+                        gt_grade = "C"
+                    elif "grade_d" in part_clean or part_clean == "grade d":
+                        gt_grade = "D"
+                
+                found_units.append((p_dir, gt_grade))
+                
+        found_units.sort(key=lambda x: str(x[0]))
+        return found_units
+
+    limit_units = st.slider("Jumlah Unit Maksimal yang Akan Diuji:", min_value=2, max_value=100, value=15)
 
     start_batch = st.button(f"Mulai Batch Testing ({active_cfg['short_name']})", type="primary")
 
@@ -2761,22 +2795,14 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
         elif not target_directory.exists():
             st.error(f"Direktori '{target_directory}' tidak ditemukan pada sistem.")
         else:
-            unit_dirs = sorted([d for d in target_directory.iterdir() if d.is_dir() and not d.name.startswith(".")])
-            if not unit_dirs:
-                nested_dirs = []
-                for sub in target_directory.iterdir():
-                    if sub.is_dir() and not sub.name.startswith("."):
-                        nested_dirs.extend([d for d in sub.iterdir() if d.is_dir() and not d.name.startswith(".")])
-                if nested_dirs:
-                    unit_dirs = sorted(nested_dirs)
+            all_discovered_units = discover_phone_unit_folders(target_directory)
+            selected_units = all_discovered_units[:limit_units]
 
-            unit_dirs = unit_dirs[:limit_units]
-
-            if not unit_dirs:
-                st.warning("Tidak ada sub-folder unit smartphone yang valid ditemukan dalam direktori.")
+            if not selected_units:
+                st.warning("Tidak ditemukan sub-folder unit smartphone yang berisi file foto sudut (top, bottom, left, right, front, back).")
             else:
                 engine = get_cached_engine(selected_version)
-                st.info(f"Memulai evaluasi pada {len(unit_dirs)} unit menggunakan model {active_cfg['short_name']} (Sensitivitas: {conf_thresh_slider:.2f})...")
+                st.info(f"Memulai evaluasi pada {len(selected_units)} unit menggunakan model {active_cfg['short_name']} (Sensitivitas: {conf_thresh_slider:.2f})...")
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
@@ -2784,8 +2810,8 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
                 batch_unit_details = {}
                 t_batch_start = time.time()
 
-                for i, u_dir in enumerate(unit_dirs):
-                    status_text.text(f"Memproses unit {i+1}/{len(unit_dirs)}: {u_dir.name}")
+                for i, (u_dir, gt_grade) in enumerate(selected_units):
+                    status_text.text(f"Memproses unit {i+1}/{len(selected_units)}: {u_dir.name} (Kategori: Grade {gt_grade if gt_grade else 'Auto'})")
                     v_dict = {}
                     for side in ["top", "bottom", "left", "right", "front", "back"]:
                         for ext in [".jpg", ".png", ".jpeg", ".JPG", ".PNG", ".JPEG"]:
@@ -2810,26 +2836,33 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
                         else:
                             report, card_bgr, annotated_views = res_tuple
 
-                        batch_results.append({
+                        pred_grade = report.get("final_grade", "D")
+                        is_match = (pred_grade == gt_grade) if gt_grade else "N/A"
+
+                        row_dict = {
                             "Unit ID": u_dir.name,
                             "Model": selected_version.upper(),
-                            "Predicted Grade": report.get("final_grade"),
+                            "Ground Truth": f"Grade {gt_grade}" if gt_grade else "-",
+                            "Predicted Grade": f"Grade {pred_grade}",
+                            "Akurasi": "Sesuai (Match)" if is_match is True else ("Beda" if is_match is False else "-"),
                             "Confidence": f"{report.get('grade_confidence', 0.0)*100:.1f}%",
                             "Total DPI": report.get("total_dpi"),
                             "Frame DPI": report.get("frame_dpi"),
                             "Bottom DPI": report.get("bottom_back_dpi"),
                             "Defects": report.get("total_defects_count"),
                             "Latency (s)": round(lat, 2)
-                        })
+                        }
+                        batch_results.append(row_dict)
 
                         batch_unit_details[u_dir.name] = {
                             "report": report,
                             "card_bgr": card_bgr,
                             "annotated_views": annotated_views,
+                            "gt_grade": gt_grade,
                             "v_dict": v_dict
                         }
 
-                    progress_bar.progress((i + 1) / len(unit_dirs))
+                    progress_bar.progress((i + 1) / len(selected_units))
 
                 total_time = time.time() - t_batch_start
                 status_text.text("Batch testing selesai.")
