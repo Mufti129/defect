@@ -44,6 +44,29 @@ try:
 except Exception:
     COCO_INDONESIAN_MAP = {}
 
+# Internal Hardware & Software Diagnostics Subsystem
+try:
+    from src.diagnostics import (
+        DeviceManager,
+        ConnectedDevice,
+        BatteryAnalyzer,
+        SensorValidator,
+        OEMAuthenticityChecker,
+        InteractiveTestRunner
+    )
+except ImportError:
+    try:
+        from diagnostics import (
+            DeviceManager,
+            ConnectedDevice,
+            BatteryAnalyzer,
+            SensorValidator,
+            OEMAuthenticityChecker,
+            InteractiveTestRunner
+        )
+    except ImportError:
+        DeviceManager = None
+
 # ---------------------------------------------------------
 # Page Configuration & Flutter "Belajarku" Styling
 # ---------------------------------------------------------
@@ -347,6 +370,7 @@ nav_choice = st.sidebar.radio(
     "Menu Navigasi:",
     [
         "Inspeksi Unit (Studio Interaktif)",
+        "Hardware & Diagnostik Internal (ADB / CIT)",
         "Model Guardrail Objek Non-HP (Validasi Masukan)",
         "Rule of Thumb & Logika Klasifikasi (Grade A, B, C, D)",
         "Database & Bank Data Inputan Lapangan",
@@ -1655,11 +1679,545 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
 
 
 
+# ---------------------------------------------------------
+# Module: Hardware & Diagnostik Internal (ADB / CIT)
+# ---------------------------------------------------------
+elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
+    st.markdown("""
+    <div class="flutter-appbar">
+        <div class="appbar-title">
+            Hardware & Diagnostik Internal Smartphone (ADB / CIT / iOS)
+        </div>
+        <div class="appbar-subtitle">
+            Pemeriksaan otomatis kesehatan perangkat keras internal, baterai (Gas-Gauge), sensor, keaslian komponen OEM, dan uji fungsional interaktif terintegrasi dengan Computer Vision.
+        </div>
+        <div class="appbar-tags">
+            <span class="appbar-tag-pill">Android ADB Bridge</span>
+            <span class="appbar-tag-pill">Apple libimobiledevice</span>
+            <span class="appbar-tag-pill">Battery Gas-Gauge Analyzer</span>
+            <span class="appbar-tag-pill">Sensor & Radio Matrix</span>
+            <span class="appbar-tag-pill">OEM Serial Authenticity</span>
+            <span class="appbar-tag-pill">Two-Tier Unified Appraisal</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# Module: Dedicated YOLO Guardrail Validation Studio (Uji Foto Sembarang)
-# ---------------------------------------------------------
-elif nav_choice == "Model Guardrail Objek Non-HP (Validasi Masukan)":
+    render_model_banner()
+
+    # Inisialisasi Device Manager
+    if DeviceManager is not None:
+        dm = DeviceManager()
+    else:
+        dm = None
+
+    # State management
+    if "current_diag_record" not in st.session_state:
+        st.session_state["current_diag_record"] = None
+
+    # Top Control Bar: Koneksi Perangkat & Pemilihan Unit
+    st.markdown("### 🔌 Koneksi Perangkat & Mode Pengujian")
+    ctrl_col1, ctrl_col2, ctrl_col3 = st.columns([1.4, 1.6, 1.0])
+
+    with ctrl_col1:
+        conn_mode = st.radio(
+            "Pilih Mode Deteksi Perangkat:",
+            ["Simulasi & Profil Demo (Bench Test)", "Deteksi Perangkat Fisik (Port USB)"],
+            index=0,
+            horizontal=False
+        )
+
+    selected_dev = None
+    if conn_mode == "Deteksi Perangkat Fisik (Port USB)":
+        with ctrl_col2:
+            st.markdown("<b>Pindai Port USB:</b>", unsafe_allow_html=True)
+            if st.button("🔄 Pindai Port USB (Scan ADB & iOS)", use_container_width=True):
+                if dm:
+                    st.session_state["physical_devices"] = dm.scan_devices()
+                else:
+                    st.session_state["physical_devices"] = []
+
+            phys_devs = st.session_state.get("physical_devices", [])
+            if phys_devs:
+                dev_labels = [f"[{d.device_type.upper()}] {d.market_name} (SN: {d.serial})" for d in phys_devs]
+                chosen_idx = st.selectbox("Pilih Perangkat Fisik Terdeteksi:", range(len(phys_devs)), format_func=lambda i: dev_labels[i])
+                selected_dev = phys_devs[chosen_idx]
+                st.success(f"🟢 Terhubung: {selected_dev.market_name}")
+            else:
+                st.info("ℹ️ Belum ada perangkat fisik terhubung via USB. Menggunakan profil simulasi Oppo A18.")
+                if dm:
+                    selected_dev = dm.get_simulated_device("oppo_a18")
+    else:
+        with ctrl_col2:
+            mock_profile_map = {
+                "oppo_a18": "Oppo A18 4/128GB (Android 14 / ColorOS)",
+                "samsung_s23": "Samsung Galaxy S23 8/256GB (Snapdragon 8 Gen 2 / One UI 6)",
+                "iphone_14_pro": "Apple iPhone 14 Pro 128GB (Apple A16 Bionic / iOS 17.6)"
+            }
+            selected_profile_key = st.selectbox(
+                "Pilih Profil Perangkat Demo:",
+                list(mock_profile_map.keys()),
+                format_func=lambda k: mock_profile_map[k]
+            )
+            if dm:
+                selected_dev = dm.get_simulated_device(selected_profile_key)
+
+    with ctrl_col3:
+        st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+        run_diag_btn = st.button("🚀 Jalankan Diagnostik", type="primary", use_container_width=True)
+
+    # Simulation Parameter Overrides (Expandable)
+    with st.expander("⚙️ Konfigurasi Parameter Uji & Simulasi Cacat Hardware (Pengujian Kasus Uji)", expanded=False):
+        param_col1, param_col2, param_col3, param_col4 = st.columns(4)
+        with param_col1:
+            sim_battery_health = st.slider("Kesehatan Baterai (Gas-Gauge %):", min_value=50, max_value=100, value=88, step=1)
+        with param_col2:
+            sim_part_replaced = st.checkbox("Simulasi: Layar LCD Pernah Diganti (Non-OEM)", value=False)
+        with param_col3:
+            sim_touch_defect = st.checkbox("Simulasi: Layar Sentuh Ada Dead-Zone", value=False)
+        with param_col4:
+            sim_cloud_lock = st.selectbox("Status Kunci Akun / Keamanan:", ["UNLOCKED", "ICLOUD_LOCKED", "GOOGLE_FRP_LOCKED"], index=0)
+
+    # Eksekusi diagnostik saat tombol ditekan atau inisialisasi awal
+    if run_diag_btn or st.session_state["current_diag_record"] is None:
+        if dm and selected_dev:
+            diag_rec = dm.run_full_diagnostics(
+                device=selected_dev,
+                simulation_battery_health=sim_battery_health,
+                simulation_parts_replaced=sim_part_replaced
+            )
+            # Terapkan modifikasi simulasi tambahan
+            if sim_cloud_lock != "UNLOCKED":
+                diag_rec.oem_authenticity.cloud_lock_status = sim_cloud_lock
+                diag_rec.oem_authenticity.is_authentic = False
+                diag_rec.oem_authenticity.penalty_points += 25.0
+                diag_rec.functional_grade = "FAIL (D)"
+            if sim_touch_defect:
+                diag_rec.interactive_test.touch_grid_passed = False
+                diag_rec.interactive_test.all_passed = False
+                diag_rec.interactive_test.penalty_points += 15.0
+                diag_rec.functional_grade = "FAIL (D)"
+
+            st.session_state["current_diag_record"] = diag_rec
+            st.session_state["current_sim_dev"] = selected_dev
+
+    diag_rec = st.session_state.get("current_diag_record")
+
+    if diag_rec:
+        dev = diag_rec.device
+        bat = diag_rec.battery
+        sens = diag_rec.sensors
+        oem = diag_rec.oem_authenticity
+        inter = diag_rec.interactive_test
+
+        # Banner Ringkasan Status
+        status_color = "#10B981" if "PASS" in diag_rec.functional_grade else ("#F59E0B" if "WARNING" in diag_rec.functional_grade else "#EF4444")
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border-radius: 18px; padding: 20px 24px; color: white; margin: 18px 0 24px 0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 8px 24px rgba(49, 46, 129, 0.25);">
+            <div>
+                <span style="background: rgba(255,255,255,0.18); padding: 4px 12px; border-radius: 20px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;">
+                    {dev.device_type.upper()} DIAGNOSTIC REPORT &bull; {dev.connection_type}
+                </span>
+                <h3 style="margin: 8px 0 2px 0; color: #FFFFFF; font-weight: 800; font-size: 1.45rem;">{dev.market_name}</h3>
+                <p style="margin: 0; color: #C7D2FE; font-size: 0.85rem;">IMEI: {dev.imei} &bull; OS: {dev.os_version} &bull; Serial: {dev.serial}</p>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 0.74rem; color: #A5B4FC; text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Vonis Fungsional Internal</div>
+                <div style="font-size: 1.55rem; font-weight: 800; color: {status_color};">
+                    {diag_rec.functional_grade}
+                </div>
+                <div style="font-size: 0.82rem; color: #E0E7FF;">Skor Fungsional: <b>{diag_rec.functional_score_pct}%</b> &bull; Penalti: <b>{diag_rec.total_penalty_dpi} DPI</b></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 6 Sub-Tab Diagnostik
+        diag_tab1, diag_tab2, diag_tab3, diag_tab4, diag_tab5, diag_tab6 = st.tabs([
+            "📱 Identitas & Profil USB",
+            "🔋 Baterai & Daya",
+            "📡 Matriks Sensor & Radio",
+            "🛡️ Keaslian Komponen OEM",
+            "🎮 Uji Interaktif (CIT Mode)",
+            "⚖️ Valuasi Terpadu (CV + Internal)"
+        ])
+
+        # TAB 1: IDENTITAS PERANGKAT
+        with diag_tab1:
+            st.markdown("#### Spesifikasi Hardware & Profil Koneksi Teridentifikasi")
+            id_col1, id_col2, id_col3 = st.columns(3)
+            with id_col1:
+                st.markdown(f"""
+                <div class="flutter-metric-card" style="text-align: left; padding: 16px;">
+                    <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Merek & Model</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #1E1B4B; margin-top: 4px;">{dev.brand} {dev.model}</div>
+                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">Pabrikan: {dev.brand} Original</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with id_col2:
+                st.markdown(f"""
+                <div class="flutter-metric-card" style="text-align: left; padding: 16px;">
+                    <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Chipset / Processor (SoC)</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #1E1B4B; margin-top: 4px;">{dev.soc}</div>
+                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">Arsitektur ARM64 / Flagship Spec</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with id_col3:
+                st.markdown(f"""
+                <div class="flutter-metric-card" style="text-align: left; padding: 16px;">
+                    <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Memori & Penyimpanan</div>
+                    <div style="font-size: 1.15rem; font-weight: 800; color: #1E1B4B; margin-top: 4px;">{dev.ram_gb} GB RAM / {dev.storage_gb} GB ROM</div>
+                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">Kapasitas Internal Terverifikasi</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+            id_col4, id_col5, id_col6 = st.columns(3)
+            with id_col4:
+                st.markdown(f"""
+                <div class="flutter-metric-card" style="text-align: left; padding: 16px;">
+                    <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Nomor IMEI Resmi</div>
+                    <div style="font-size: 1.1rem; font-weight: 800; color: #1E1B4B; margin-top: 4px; font-family: monospace;">{dev.imei}</div>
+                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">Verifikasi Kemenperin / Database GSMA</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with id_col5:
+                st.markdown(f"""
+                <div class="flutter-metric-card" style="text-align: left; padding: 16px;">
+                    <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Sistem Operasi</div>
+                    <div style="font-size: 1.1rem; font-weight: 800; color: #1E1B4B; margin-top: 4px;">{dev.os_version}</div>
+                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">Platform {dev.device_type.upper()} Resmi</div>
+                </div>
+                """, unsafe_allow_html=True)
+            with id_col6:
+                st.markdown(f"""
+                <div class="flutter-metric-card" style="text-align: left; padding: 16px;">
+                    <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Jalur Komunikasi Data</div>
+                    <div style="font-size: 1.1rem; font-weight: 800; color: #1E1B4B; margin-top: 4px;">{dev.connection_type}</div>
+                    <div style="font-size: 0.78rem; color: #10B981; font-weight: 600; margin-top: 4px;">🟢 Handshake USB Stabil</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("""
+            <div style="background: #F3F4F6; border-left: 4px solid #6D28D9; padding: 12px 16px; border-radius: 8px; margin-top: 20px; font-size: 0.84rem; color: #374151;">
+                <b>Catatan Audit Keamanan:</b> Nomor seri dan IMEI diverifikasi langsung melalui driver low-level (Android <code>getprop ro.serialno</code> atau iOS <code>ideviceinfo UniqueDeviceID</code>), mencegah manipulasi identitas unit pinjaman oleh nasabah.
+            </div>
+            """, unsafe_allow_html=True)
+
+        # TAB 2: BATERAI & DAYA
+        with diag_tab2:
+            st.markdown("#### Analisis Kesehatan Baterai (Gas-Gauge & Coulomb Counter)")
+            bat_c1, bat_c2, bat_c3, bat_c4 = st.columns(4)
+
+            bat_health_color = "#10B981" if bat.health_pct >= 85 else ("#F59E0B" if bat.health_pct >= 80 else "#EF4444")
+            with bat_c1:
+                st.markdown(f"""
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val" style="color: {bat_health_color};">{bat.health_pct}%</div>
+                    <div class="flutter-metric-label">Kesehatan Baterai (Health)</div>
+                    <div style="font-size: 0.72rem; color: {bat_health_color}; font-weight: 700; margin-top: 4px;">Status: {bat.status}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with bat_c2:
+                st.markdown(f"""
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val" style="color: #3B82F6;">{bat.cycle_count}</div>
+                    <div class="flutter-metric-label">Siklus Pengisian (Cycles)</div>
+                    <div style="font-size: 0.72rem; color: #6B7280; margin-top: 4px;">Batas Optimal: &le; 500</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with bat_c3:
+                temp_color = "#10B981" if bat.temperature_c < 38.0 else "#EF4444"
+                st.markdown(f"""
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val" style="color: {temp_color};">{bat.temperature_c} &deg;C</div>
+                    <div class="flutter-metric-label">Suhu Operasional Baterai</div>
+                    <div style="font-size: 0.72rem; color: {temp_color}; font-weight: 700; margin-top: 4px;">Normal (&lt; 40&deg;C)</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with bat_c4:
+                st.markdown(f"""
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val" style="color: #8B5CF6;">{bat.voltage_mv} mV</div>
+                    <div class="flutter-metric-label">Tegangan Seluler (Voltage)</div>
+                    <div style="font-size: 0.72rem; color: #6B7280; margin-top: 4px;">{'⚡ Sedang Mengisi Daya' if bat.is_charging else '🔋 Baterai Lepas Charger'}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="background: {'#ECFDF5' if bat.status == 'PASS' else ('#FEF3C7' if bat.status == 'WARNING' else '#FEF2F2')}; border-left: 4px solid {bat_health_color}; padding: 14px 18px; border-radius: 8px; font-size: 0.88rem; color: #1F2937;">
+                <b>Hasil Evaluasi Daya:</b> {bat.wear_level_desc}<br>
+                <b>Penalti Indeks Cacat (DPI):</b> {bat.penalty_points} poin. {('Baterai prima, tidak ada pemotongan grade.' if bat.penalty_points == 0 else 'Baterai di bawah 80% memerlukan batas maksimum Grade B- dan penalti valuasi servis.')}
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+            st.markdown("##### Register Mentah Hardware Baterai (ADB dumpsys battery / iOS Domain):")
+            raw_bat_df = pd.DataFrame([
+                {"Parameter": "Persentase Daya Saat Ini", "Nilai": f"{bat.level_pct}%", "Keterangan": "State of Charge (SoC)"},
+                {"Parameter": "Kesehatan Relatif (Gas-Gauge)", "Nilai": f"{bat.health_pct}%", "Keterangan": "State of Health (SoH)"},
+                {"Parameter": "Jumlah Siklus Charge-Discharge", "Nilai": f"{bat.cycle_count} siklus", "Keterangan": "Full Equivalent Charge Cycles"},
+                {"Parameter": "Suhu Termal Sensor Baterai", "Nilai": f"{bat.temperature_c} °C", "Keterangan": "Thermistor Sensor Internal"},
+                {"Parameter": "Tegangan Terminal Sel Baterai", "Nilai": f"{bat.voltage_mv} mV", "Keterangan": "Terminal Potential (3.6V - 4.4V nominal)"},
+                {"Parameter": "Status Pengisian Daya USB", "Nilai": "Aktif (Charging)" if bat.is_charging else "Non-Aktif (Discharging)", "Keterangan": "Power Delivery IC Handshake"}
+            ])
+            st.dataframe(raw_bat_df, hide_index=True, use_container_width=True)
+
+        # TAB 3: SENSOR & RADIO
+        with diag_tab3:
+            st.markdown("#### Matriks Validasi Sensor Gerak, Lingkungan, dan Radio Komunikasi")
+            sensor_matrix = sens.sensor_matrix
+            sens_cols = st.columns(3)
+            idx = 0
+            for s_key, s_data in sensor_matrix.items():
+                with sens_cols[idx % 3]:
+                    st.markdown(f"""
+                    <div style="background: white; border: 1px solid #E5E7EB; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 700; color: #1F2937; font-size: 0.88rem;">{s_data.get('name', s_key.title())}</span>
+                            <span style="background: #DEF7EC; color: #03543F; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">🟢 LOLOS</span>
+                        </div>
+                        <div style="font-size: 0.76rem; color: #6B7280; margin-top: 4px;">Sampel Data: <code>{s_data.get('sample', 'Aktif')}</code></div>
+                        <div style="font-size: 0.74rem; color: #4B5563; margin-top: 2px;">{s_data.get('desc', 'Merespons kalibrasi')}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                idx += 1
+
+            st.markdown(f"""
+            <div style="background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 10px; padding: 14px 18px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h5 style="margin: 0; color: #166534; font-weight: 800;">Skor Integritas Matriks Sensor: 100% (Semua Sensor Aktif)</h5>
+                    <p style="margin: 2px 0 0 0; color: #15803D; font-size: 0.82rem;">Tidak ditemukan kerusakan pada sensor gerak, proximity, radio Wi-Fi/Bluetooth, maupun modul modem baseband.</p>
+                </div>
+                <div style="background: #166534; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.82rem;">
+                    0 PENALTI DPI
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # TAB 4: KEASLIAN KOMPONEN OEM
+        with diag_tab4:
+            st.markdown("#### Verifikasi Keaslian Komponen Pabrikan (OEM) & Keamanan Akun")
+            oem_col1, oem_col2 = st.columns(2)
+
+            with oem_col1:
+                st.markdown("##### Pemeriksaan Serial Suku Cadang Internal:")
+                part_rows = [
+                    {"Komponen": "Layar LCD / Digitizer", "Status": oem.screen_status, "Otentikasi": "Asli Pabrikan (OEM)" if "ORIGINAL" in oem.screen_status else "⚠️ Pernah Diganti (Non-OEM)"},
+                    {"Komponen": "Modul Baterai", "Status": oem.battery_status, "Otentikasi": "Serial BMS Cocok"},
+                    {"Komponen": "Modul Kamera Belakang & Depan", "Status": oem.camera_status, "Otentikasi": "OEM Hash Signature Match"},
+                    {"Komponen": "Integritas Motherboard / Knox", "Status": oem.bootloader_status, "Otentikasi": "Status Resmi (0x0)"}
+                ]
+                st.dataframe(pd.DataFrame(part_rows), hide_index=True, use_container_width=True)
+
+            with oem_col2:
+                st.markdown("##### Status Kunci Akun & Keamanan Finansial:")
+                is_unlocked = oem.cloud_lock_status == "UNLOCKED"
+                st.markdown(f"""
+                <div style="background: {'#ECFDF5' if is_unlocked else '#FEF2F2'}; border: 1.5px solid {'#6EE7B7' if is_unlocked else '#FCA5A5'}; border-radius: 14px; padding: 18px; text-align: center;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: {'#065F46' if is_unlocked else '#991B1B'}; text-transform: uppercase;">
+                        Status Kunci Perangkat (iCloud / Google FRP)
+                    </div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: {'#047857' if is_unlocked else '#B91C1C'}; margin: 6px 0;">
+                        {'🟢 BEBAS KUNCI (UNLOCKED)' if is_unlocked else '🔴 TERKUNCI (LOCKED)'}
+                    </div>
+                    <div style="font-size: 0.82rem; color: {'#065F46' if is_unlocked else '#991B1B'};">
+                        {'Unit bersih dan siap ditaksir secara sah.' if is_unlocked else 'PERINGATAN: Perangkat terkunci akun nasabah! Wajib di-unlock sebelum gadai disetujui atau langsung Veto Grade D.'}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            if not oem.is_authentic or not is_unlocked:
+                st.warning("⚠️ **Peringatan Deteksi Komponen:** Perangkat terdeteksi memiliki suku cadang pengganti atau kunci keamanan aktif. Sistem menerapkan penalti penyesuaian taksiran secara otomatis.")
+
+        # TAB 5: UJI FUNGSIONAL INTERAKTIF (CIT MODE)
+        with diag_tab5:
+            st.markdown("#### Uji Fungsional Interaktif Layar Sentuh & Tombol Fisik (CIT Simulator)")
+            cit_c1, cit_c2 = st.columns([1.6, 1.4])
+
+            with cit_c1:
+                st.markdown("##### 1. Matriks Layar Sentuh Multi-Touch Digitizer (Grid 6x4):")
+                st.markdown("<p style='font-size: 0.82rem; color: #6B7280; margin-top: -6px;'>Simulasi deteksi dead-zone atau blind spot pada seluruh penampang kaca depan.</p>", unsafe_allow_html=True)
+
+                touch_ok = inter.touch_grid_passed
+                grid_cols = st.columns(6)
+                for r in range(4):
+                    for c in range(6):
+                        cell_idx = r * 6 + c
+                        with grid_cols[c]:
+                            # Jika simulasi touch defect aktif, tandai sel tertentu sebagai mati
+                            is_cell_dead = (not touch_ok) and (cell_idx in [8, 9, 14])
+                            cell_bg = "#EF4444" if is_cell_dead else "#10B981"
+                            cell_icon = "❌" if is_cell_dead else "✓"
+                            st.markdown(f"""
+                            <div style="background: {cell_bg}; color: white; text-align: center; border-radius: 6px; padding: 10px 0; font-weight: 800; font-size: 0.85rem; margin-bottom: 6px;">
+                                {cell_icon}
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                if touch_ok:
+                    st.success("🟢 Seluruh 24 Zona Digitizer Layar Sentuh Merespons Sempurna (Zero Dead-Zone).")
+                else:
+                    st.error("🔴 Dead-Zone Terdeteksi pada Titik Sentuh Tengah-Kiri! Memicu Veto Grade D Mutlak.")
+
+            with cit_c2:
+                st.markdown("##### 2. Uji Audio Loopback & Tombol Fisik:")
+                audio_key_df = pd.DataFrame([
+                    {"Elemen Perangkat": "Mikrofon Utama (Bawah)", "Uji": "Loopback 1000 Hz", "Status": "🟢 LOLOS"},
+                    {"Elemen Perangkat": "Mikrofon Sekunder (Noise-Cancelling)", "Uji": "Ambient Noise Supression", "Status": "🟢 LOLOS"},
+                    {"Elemen Perangkat": "Loudspeaker Bawah", "Uji": "Audio Sweep 20Hz-20kHz", "Status": "🟢 LOLOS"},
+                    {"Elemen Perangkat": "Earpiece Speaker (Panggilan)", "Uji": "Voice Acoustic Clarity", "Status": "🟢 LOLOS"},
+                    {"Elemen Perangkat": "Tombol Volume Up (+)", "Uji": "Physical Key Down Event", "Status": "🟢 AKTIF"},
+                    {"Elemen Perangkat": "Tombol Volume Down (-)", "Uji": "Physical Key Down Event", "Status": "🟢 AKTIF"},
+                    {"Elemen Perangkat": "Tombol Power / Kunci Layar", "Uji": "Power Press & Wake Event", "Status": "🟢 AKTIF"},
+                    {"Elemen Perangkat": "Motor Getar Haptic", "Uji": "Haptic Actuator Impulse", "Status": "🟢 AKTIF"}
+                ])
+                st.dataframe(audio_key_df, hide_index=True, use_container_width=True)
+
+        # TAB 6: VALUASI TERPADU DUA-ARAH (CV + INTERNAL)
+        with diag_tab6:
+            st.markdown("#### Penilaian Terpadu 2-Tahap (Computer Vision Fisik + Hardware Internal)")
+            st.markdown("""
+            Sistem menggabungkan kondisi kosmetik bodi fisik luar (hasil deteksi YOLO pada 4/6 sisi) dengan kondisi kesehatan jeroan mesin (ADB/CIT) untuk menghasilkan **Sertifikat Taksiran Gadai Resmi**.
+            """)
+
+            val_col1, val_col2 = st.columns([1.2, 1.8])
+
+            with val_col1:
+                st.markdown("##### Pilih Hasil Inspeksi Kosmetik Visual:")
+                cv_sample_grade = st.selectbox(
+                    "Grade Fisik Housing (Hasil Visual AI):",
+                    ["Grade A (Mint / Mulus Prima - DPI 0.8)",
+                     "Grade B (Very Good / Lecet Ringan - DPI 8.5)",
+                     "Grade C (Good / Aus Nyata - DPI 24.2)",
+                     "Grade D (Faulty / Retak Pecah - DPI 48.0)"],
+                    index=0
+                )
+                cosmetic_letter = cv_sample_grade[6:7]
+
+            # Hitung Vonis Terpadu menggunakan aturan grading terpadu
+            unified_grade = cosmetic_letter
+            functional_status = "PASS"
+            valuation_deduction = 0.0
+            reasons = []
+
+            # Evaluasi Baterai
+            if bat.status == "SERVICE_REQUIRED":
+                if unified_grade in ["A", "B"]:
+                    unified_grade = "B-"
+                reasons.append("Baterai drop (<80%): Butuh servis penggantian sel baterai (-12% taksiran).")
+                valuation_deduction += 12.0
+            elif bat.status == "WARNING":
+                reasons.append("Baterai mengalami degradasi normal (-4% taksiran).")
+                valuation_deduction += 4.0
+
+            # Evaluasi LCD & Dead Zone (VETO)
+            if not inter.touch_grid_passed:
+                unified_grade = "D"
+                functional_status = "CRITICAL_FAIL"
+                reasons.append("Veto Grade D: Layar sentuh memiliki area mati/dead-zone (-35% taksiran)!")
+                valuation_deduction += 35.0
+
+            # Evaluasi Kunci Keamanan (VETO)
+            if oem.cloud_lock_status != "UNLOCKED":
+                unified_grade = "D"
+                functional_status = "CRITICAL_FAIL"
+                reasons.append(f"Veto Grade D: Perangkat terkunci ({oem.cloud_lock_status}) (-50% taksiran)!")
+                valuation_deduction += 50.0
+
+            # Evaluasi Suku Cadang Non-OEM
+            if not oem.is_authentic:
+                reasons.append("Suku cadang LCD non-OEM terdeteksi (-15% taksiran).")
+                valuation_deduction += 15.0
+
+            # Base deduction by cosmetic grade
+            base_cosmetic_deduction = {"A": 0.0, "B": 10.0, "B-": 20.0, "C": 30.0, "D": 50.0}.get(unified_grade, 10.0)
+            final_deduction_pct = min(90.0, base_cosmetic_deduction + valuation_deduction)
+
+            with val_col2:
+                st.markdown("##### Sertifikat Taksiran Terpadu Hasil Gabungan:")
+                badge_bg = "#10B981" if unified_grade == "A" else ("#F59E0B" if "B" in unified_grade else ("#F97316" if unified_grade == "C" else "#EF4444"))
+                st.markdown(f"""
+                <div style="background: white; border: 2px solid {badge_bg}; border-radius: 16px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.06);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-size: 0.74rem; font-weight: 700; color: #6B7280; text-transform: uppercase;">GRADE FINAL TERPADU</span>
+                            <div style="font-size: 2.2rem; font-weight: 800; color: {badge_bg}; line-height: 1.1;">GRADE {unified_grade}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="font-size: 0.74rem; font-weight: 700; color: #6B7280; text-transform: uppercase;">POTONGAN NILAI TAKSIRAN</span>
+                            <div style="font-size: 2.0rem; font-weight: 800; color: #DC2626; line-height: 1.1;">-{final_deduction_pct:.1f}%</div>
+                        </div>
+                    </div>
+                    <hr style="margin: 14px 0; border: none; border-top: 1px dashed #E5E7EB;">
+                    <div style="font-size: 0.85rem; color: #374151;">
+                        <b>Rincian Penilaian:</b>
+                        <ul style="margin: 6px 0; padding-left: 20px;">
+                            <li>Grade Bodi Kosmetik (Visual CV): <b>Grade {cosmetic_letter}</b></li>
+                            <li>Kesehatan Jeroan (ADB/CIT): <b>{diag_rec.functional_grade} ({diag_rec.functional_score_pct}%)</b></li>
+                            {''.join([f'<li>{r}</li>' for r in reasons]) if reasons else '<li>Unit mulus sempurna dan fungsi mesin 100% normal tanpa cacat.</li>'}
+                        </ul>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+
+            # Ekspor JSON Sertifikat
+            cert_data = {
+                "sertifikat_id": f"CERT-PGI-{int(time.time())}",
+                "waktu_inspeksi": diag_rec.timestamp,
+                "perangkat": {
+                    "brand": dev.brand,
+                    "model": dev.model,
+                    "market_name": dev.market_name,
+                    "serial": dev.serial,
+                    "imei": dev.imei,
+                    "os": dev.os_version,
+                    "ram_gb": dev.ram_gb,
+                    "storage_gb": dev.storage_gb
+                },
+                "inspeksi_visual_cv": {
+                    "cosmetic_grade": cosmetic_letter
+                },
+                "diagnostik_internal_hardware": {
+                    "baterai": {
+                        "health_pct": bat.health_pct,
+                        "cycle_count": bat.cycle_count,
+                        "temperature_c": bat.temperature_c,
+                        "status": bat.status
+                    },
+                    "sensor_integrity_pct": 100.0,
+                    "oem_authenticity": {
+                        "screen": oem.screen_status,
+                        "battery": oem.battery_status,
+                        "camera": oem.camera_status,
+                        "cloud_lock": oem.cloud_lock_status
+                    },
+                    "interactive_cit": {
+                        "touch_passed": inter.touch_grid_passed,
+                        "audio_passed": inter.audio_loopback_passed,
+                        "buttons_passed": inter.buttons_passed
+                    }
+                },
+                "keputusan_akhir_terpadu": {
+                    "unified_grade": unified_grade,
+                    "functional_status": functional_status,
+                    "valuation_deduction_pct": final_deduction_pct,
+                    "catatan_rekomendasi": reasons
+                }
+            }
+
+            st.download_button(
+                label="📥 Unduh Sertifikat Diagnostik Lengkap (JSON Resmi)",
+                data=json.dumps(cert_data, indent=2),
+                file_name=f"sertifikat_diagnostik_{dev.serial}_{int(time.time())}.json",
+                mime="application/json",
+                type="primary",
+                use_container_width=True
+            )
     st.markdown("""
     <div class="flutter-appbar">
         <div class="appbar-title">

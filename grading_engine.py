@@ -362,6 +362,77 @@ class GradingEngine:
 
         return annotated_paths
 
+    def evaluate_unified_phone_unit(
+        self,
+        unit_id: str,
+        view_images: Dict[str, str],
+        diagnostic_record: Optional[Any] = None,
+        conf_threshold: Optional[float] = None
+    ) -> Dict:
+        """
+        Two-Tier Unified Grading:
+        Combines Computer Vision Cosmetic Inspection (6 sides) with
+        Internal Hardware Diagnostics (ADB / CIT / iOS).
+        """
+        # 1. Evaluate cosmetic visual defects
+        cosmetic_report = self.evaluate_phone_unit(unit_id, view_images, conf_threshold=conf_threshold)
+
+        # 2. Extract internal hardware health if provided
+        unified_grade = cosmetic_report["final_grade"]
+        functional_status = "PASS"
+        recommendations = [cosmetic_report.get("recommendation", "")]
+        deduction_pct = 0.0
+
+        if diagnostic_record is not None:
+            # Check battery condition
+            bat = getattr(diagnostic_record, "battery", None)
+            if bat:
+                if bat.status == "SERVICE_REQUIRED" and unified_grade in ["A", "B"]:
+                    unified_grade = "B-"
+                    recommendations.append("Baterai drop (<80%): Butuh servis pergantian baterai.")
+                    deduction_pct += 12.0
+                elif bat.status == "WARNING":
+                    deduction_pct += 4.0
+
+            # Check critical functional failure (Touch, Camera, Sensors, Cloud Lock)
+            inter = getattr(diagnostic_record, "interactive_test", None)
+            if inter and not inter.all_passed:
+                if not inter.touch_grid_passed:
+                    unified_grade = "D"
+                    functional_status = "CRITICAL_FAIL"
+                    recommendations.append("Veto Grade D: Layar sentuh memiliki dead-zone/blind spot!")
+                    deduction_pct += 35.0
+
+            oem = getattr(diagnostic_record, "oem_authenticity", None)
+            if oem and oem.cloud_lock_status != "UNLOCKED":
+                unified_grade = "D"
+                functional_status = "CRITICAL_FAIL"
+                recommendations.append(f"Veto Grade D: Perangkat terkunci ({oem.cloud_lock_status})!")
+                deduction_pct += 50.0
+
+            sensors = getattr(diagnostic_record, "sensors", None)
+            if sensors and sensors.overall_status == "FAIL":
+                unified_grade = "D"
+                functional_status = "CRITICAL_FAIL"
+                recommendations.append("Veto Grade D: Sensor vital tidak merespons.")
+                deduction_pct += 25.0
+
+        # Adjust cosmetic grade base deduction
+        cosmetic_deductions = {"A": 0.0, "B": 10.0, "B-": 20.0, "C": 30.0, "D": 50.0}
+        total_valuation_deduction = min(90.0, cosmetic_deductions.get(unified_grade, 15.0) + deduction_pct)
+
+        unified_report = dict(cosmetic_report)
+        unified_report.update({
+            "unified_final_grade": unified_grade,
+            "cosmetic_grade": cosmetic_report["final_grade"],
+            "functional_status": functional_status,
+            "valuation_deduction_pct": round(total_valuation_deduction, 1),
+            "unified_recommendations": [r for r in recommendations if r],
+            "has_internal_diagnostics": (diagnostic_record is not None)
+        })
+
+        return unified_report
+
 
 if __name__ == "__main__":
     print("Testing GradingEngine with synthetic defects...")
