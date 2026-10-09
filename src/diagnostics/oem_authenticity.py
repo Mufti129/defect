@@ -22,6 +22,26 @@ class OEMPartReport:
     penalty_points: float
     notes: List[str]
 
+    @property
+    def is_authentic(self) -> bool:
+        return self.overall_authenticity == "ALL_ORIGINAL"
+
+    @property
+    def screen_status(self) -> str:
+        return "ORIGINAL_OEM" if self.screen_original else "AFTERMARKET_REPLACED"
+
+    @property
+    def battery_status(self) -> str:
+        return "ORIGINAL_BMS" if self.battery_original else "BATTERY_REPLACED"
+
+    @property
+    def camera_status(self) -> str:
+        return "ORIGINAL_OEM" if self.camera_original else "CAMERA_MISMATCH"
+
+    @property
+    def bootloader_status(self) -> str:
+        return "SECURE_0x0"
+
 
 class OEMAuthenticityChecker:
     """

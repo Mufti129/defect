@@ -16,7 +16,7 @@ import os
 import sys
 import json
 import time
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from pathlib import Path
 import cv2
 import numpy as np
