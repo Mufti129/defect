@@ -38,6 +38,20 @@ import tempfile
 # MODEL REGISTRY: Definisi 5 Versi Model AI Smartphone Defect Detection
 # -------------------------------------------------------------------------
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "model_tambahan": {
+        "id": "model_tambahan",
+        "name": "Model Tambahan (Custom Defect Model — model_tambahan.pt)",
+        "short_name": "Model Tambahan (model_tambahan.pt)",
+        "badge": "MODEL TAMBAHAN",
+        "badge_color": "#7C3AED",
+        "yolo_file": "model_tambahan.pt",
+        "ml_file": "ml_grading_model_v3.joblib",
+        "arch": "YOLO Detect / Segment Custom",
+        "dataset": "Dataset Tambahan",
+        "focus": "Bodi & Komponen Smartphone",
+        "status": "Siap Digunakan",
+        "description": "Model bobot tambahan khusus untuk deteksi cacat fisik smartphone berbasis file model_tambahan.pt."
+    },
     "v6": {
         "id": "v6",
         "name": "Model Versi 6 (High-Accuracy Defect Detector — YOLOv8s Transfer Learning)",
@@ -128,11 +142,11 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
 class StreamlitInspectionEngine:
     """
     Singleton-friendly wrapper for fast inspection and card generation in Streamlit.
-    Supports dynamic switching between Model Versions V1, V2, V3, V4, and V5.
+    Supports dynamic switching between Model Versions V1, V2, V3, V4, V5, V6, and Model Tambahan.
     """
     def __init__(self, version: str = "v5", weights_dir: Optional[str] = None):
         if version not in MODEL_REGISTRY:
-            version = "v3"
+            version = "v5"
         self.version = version
         self.config = MODEL_REGISTRY[version]
 
@@ -149,16 +163,36 @@ class StreamlitInspectionEngine:
         yolo_filename = self.config["yolo_file"]
         ml_filename = self.config["ml_file"]
 
-        yolo_path = os.path.join(weights_dir, yolo_filename)
-        if not os.path.exists(yolo_path):
-            # Check parent directory fallback
-            alt_parent = os.path.join(str(PARENT_DIR), f"weights_{version}", yolo_filename)
-            if os.path.exists(alt_parent):
-                yolo_path = alt_parent
-            else:
-                alt_path = os.path.join(weights_dir, "phone_defect_model.pt")
-                if os.path.exists(alt_path):
-                    yolo_path = alt_path
+        # Comprehensive search for YOLO weights
+        candidates = [
+            os.path.join(weights_dir, yolo_filename),
+            os.path.join(str(CURRENT_DIR), yolo_filename),
+            os.path.join(str(PARENT_DIR), yolo_filename),
+            os.path.join(str(CURRENT_DIR), "weights", yolo_filename),
+            os.path.join(str(PARENT_DIR), "weights", yolo_filename),
+            os.path.join(str(PARENT_DIR), f"weights_{version}", yolo_filename),
+        ]
+        
+        yolo_path = None
+        for cand in candidates:
+            if os.path.exists(cand):
+                yolo_path = cand
+                break
+        
+        if yolo_path is None:
+            # Fallback to standard production weights if custom file is not yet placed
+            alt_candidates = [
+                os.path.join(weights_dir, "phone_defect_model_v5_best.pt"),
+                os.path.join(str(PARENT_DIR), "weights", "phone_defect_model_v5_best.pt"),
+                os.path.join(weights_dir, "phone_defect_model.pt"),
+                os.path.join(str(PARENT_DIR), "weights", "phone_defect_model.pt"),
+            ]
+            for alt in alt_candidates:
+                if os.path.exists(alt):
+                    yolo_path = alt
+                    break
+            if yolo_path is None:
+                yolo_path = os.path.join(weights_dir, yolo_filename)
 
         ml_path = os.path.join(weights_dir, ml_filename)
         if not os.path.exists(ml_path):

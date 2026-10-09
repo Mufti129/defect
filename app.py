@@ -362,6 +362,7 @@ st.sidebar.divider()
 # 2. Dynamic Model Version Selector
 st.sidebar.markdown("### Pilihan Model AI:")
 model_options = {
+    "model_tambahan": "Model Tambahan (model_tambahan.pt - Bobot Kustom)",
     "v6": "Model V6 (YOLOv8s 800px - Pelatihan Sedang Berjalan)",
     "v5": "Model V5 (YOLOv8s 800px - 30 Epochs Selesai & Final)",
     "v3": "Model V3 (Housing 1.918 Unit - Rekomendasi Produksi)",
@@ -536,6 +537,30 @@ elif selected_version == "v6":
         </div>
         """, unsafe_allow_html=True)
         st.sidebar.progress(min(max(float(prog_tot) / 100.0, 0.0), 1.0))
+elif selected_version == "model_tambahan":
+    weights_candidates = [
+        APP_DIR / "weights" / "model_tambahan.pt",
+        PROJECT_DIR / "weights" / "model_tambahan.pt",
+        APP_DIR / "model_tambahan.pt",
+        PROJECT_DIR / "model_tambahan.pt",
+    ]
+    found_weights = any(p.exists() for p in weights_candidates)
+    status_text = "Bobot Aktif & Siap Digunakan (model_tambahan.pt)" if found_weights else "Menggunakan Fallback Produksi V5 (Letakkan file model_tambahan.pt di folder weights/ atau root)"
+    badge_status = "FILE TERSEDIA" if found_weights else "STANDBY / FALLBACK"
+    st.sidebar.markdown(f"""
+    <div style="background: linear-gradient(135deg, #F5F3FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.08);">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+            <b style="color: #4C1D95; font-size: 0.86rem;">Status Model Tambahan</b>
+            <span style="background: #EDE9FE; color: #6D28D9; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">{badge_status}</span>
+        </div>
+        <div style="color: #5B21B6; font-size: 0.80rem; margin-bottom: 6px; line-height: 1.45;">
+            • <b>File Target:</b> <code>model_tambahan.pt</code><br>
+            • <b>Status:</b> {status_text}<br>
+            • <b>Fokus:</b> Deteksi Cacat Fisik Smartphone
+        </div>
+        <i style="color: #7C3AED; font-size: 0.74rem;">Model bobot kustom tambahan pengguna.</i>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
@@ -3282,6 +3307,7 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
         """)
 
         eval_model_options = {
+            "model_tambahan": "Model Tambahan (model_tambahan.pt — Bobot Kustom)",
             "v6": "Model Versi 6 (High-Accuracy YOLOv8s — Live Pelatihan 40 Epochs & Evaluasi)",
             "v5": "Model Versi 5 (Housing-Only YOLOv8s 800px — 30 Epochs Selesai & Final)",
             "v3": "Model Versi 3 (Housing-Only 1.918 Unit — Rekomendasi Produksi)",
@@ -3380,9 +3406,40 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
             """
 
         # -------------------------------------------------------------
+        # DETAIL MODEL TAMBAHAN (CUSTOM MODEL WEIGHTS)
+        # -------------------------------------------------------------
+        if eval_chosen_version == "model_tambahan":
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, #FAF5FF 0%, #F5F3FF 100%); border: 1.5px solid #DDD6FE; border-left: 6px solid #7C3AED; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <span style="background: #7C3AED; color: white; font-size: 0.76rem; font-weight: 800; padding: 4px 10px; border-radius: 6px;">MODEL TAMBAHAN</span>
+                        <span style="font-weight: 800; font-size: 1.15rem; color: #2E1065; margin-left: 10px;">Model Tambahan (model_tambahan.pt)</span>
+                    </div>
+                    <span style="background: #EDE9FE; color: #6D28D9; font-weight: 700; font-size: 0.80rem; padding: 3px 10px; border-radius: 12px;">Bobot Kustom Terdaftar</span>
+                </div>
+                <div style="font-size: 0.84rem; color: #4C1D95; margin-top: 8px; line-height: 1.45;">
+                    Slot model kustom terintegrasi untuk menjalankan inferensi dengan file bobot <b>model_tambahan.pt</b> yang diletakkan di direktori sistem (<code>weights/</code> atau root project). Model ini otomatis memanfaatkan pipeline anotasi, segmentasi/deteksi, dan Machine Learning Cosmetic Grading.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            st.markdown(_render_model_paradigm_info(
+                paradigm_type="Deep Learning Custom",
+                paradigm_desc="YOLO Neural Network Target (model_tambahan.pt)",
+                training_cycle="Bobot Tambahan",
+                cycle_desc="File model_tambahan.pt Siap Digunakan",
+                dataset_info="Dataset Kustom Pengguna",
+                dataset_desc="Defect Detection Smartphone",
+                target_info="Multi-Class Physical Defect",
+                target_desc="Bounding Box & Segmentasi Cacat",
+                theme_color="#7C3AED"
+            ), unsafe_allow_html=True)
+
+        # -------------------------------------------------------------
         # DETAIL MODEL V6 (LIVE TRAINING & REAL-TIME EVALUATION)
         # -------------------------------------------------------------
-        if eval_chosen_version == "v6":
+        elif eval_chosen_version == "v6":
             v6_stat = _get_v6_live_status_dict()
             cur_ep = v6_stat.get("current_epoch", 1) if v6_stat else 1
             tot_ep = v6_stat.get("total_epochs", 40) if v6_stat else 40
