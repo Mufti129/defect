@@ -2729,26 +2729,42 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
         default_gdrive_url = "https://drive.google.com/drive/folders/1yhIMWwk9vxStkftLdR3Cbte6Y19bxv-D?usp=drive_link"
         gdrive_url = st.text_input("Link Folder Google Drive:", value=default_gdrive_url)
 
+        gdrive_method = st.radio(
+            "Pilih Mode Pengambilan Data Google Drive:",
+            options=[
+                "Metode 1: Sinkronkan 1 Kali (Unduh ke Penyimpanan Server untuk Uji Berulang Cepat)",
+                "Metode 2: Streaming On-the-Fly (Unduh Dinamis Langsung Saat Pengujian Dimulai)"
+            ],
+            index=0,
+            horizontal=False
+        )
+
         gdrive_cache_dir = PROJECT_DIR / "downloads" / "gdrive_dataset"
-        c_sync, c_info = st.columns([1.5, 2.5])
-        with c_sync:
-            btn_sync_gdrive = st.button("Sinkronkan / Unduh Dataset Google Drive", type="secondary")
+        target_directory = None
 
-        if btn_sync_gdrive:
-            with st.spinner("Mengunduh dataset dari Google Drive via gdown..."):
-                import gdown
-                os.makedirs(str(gdrive_cache_dir), exist_ok=True)
-                try:
-                    gdown.download_folder(url=gdrive_url, output=str(gdrive_cache_dir), quiet=False, use_cookies=False)
-                    st.success("Dataset Google Drive berhasil diunduh dan disinkronkan.")
-                except Exception as e:
-                    st.error(f"Gagal mengunduh folder Google Drive: {str(e)}")
+        if gdrive_method.startswith("Metode 1"):
+            c_sync, c_info = st.columns([1.5, 2.5])
+            with c_sync:
+                btn_sync_gdrive = st.button("Sinkronkan / Unduh Dataset Google Drive", type="secondary")
 
-        if gdrive_cache_dir.exists() and len(list(gdrive_cache_dir.glob("*"))) > 0:
-            target_directory = gdrive_cache_dir
-            st.caption(f"Direktori dataset aktif: {target_directory}")
+            if btn_sync_gdrive:
+                with st.spinner("Mengunduh dataset dari Google Drive via gdown..."):
+                    import gdown
+                    os.makedirs(str(gdrive_cache_dir), exist_ok=True)
+                    try:
+                        gdown.download_folder(url=gdrive_url, output=str(gdrive_cache_dir), quiet=False, use_cookies=False)
+                        st.success("Dataset Google Drive berhasil diunduh dan disinkronkan ke server.")
+                    except Exception as e:
+                        st.error(f"Gagal mengunduh folder Google Drive: {str(e)}")
+
+            if gdrive_cache_dir.exists() and len(list(gdrive_cache_dir.glob("*"))) > 0:
+                target_directory = gdrive_cache_dir
+                st.caption(f"Direktori dataset aktif: {target_directory}")
+            else:
+                target_directory = None
         else:
-            target_directory = None
+            st.caption("Mode Streaming On-the-Fly aktif: Sistem akan langsung menarik data dari Google Drive saat tombol 'Mulai Batch Testing' ditekan tanpa perlu sinkronisasi manual di awal.")
+            target_directory = gdrive_cache_dir  # Placeholder for validation flow
 
     elif source_option == "Upload Arsip File ZIP (Unit Pengguna)":
         st.info("Unggah file ZIP yang berisi sub-folder unit. Setiap sub-folder wajib berisi foto sudut: top.jpg, bottom.jpg, left.jpg, right.jpg, front.jpg, back.jpg.")
@@ -2837,6 +2853,17 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
     start_batch = st.button(f"Mulai Batch Testing ({active_cfg['short_name']})", type="primary")
 
     if start_batch:
+        if source_option == "Google Drive (Link Folder / Folder ID)" and gdrive_method.startswith("Metode 2"):
+            import tempfile, gdown
+            temp_stream_dir = tempfile.mkdtemp(prefix="gdrive_stream_")
+            with st.spinner("Mengunduh data secara dinamis (Streaming On-the-Fly) dari Google Drive..."):
+                try:
+                    gdown.download_folder(url=gdrive_url, output=temp_stream_dir, quiet=False, use_cookies=False)
+                    target_directory = Path(temp_stream_dir)
+                except Exception as e:
+                    st.error(f"Gagal melakukan streaming data dari Google Drive: {str(e)}")
+                    target_directory = None
+
         if target_directory is None:
             st.error("Silakan tentukan, sinkronkan Google Drive, atau unggah sumber data terlebih dahulu.")
         elif not target_directory.exists():
