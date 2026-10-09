@@ -2781,6 +2781,7 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
                 status_text = st.empty()
 
                 batch_results = []
+                batch_unit_details = {}
                 t_batch_start = time.time()
 
                 for i, u_dir in enumerate(unit_dirs):
@@ -2795,12 +2796,19 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
 
                     if v_dict:
                         t_u0 = time.time()
-                        report = engine.grading_engine.evaluate_phone_unit(
+                        res_tuple = engine.run_unit_inspection(
                             u_dir.name,
                             v_dict,
-                            conf_threshold=conf_thresh_slider
+                            conf_threshold=conf_thresh_slider,
+                            use_stage1_crop=False,
+                            is_golden_sample=True
                         )
                         lat = time.time() - t_u0
+
+                        if isinstance(res_tuple, tuple) and len(res_tuple) == 4:
+                            report, card_bgr, annotated_views, stage1_previews = res_tuple
+                        else:
+                            report, card_bgr, annotated_views = res_tuple
 
                         batch_results.append({
                             "Unit ID": u_dir.name,
@@ -2814,31 +2822,153 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
                             "Latency (s)": round(lat, 2)
                         })
 
+                        batch_unit_details[u_dir.name] = {
+                            "report": report,
+                            "card_bgr": card_bgr,
+                            "annotated_views": annotated_views,
+                            "v_dict": v_dict
+                        }
+
                     progress_bar.progress((i + 1) / len(unit_dirs))
 
                 total_time = time.time() - t_batch_start
                 status_text.text("Batch testing selesai.")
 
-                if batch_results:
-                    st.success(f"Berhasil menguji {len(batch_results)} unit dalam {total_time:.2f} detik (Rata-rata: {total_time/len(batch_results):.2f}s per unit).")
+                st.session_state["batch_results_summary"] = batch_results
+                st.session_state["batch_unit_details"] = batch_unit_details
+                st.session_state["batch_total_time"] = total_time
 
-                    df_batch = pd.DataFrame(batch_results)
-                    st.dataframe(df_batch, use_container_width=True)
+    # Render Batch Inspection Results from session_state
+    if "batch_results_summary" in st.session_state and st.session_state["batch_results_summary"]:
+        batch_results = st.session_state["batch_results_summary"]
+        batch_unit_details = st.session_state.get("batch_unit_details", {})
+        total_time = st.session_state.get("batch_total_time", 0.0)
 
-                    grade_counts = df_batch["Predicted Grade"].value_counts().reset_index()
-                    grade_counts.columns = ["Grade", "Jumlah Unit"]
-                    st.subheader("Distribusi Grade Hasil Prediksi:")
-                    st.bar_chart(grade_counts.set_index("Grade"))
+        st.success(f"Berhasil menguji {len(batch_results)} unit dalam {total_time:.2f} detik (Rata-rata: {total_time/max(len(batch_results), 1):.2f}s per unit).")
 
-                    csv_bytes = df_batch.to_csv(index=False).encode("utf-8")
+        df_batch = pd.DataFrame(batch_results)
+        st.dataframe(df_batch, use_container_width=True)
+
+        grade_counts = df_batch["Predicted Grade"].value_counts().reset_index()
+        grade_counts.columns = ["Grade", "Jumlah Unit"]
+
+        c_chart, c_dl = st.columns([1.5, 1])
+        with c_chart:
+            st.subheader("Distribusi Grade Hasil Prediksi:")
+            st.bar_chart(grade_counts.set_index("Grade"))
+
+        with c_dl:
+            st.subheader("Ekspor Data Pengujian:")
+            csv_bytes = df_batch.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="Unduh Ringkasan Hasil Pengujian (CSV)",
+                data=csv_bytes,
+                file_name=f"batch_inspection_results_{selected_version}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
+            if batch_unit_details:
+                import io, zipfile
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+                    for uid, udata in batch_unit_details.items():
+                        c_bgr = udata.get("card_bgr")
+                        if c_bgr is not None:
+                            ok, img_buf = cv2.imencode(".jpg", c_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 92])
+                            if ok:
+                                u_grade = udata.get("report", {}).get("final_grade", "U")
+                                zf.writestr(f"inspection_card_{uid}_{u_grade}.jpg", img_buf.tobytes())
+
+                st.download_button(
+                    label="Unduh Seluruh Kartu Hasil Inspeksi (ZIP)",
+                    data=zip_buffer.getvalue(),
+                    file_name=f"batch_inspection_cards_{selected_version}.zip",
+                    mime="application/zip",
+                    use_container_width=True
+                )
+
+        # -------------------------------------------------------------
+        # Detail Visual & Galeri Anotasi Per-Unit
+        # -------------------------------------------------------------
+        if batch_unit_details:
+            st.write("")
+            st.markdown("---")
+            st.subheader("Galeri Visual Anotasi Cacat Fisik & Kartu Hasil Inspeksi Per-Unit")
+
+            unit_ids = list(batch_unit_details.keys())
+            unit_labels = [f"{uid} (Grade {batch_unit_details[uid]['report'].get('final_grade', 'N/A')})" for uid in unit_ids]
+
+            selected_idx = st.selectbox(
+                "Pilih Unit Smartphone untuk Melihat Rincian Visual:",
+                options=range(len(unit_ids)),
+                format_func=lambda i: unit_labels[i]
+            )
+
+            sel_unit_id = unit_ids[selected_idx]
+            sel_data = batch_unit_details[sel_unit_id]
+            sel_report = sel_data["report"]
+            sel_card_bgr = sel_data["card_bgr"]
+            sel_annotated = sel_data["annotated_views"]
+            sel_grade = sel_report.get("final_grade", "D")
+
+            # 1. Box Unduh Kartu Hasil Inspeksi Unit Ini
+            st.markdown(f"#### Kartu Hasil Inspeksi: `{sel_unit_id}` (GRADE {sel_grade})")
+            if sel_card_bgr is not None:
+                card_rgb = cv2.cvtColor(sel_card_bgr, cv2.COLOR_BGR2RGB)
+                st.image(card_rgb, use_container_width=True, caption=f"Kartu Hasil Inspeksi - Unit: {sel_unit_id} - Grade: {sel_grade}")
+
+                is_ok, card_buf = cv2.imencode(".jpg", sel_card_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
+                if is_ok:
                     st.download_button(
-                        label="Unduh Ringkasan Hasil Pengujian (CSV)",
-                        data=csv_bytes,
-                        file_name=f"batch_inspection_results_{selected_version}.csv",
-                        mime="text/csv"
+                        label=f"Unduh Kartu Hasil Inspeksi Unit {sel_unit_id} (High-Res JPG)",
+                        data=card_buf.tobytes(),
+                        file_name=f"inspection_card_{sel_unit_id}_{sel_grade}.jpg",
+                        mime="image/jpeg",
+                        use_container_width=True
                     )
-                else:
-                    st.warning("Tidak ditemukan file foto sudut yang valid (top, bottom, left, right, front, back) pada unit yang diuji.")
+
+            # 2. Galeri Visual Anotasi Cacat Fisik Per-Sudut Pandang
+            st.write("")
+            st.markdown(f"#### Galeri Visual Anotasi Cacat Fisik Per-Sudut Pandang (`{sel_unit_id}`)")
+
+            view_labels = {
+                "top": "Sisi Top (Atas)",
+                "bottom": "Sisi Bottom (Port & Speaker)",
+                "left": "Sisi Left (Samping Kiri)",
+                "right": "Sisi Right (Samping Kanan)",
+                "back": "Sisi Back (Belakang)",
+                "front": "Sisi Front (Depan)"
+            }
+
+            available_views = [s for s in ["top", "bottom", "left", "right", "back", "front"] if s in sel_annotated]
+
+            if available_views:
+                gallery_tabs = st.tabs([view_labels.get(s, s.upper()) for s in available_views])
+                detections_by_view = sel_report.get("detections_by_view", {})
+
+                for idx, side in enumerate(available_views):
+                    with gallery_tabs[idx]:
+                        col_img, col_info = st.columns([2.2, 1])
+                        with col_img:
+                            side_img_rgb = cv2.cvtColor(sel_annotated[side], cv2.COLOR_BGR2RGB)
+                            st.image(side_img_rgb, use_container_width=True, caption=f"Anotasi Cacat Fisik - Sisi {side.upper()}")
+                        with col_info:
+                            side_defs = detections_by_view.get(side, [])
+                            st.markdown(f"**Status Sisi {side.upper()}:**")
+                            if side_defs:
+                                st.markdown(f"Ditemukan **{len(side_defs)} titik cacat fisik**:")
+                                for d in side_defs:
+                                    c_name = d.get("class_name", "scratch")
+                                    st.markdown(f"""
+                                    <div class="defect-chip defect-chip-{c_name}">
+                                        <span>● {c_name.upper()}</span>
+                                        <span>| {d.get('length_mm', 0.0):.2f} mm ({d.get('confidence', 0.0)*100:.0f}%)</span>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    st.caption(f"Luas: {d.get('area_mm2', 0.0):.2f} mm² • BBox: `{d.get('bbox', [])}`")
+                            else:
+                                st.success("Sisi Mulus (Clean) - Tidak ditemukan cacat fisik.")
 
 
 # ---------------------------------------------------------
