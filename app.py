@@ -482,6 +482,8 @@ def get_file_binary_bytes(file_path_str: str) -> bytes:
         return f.read()
 
 # Display Active Model Specs in Sidebar
+active_cfg = MODEL_REGISTRY.get(selected_version, MODEL_REGISTRY["v5"])
+
 st.sidebar.markdown(f"""
 <div style="background-color: {active_cfg['badge_color']}; color: white; padding: 7px 12px; border-radius: 8px; font-weight: 700; text-align: center; font-size: 0.82rem; margin-top: 10px; margin-bottom: 12px; letter-spacing: 0.03em;">
     {active_cfg['badge']}
@@ -489,33 +491,44 @@ st.sidebar.markdown(f"""
 """, unsafe_allow_html=True)
 
 st.sidebar.markdown(f"""
+- **Model:** `{active_cfg['short_name']}`
+- **File Bobot:** `{active_cfg['yolo_file']}`
 - **Arsitektur:** `{active_cfg['arch']}`
 - **Fokus:** `{active_cfg['focus']}`
 - **Dataset:** `{active_cfg['dataset']}`
 - **Status:** `{active_cfg['status']}`
 """)
 
-# Special Status Card for V5 (Green Completed Style) & V6 (Live Tracker)
-if selected_version == "v5":
-    st.sidebar.markdown("""
-    <div style="background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%); border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.08);">
+# Dynamic Status Card according to currently selected model
+if selected_version == "model_tambahan":
+    weights_candidates = [
+        APP_DIR / "weights" / "model_tambahan.pt",
+        PROJECT_DIR / "weights" / "model_tambahan.pt",
+        APP_DIR / "model_tambahan.pt",
+        PROJECT_DIR / "model_tambahan.pt",
+    ]
+    found_weights = any(p.exists() for p in weights_candidates)
+    status_text = "File bobot kustom terdeteksi & siap digunakan" if found_weights else "File model_tambahan.pt belum ditemukan di direktori weights/ atau root (akan menggunakan fallback model produksi)"
+    badge_status = "FILE TERSEDIA" if found_weights else "STANDBY / FALLBACK"
+    badge_bg = "#DCFCE7" if found_weights else "#FEF3C7"
+    badge_fg = "#166534" if found_weights else "#92400E"
+    st.sidebar.markdown(f"""
+    <div style="background: linear-gradient(135deg, #F5F3FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.08);">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-            <b style="color: #064E3B; font-size: 0.86rem;">Status Model Versi 5</b>
-            <span style="background: #DCFCE7; color: #166534; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">30/30 Epochs (100%)</span>
+            <b style="color: #4C1D95; font-size: 0.86rem;">Status Model Tambahan</b>
+            <span style="background: {badge_bg}; color: {badge_fg}; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">{badge_status}</span>
         </div>
-        <div style="color: #047857; font-size: 0.80rem; margin-bottom: 6px; line-height: 1.45;">
-            • <b>Status:</b> Pelatihan 30 Epochs Tuntas (100.0%)<br>
-            • <b>Bobot Aktif:</b> Bobot Final Terbaik (mAP50: 38.84%, mAP50-95: 32.58%)<br>
-            • <b>Peak Recall:</b> 75.57% (Epoch 19) | Val Box Loss: 0.648<br>
-            • <b>Resolusi:</b> 800x800 px (Housing-Only)
+        <div style="color: #5B21B6; font-size: 0.80rem; margin-bottom: 6px; line-height: 1.45;">
+            • <b>Target File:</b> <code>model_tambahan.pt</code><br>
+            • <b>Kondisi:</b> {status_text}<br>
+            • <b>Integrasi:</b> Inspeksi Studio & Pengujian Massal
         </div>
-        <i style="color: #059669; font-size: 0.74rem;">Model siap dan aktif digunakan untuk inferensi produksi.</i>
+        <i style="color: #7C3AED; font-size: 0.74rem;">Model bobot kustom tambahan pengguna.</i>
     </div>
     """, unsafe_allow_html=True)
-    st.sidebar.progress(1.0)
 elif selected_version == "v6":
     v6_data = _get_v6_live_status_dict()
-    if v6_data:
+    if v6_data and v6_data.get("status") == "TRAINING_IN_PROGRESS":
         cur_ep = v6_data.get("current_epoch", 1)
         tot_ep = v6_data.get("total_epochs", 40)
         prog_tot = v6_data.get("overall_progress_percent", 0.0)
@@ -537,28 +550,61 @@ elif selected_version == "v6":
         </div>
         """, unsafe_allow_html=True)
         st.sidebar.progress(min(max(float(prog_tot) / 100.0, 0.0), 1.0))
-elif selected_version == "model_tambahan":
-    weights_candidates = [
-        APP_DIR / "weights" / "model_tambahan.pt",
-        PROJECT_DIR / "weights" / "model_tambahan.pt",
-        APP_DIR / "model_tambahan.pt",
-        PROJECT_DIR / "model_tambahan.pt",
-    ]
-    found_weights = any(p.exists() for p in weights_candidates)
-    status_text = "Bobot Aktif & Siap Digunakan (model_tambahan.pt)" if found_weights else "Menggunakan Fallback Produksi V5 (Letakkan file model_tambahan.pt di folder weights/ atau root)"
-    badge_status = "FILE TERSEDIA" if found_weights else "STANDBY / FALLBACK"
-    st.sidebar.markdown(f"""
-    <div style="background: linear-gradient(135deg, #F5F3FF 0%, #FFFFFF 100%); border: 1.5px solid #DDD6FE; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.08);">
+    else:
+        st.sidebar.markdown(f"""
+        <div style="background: linear-gradient(135deg, #FDF2F8 0%, #FFFFFF 100%); border: 1.5px solid #FBCFE8; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px;">
+            <b style="color: #831843;">Model Versi 6 (Transfer YOLOv8s)</b>
+            <div style="color: #9D174D; font-size: 0.80rem; margin-top: 4px;">
+                Fine-tuned pada 3.936 foto bodi murni bebas noise operator dengan pembobotan loss seimbang.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+elif selected_version == "v5":
+    st.sidebar.markdown("""
+    <div style="background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%); border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.08);">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-            <b style="color: #4C1D95; font-size: 0.86rem;">Status Model Tambahan</b>
-            <span style="background: #EDE9FE; color: #6D28D9; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">{badge_status}</span>
+            <b style="color: #064E3B; font-size: 0.86rem;">Status Model Versi 5</b>
+            <span style="background: #DCFCE7; color: #166534; padding: 2px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;">30/30 Epochs (100%)</span>
         </div>
-        <div style="color: #5B21B6; font-size: 0.80rem; margin-bottom: 6px; line-height: 1.45;">
-            • <b>File Target:</b> <code>model_tambahan.pt</code><br>
-            • <b>Status:</b> {status_text}<br>
-            • <b>Fokus:</b> Deteksi Cacat Fisik Smartphone
+        <div style="color: #047857; font-size: 0.80rem; margin-bottom: 6px; line-height: 1.45;">
+            • <b>Status:</b> Pelatihan 30 Epochs Tuntas (100.0%)<br>
+            • <b>Bobot Aktif:</b> Bobot Final Terbaik (mAP50: 38.84%, mAP50-95: 32.58%)<br>
+            • <b>Peak Recall:</b> 75.57% (Epoch 19) | Val Box Loss: 0.648<br>
+            • <b>Resolusi:</b> 800x800 px (Housing-Only)
         </div>
-        <i style="color: #7C3AED; font-size: 0.74rem;">Model bobot kustom tambahan pengguna.</i>
+        <i style="color: #059669; font-size: 0.74rem;">Model siap dan aktif digunakan untuk inferensi produksi.</i>
+    </div>
+    """, unsafe_allow_html=True)
+    st.sidebar.progress(1.0)
+elif selected_version == "v3":
+    st.sidebar.markdown("""
+    <div style="background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 100%); border: 1.5px solid #BBF7D0; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px;">
+        <b style="color: #064E3B;">Model Versi 3 (Produksi Stabil)</b>
+        <div style="color: #047857; font-size: 0.80rem; margin-top: 4px;">
+            • Dataset: 1.918 Unit (7.672 Citra Housing)<br>
+            • Fitur: Random Forest 18 Fitur Spasial + Fast-Fail Veto<br>
+            • Akurasi Benchmark: 57.0% (80% Recall Grade A)
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+elif selected_version == "v4":
+    st.sidebar.markdown("""
+    <div style="background: linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%); border: 1.5px solid #BAE6FD; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px;">
+        <b style="color: #0369A1;">Model Versi 4 (Real Annotated)</b>
+        <div style="color: #0284C7; font-size: 0.80rem; margin-top: 4px;">
+            • Arsitektur: YOLOv8n Detect (640x640)<br>
+            • Dataset: 1.600+ Foto Cacat Riil Teranotasi<br>
+            • 5 Kelas: Dent, Broken, Scratch, Chip, Crack
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+else:
+    st.sidebar.markdown(f"""
+    <div style="background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 12px; padding: 12px 14px; font-size: 0.82rem; margin-top: 12px;">
+        <b style="color: #334155;">{active_cfg['name']}</b>
+        <div style="color: #64748B; font-size: 0.80rem; margin-top: 4px;">
+            {active_cfg['description']}
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -575,7 +621,7 @@ def render_model_banner():
                 <span style="font-weight: 800; font-size: 1.08rem; color: #2E1065; margin-left: 10px;">{active_cfg['name']}</span>
             </div>
             <div style="font-size: 0.82rem; color: #6B7280;">
-                Arsitektur: <b style="color: #4C1D95;">{active_cfg['arch']}</b> | Sensitivitas Aktif: <b style="color: #7C3AED;">{conf_thresh_slider:.2f}</b>
+                File: <b style="color: #4C1D95;">{active_cfg['yolo_file']}</b> | Arsitektur: <b style="color: #4C1D95;">{active_cfg['arch']}</b> | Sensitivitas: <b style="color: #7C3AED;">{conf_thresh_slider:.2f}</b>
             </div>
         </div>
         <div style="font-size: 0.85rem; color: #4B5563; margin-top: 8px; line-height: 1.4;">
@@ -590,7 +636,7 @@ def render_model_banner():
 # ---------------------------------------------------------
 if nav_choice == "Inspeksi Unit (Studio Interaktif)":
     # Flutter Belajarku App Bar
-    st.markdown("""
+    st.markdown(f"""
     <div class="flutter-appbar">
         <div class="appbar-title">
             Inspeksi Cacat Fisik & Grading Smartphone
@@ -599,7 +645,7 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
             Platform taksiran bodi smartphone terstandarisasi sub-milimeter, isolasi pantulan cahaya (glare filter), dan prediksi Grade kondisi fisik cerdas berbasis AI.
         </div>
         <div class="appbar-tags">
-            <span class="appbar-tag-pill">Multi-Model AI (V1 - V5)</span>
+            <span class="appbar-tag-pill">Model Aktif: {active_cfg['short_name']}</span>
             <span class="appbar-tag-pill">Skala Fisik Sub-Milimeter (mm)</span>
             <span class="appbar-tag-pill">Fast-Fail Veto Safeguard</span>
             <span class="appbar-tag-pill">Zoom Penampang 4 Sisi</span>
@@ -609,8 +655,16 @@ if nav_choice == "Inspeksi Unit (Studio Interaktif)":
 
     render_model_banner()
 
-    if selected_version == "v5":
-        st.info("Catatan Model Versi 5: Menggunakan bobot final 30 Epochs penuh (mAP50 38.84%, mAP50-95 32.58%, Peak Recall 75.57%, Val Box Loss 0.648). Anda juga dapat membandingkan hasilnya dengan Model Versi 3 (Rekomendasi Produksi) atau Model Versi 4 melalui pilihan model di panel navigasi.")
+    model_notes = {
+        "model_tambahan": "Catatan Model Tambahan: Menggunakan file bobot model_tambahan.pt. Seluruh deteksi cacat fisik dan penilaian grade kosmetik disesuaikan secara dinamis dengan bobot kustom ini.",
+        "v6": "Catatan Model Versi 6: Menggunakan bobot transfer fine-tuned YOLOv8s 800px untuk deteksi bodi beresolusi tinggi pada dataset bersih bebas noise tangan operator.",
+        "v5": "Catatan Model Versi 5: Menggunakan bobot final 30 Epochs penuh (mAP50 38.84%, mAP50-95 32.58%, Peak Recall 75.57%, Val Box Loss 0.648).",
+        "v3": "Catatan Model Versi 3: Menggunakan model produksi stabil housing-only (1.918 unit) dengan Random Forest 18 Fitur Spasial dan Fast-Fail Veto.",
+        "v4": "Catatan Model Versi 4: Menggunakan model deteksi cacat foto riil teranotasi YOLOv8n (5 kelas cacat bodi smartphone).",
+        "v2": "Catatan Model Versi 2: Menggunakan model hibrida multi-view 5 sudut pandang (Front, Back, Left, Right, Bottom).",
+        "v1": "Catatan Model Versi 1: Menggunakan model baseline prototipe segmentasi poligon dan aturan heuristik statis."
+    }
+    st.info(model_notes.get(selected_version, f"Catatan Model: Menggunakan konfigurasi {active_cfg['name']}."))
 
     # Flutter-style Input Container
     st.markdown('<div class="flutter-card">', unsafe_allow_html=True)
@@ -2699,7 +2753,7 @@ elif nav_choice == "Database & Bank Data Inputan Lapangan":
 # Module 2: Batch Testing from Folder
 # ---------------------------------------------------------
 elif nav_choice == "Pengujian Massal (Batch Inspection)":
-    st.markdown("""
+    st.markdown(f"""
     <div class="flutter-appbar">
         <div class="appbar-title">
             Batch Inspection & Pengujian Massal
@@ -2707,10 +2761,17 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
         <div class="appbar-subtitle">
             Jalankan evaluasi grading otomatis pada puluhan unit smartphone sekaligus dari berbagai sumber data.
         </div>
+        <div class="appbar-tags">
+            <span class="appbar-tag-pill">Model Aktif: {active_cfg['short_name']}</span>
+            <span class="appbar-tag-pill">Target Bobot: {active_cfg['yolo_file']}</span>
+            <span class="appbar-tag-pill">Sensitivitas: {conf_thresh_slider:.2f}</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
     render_model_banner()
+
+    st.info(f"**Konfigurasi Model Pengujian Massal:** Menggunakan **{active_cfg['name']}** (File: `{active_cfg['yolo_file']}`, Sensitivitas: `{conf_thresh_slider:.2f}`).")
 
     source_option = st.radio(
         "Pilih Sumber Data Pengujian:",
