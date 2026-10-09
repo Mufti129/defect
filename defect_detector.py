@@ -114,11 +114,15 @@ class DefectDetector:
         if weights_path and os.path.exists(weights_path):
             try:
                 from ultralytics import YOLO
-                print(f"[DefectDetector] Loading YOLO segmentation model: {weights_path}")
+                print(f"[DefectDetector] Loading YOLO defect model: {weights_path}")
                 self.model = YOLO(weights_path)
                 if isinstance(getattr(self.model, "names", None), dict):
-                    self.is_custom_defect_model = (self.model.names.get(0) == "dent")
-                if not self.is_custom_defect_model:
+                    first_cls = str(self.model.names.get(0, "")).lower()
+                    # Custom defect models do not have 'person' (COCO class 0)
+                    self.is_custom_defect_model = (first_cls != "person")
+                if self.is_custom_defect_model:
+                    print(f"[DefectDetector] Custom defect detector active with classes: {self.model.names}")
+                else:
                     print("[DefectDetector] Pretrained base weights (COCO). Custom defect heuristic mode active.")
                 # Warm up shader kernels if accelerated device is active
                 if self.device in ["mps", "cuda"]:
@@ -291,9 +295,25 @@ class DefectDetector:
                 for i in range(num_items):
                     cls_id = int(res.boxes.cls[i].item())
                     conf = float(res.boxes.conf[i].item())
-                    if cls_id not in range(len(DEFECT_CLASSES)):
-                        continue
-                    cls_name = DEFECT_CLASSES[cls_id]
+                    
+                    if isinstance(getattr(self.model, "names", None), dict) and cls_id in self.model.names:
+                        raw_name = str(self.model.names[cls_id]).lower().strip()
+                        if "scratch" in raw_name or "lecet" in raw_name or "gores" in raw_name:
+                            cls_name = "scratch"
+                        elif "chip" in raw_name or "sompal" in raw_name or "cuil" in raw_name:
+                            cls_name = "chip"
+                        elif "damage" in raw_name or "broken" in raw_name or "pecah" in raw_name or "rusak" in raw_name:
+                            cls_name = "broken"
+                        elif "crack" in raw_name or "retak" in raw_name:
+                            cls_name = "crack"
+                        elif "dent" in raw_name or "penyok" in raw_name or "bengkok" in raw_name:
+                            cls_name = "dent"
+                        else:
+                            cls_name = raw_name
+                    elif cls_id in range(len(DEFECT_CLASSES)):
+                        cls_name = DEFECT_CLASSES[cls_id]
+                    else:
+                        cls_name = "scratch"
 
                     # Filter by per-class confidence threshold
                     if conf < active_conf.get(cls_name, 0.15):
