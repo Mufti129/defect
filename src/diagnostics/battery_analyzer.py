@@ -23,6 +23,18 @@ class BatteryReport:
     recommendation: str
     penalty_points: float   # DPI contribution for grading engine
 
+    @property
+    def health_pct(self) -> int:
+        return self.health_percentage
+
+    @property
+    def level_pct(self) -> int:
+        return int(self.health_percentage)
+
+    @property
+    def wear_level_desc(self) -> str:
+        return self.recommendation
+
 
 class BatteryAnalyzer:
     """

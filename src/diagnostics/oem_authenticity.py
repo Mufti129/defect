@@ -26,9 +26,20 @@ class OEMPartReport:
     def is_authentic(self) -> bool:
         return self.overall_authenticity == "ALL_ORIGINAL"
 
+    @is_authentic.setter
+    def is_authentic(self, val: bool):
+        if not val and self.overall_authenticity == "ALL_ORIGINAL":
+            self.overall_authenticity = "PART_REPLACED"
+        elif val:
+            self.overall_authenticity = "ALL_ORIGINAL"
+
     @property
     def screen_status(self) -> str:
         return "ORIGINAL_OEM" if self.screen_original else "AFTERMARKET_REPLACED"
+
+    @screen_status.setter
+    def screen_status(self, val: str):
+        self.screen_original = (val == "ORIGINAL_OEM")
 
     @property
     def battery_status(self) -> str:

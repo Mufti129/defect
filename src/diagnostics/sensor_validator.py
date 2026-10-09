@@ -21,6 +21,10 @@ class SensorReport:
     overall_status: str       # "PASS", "MINOR_ISSUE", "FAIL"
     penalty_points: float
 
+    @property
+    def sensor_matrix(self) -> Dict[str, Dict[str, Any]]:
+        return self.sensor_details
+
 
 class SensorValidator:
     """
