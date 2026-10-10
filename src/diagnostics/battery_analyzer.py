@@ -63,14 +63,17 @@ class BatteryAnalyzer:
             voltage_mv = raw_data.get("voltage_mv", 4050)
             temp_c = raw_data.get("temperature_c", 32.0)
             is_charging = raw_data.get("is_charging", False)
-            # Estimate health from voltage/cycle heuristic if kernel doesn't expose gas gauge
-            health_code = raw_data.get("health_code", 2)
-            if health_code == 2:
-                health_pct = 90
-            elif health_code in [3, 4]:
-                health_pct = 76
+            # Estimate health from fuel gauge or voltage/cycle heuristic
+            if "gas_gauge" in raw_data and raw_data["gas_gauge"] is not None:
+                health_pct = min(100, max(30, int(raw_data["gas_gauge"])))
             else:
-                health_pct = 82
+                health_code = raw_data.get("health_code", 2)
+                if health_code == 2:
+                    health_pct = 90
+                elif health_code in [3, 4]:
+                    health_pct = 76
+                else:
+                    health_pct = 82
             cycle_count = raw_data.get("cycle_count", 210)
 
         wear_level = round(max(0.0, (100.0 - health_pct) / 100.0), 3)
