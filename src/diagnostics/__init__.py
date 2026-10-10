@@ -20,8 +20,10 @@ from .mobile_web_service import (
     get_local_lan_ip,
     set_mobile_session_result,
     get_mobile_session_result,
-    generate_qr_for_url
+    generate_qr_for_url,
+    get_mobile_diagnostic_html
 )
+from .diagnostic_db import DiagnosticDatabase
 
 __all__ = [
     "DeviceManager",
@@ -43,4 +45,6 @@ __all__ = [
     "set_mobile_session_result",
     "get_mobile_session_result",
     "generate_qr_for_url",
+    "get_mobile_diagnostic_html",
+    "DiagnosticDatabase",
 ]

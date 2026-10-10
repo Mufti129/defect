@@ -46,6 +46,11 @@ except Exception:
 
 # Internal Hardware & Software Diagnostics Subsystem
 try:
+    from streamlit_autorefresh import st_autorefresh
+except ImportError:
+    st_autorefresh = None
+
+try:
     from src.diagnostics import (
         DeviceManager,
         ConnectedDevice,
@@ -59,7 +64,9 @@ try:
         get_local_lan_ip,
         set_mobile_session_result,
         get_mobile_session_result,
-        generate_qr_for_url
+        generate_qr_for_url,
+        get_mobile_diagnostic_html,
+        DiagnosticDatabase
     )
 except ImportError:
     try:
@@ -76,7 +83,9 @@ except ImportError:
             get_local_lan_ip,
             set_mobile_session_result,
             get_mobile_session_result,
-            generate_qr_for_url
+            generate_qr_for_url,
+            get_mobile_diagnostic_html,
+            DiagnosticDatabase
         )
     except ImportError:
         DeviceManager = None
@@ -86,6 +95,8 @@ except ImportError:
         set_mobile_session_result = None
         get_mobile_session_result = None
         generate_qr_for_url = None
+        get_mobile_diagnostic_html = None
+        DiagnosticDatabase = None
 
 # ---------------------------------------------------------
 # Page Configuration & Flutter "Belajarku" Styling
@@ -120,6 +131,84 @@ def get_app_base_url() -> str:
     return f"http://{lan_ip}:8501"
 
 
+def render_mobile_completion_screen(session_id: str, raw_payload_str: str):
+    """
+    Renders high-tech completion and verification screen on smartphone
+    after results are submitted and synchronized to cashier's desktop.
+    """
+    st.markdown("""
+    <style>
+        [data-testid="stSidebar"] { display: none !important; }
+        .stApp { background-color: #0A0F1D; color: #F8FAFC; }
+        header { display: none !important; }
+        #MainMenu { display: none !important; }
+        footer { display: none !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    payload = {}
+    if raw_payload_str:
+        try:
+            payload = json.loads(urllib.parse.unquote(raw_payload_str))
+        except Exception:
+            try:
+                payload = json.loads(raw_payload_str)
+            except Exception:
+                payload = {}
+
+    if payload:
+        if set_mobile_session_result:
+            set_mobile_session_result(session_id, payload)
+        if DiagnosticDatabase:
+            try:
+                db = DiagnosticDatabase()
+                db.save_diagnostic(session_id, payload)
+            except Exception:
+                pass
+
+    brand = payload.get("brand", "Smartphone")
+    model = payload.get("model", "Perangkat")
+    bat = payload.get("battery", {}).get("level_pct", 90)
+    touch_pass = payload.get("touchscreen", {}).get("cells_passed", 24)
+
+    st.markdown(f"""
+    <div style="max-width: 440px; margin: 30px auto; padding: 0 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <div style="background: linear-gradient(135deg, #151E32 0%, #1E293B 100%); border: 1px solid #243352; border-radius: 20px; padding: 26px 20px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); text-align: center;">
+            <div style="width: 70px; height: 70px; background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);">
+                <span style="font-size: 34px; color: #34D399; font-weight: bold;">&#10003;</span>
+            </div>
+            <h2 style="color: #34D399; font-size: 1.25rem; font-weight: 800; margin: 0;">Diagnostik Selesai & Terkirim!</h2>
+            <p style="color: #94A3B8; font-size: 0.82rem; margin-top: 6px; line-height: 1.45;">
+                Data pengujian smartphone telah berhasil disinkronkan ke layar inspeksi laptop kasir secara otomatis.
+            </p>
+            
+            <div style="background: #0A0F1D; border-radius: 12px; padding: 14px; margin: 18px 0; border: 1px solid #1E293B; text-align: left; font-size: 0.82rem;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 7px;">
+                    <span style="color: #94A3B8;">ID Sesi:</span>
+                    <b style="color: #38BDF8;">{session_id}</b>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 7px;">
+                    <span style="color: #94A3B8;">Perangkat Teruji:</span>
+                    <b style="color: #F8FAFC;">{brand} {model}</b>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 7px;">
+                    <span style="color: #94A3B8;">Indikator Baterai:</span>
+                    <b style="color: #34D399;">{bat}% (Terverifikasi)</b>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #94A3B8;">Layar Digitizer:</span>
+                    <b style="color: #34D399;">{touch_pass} / 24 Kotak (Zero Dead-Zone)</b>
+                </div>
+            </div>
+
+            <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3B82F6; border-radius: 10px; padding: 12px; font-size: 0.80rem; color: #93C5FD; line-height: 1.4;">
+                Silakan kembali ke petugas kasir untuk melanjutkan proses penaksiran gadai smartphone Anda.
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 def render_standalone_mobile_diagnostic(session_id: str):
     """
     Renders standalone mobile web diagnostic UI when smartphone scans the QR code.
@@ -128,129 +217,29 @@ def render_standalone_mobile_diagnostic(session_id: str):
     st.markdown("""
     <style>
         [data-testid="stSidebar"] { display: none !important; }
-        .stApp { background-color: #0F172A; color: #F8FAFC; }
+        .stApp { background-color: #0A0F1D; color: #F8FAFC; }
+        header { display: none !important; }
+        #MainMenu { display: none !important; }
+        footer { display: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown(f"""
-    <div style="background: #1E293B; border-radius: 14px; padding: 18px; border: 1px solid #334155; margin-bottom: 16px;">
-        <h2 style="margin: 0; color: #38BDF8; font-size: 1.25rem; font-weight: 800;">Pusat Gadai Indonesia</h2>
-        <p style="margin: 4px 0 0 0; color: #94A3B8; font-size: 0.82rem;">Sistem Diagnostik Mandiri Smartphone (Universal Android & iOS)</p>
-        <div style="margin-top: 8px; display: inline-block; background: #334155; color: #F8FAFC; padding: 3px 10px; border-radius: 6px; font-size: 0.74rem; font-weight: 700;">
-            ID Sesi: <span style="color: #38BDF8;">{session_id}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 1. Identitas HP
-    st.markdown("##### 1. Identitas Smartphone:")
-    m_os = st.radio("Platform Sistem Operasi:", ["Android (Samsung, Oppo, Xiaomi, Vivo, dll.)", "Apple iPhone (iOS)"], horizontal=True)
-    is_ios = "Apple" in m_os
-
-    col_m1, col_m2 = st.columns(2)
-    with col_m1:
-        if is_ios:
-            m_brand = "Apple"
-            st.selectbox("Merk:", ["Apple"], disabled=True)
-        else:
-            m_brand = st.selectbox("Merk:", ["Oppo", "Samsung", "Xiaomi", "Vivo", "Realme", "Infinix", "Lainnya"])
-    with col_m2:
-        default_model = "iPhone 14 Pro" if is_ios else "A18"
-        m_model = st.text_input("Tipe / Model:", value=default_model)
-
-    # 2. Baterai & Daya
-    st.markdown("##### 2. Baterai & Daya:")
-    st.markdown("<p style='font-size: 0.8rem; color: #94A3B8; margin-top: -8px;'>Lihat indikator baterai di pojok kanan atas layar HP Anda:</p>", unsafe_allow_html=True)
-    m_bat_level = st.slider("Persentase Baterai Saat Ini (%):", min_value=50, max_value=100, value=89, step=1)
-    m_charging = st.checkbox("HP Sedang Terhubung Charger (Mengisi Daya)", value=False)
-
-    # 3. Layar Sentuh Digitizer (24 Kotak)
-    st.markdown("##### 3. Layar Sentuh (Usap 24 Kotak di Bawah):")
-    touch_grid_html = """
-    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; height: 160px; touch-action: none; background: #0F172A; padding: 4px; border-radius: 8px;">
-        """ + "".join([f'<div id="c{i}" style="background: #334155; border-radius: 4px; transition: background 0.1s;"></div>' for i in range(24)]) + """
-    </div>
-    <div id="touch-status" style="font-size: 0.82rem; color: #FDE047; margin-top: 6px; font-weight: 700; text-align: center;">Usap jari Anda melewati seluruh 24 kotak di atas</div>
-    <script>
-        let touched = 0;
-        function handle(e) {
-            const touches = e.touches || [e];
-            for (let i = 0; i < touches.length; i++) {
-                const el = document.elementFromPoint(touches[i].clientX, touches[i].clientY);
-                if (el && el.id && el.id.startsWith('c') && el.style.background !== 'rgb(16, 185, 129)') {
-                    el.style.background = '#10B981';
-                    touched++;
-                    document.getElementById('touch-status').innerText = touched + ' / 24 Kotak Teruji';
-                    if (touched >= 24) {
-                        document.getElementById('touch-status').innerText = '100% Bebas Dead-Zone (Sempurna)';
-                        document.getElementById('touch-status').style.color = '#34D399';
-                    }
-                }
-            }
-        }
-        window.addEventListener('touchstart', handle, {passive: true});
-        window.addEventListener('touchmove', handle, {passive: true});
-    </script>
-    """
-    st.components.v1.html(touch_grid_html, height=205)
-    m_touch_ok = st.checkbox("Seluruh 24 Kotak Berhasil Diusap Hijau (Zero Dead-Zone)", value=True)
-
-    # 4. Sensor & Audio
-    st.markdown("##### 4. Sensor Gerak & Speaker Audio:")
-    col_s1, col_s2 = st.columns(2)
-    with col_s1:
-        m_sensor_ok = st.checkbox("Sensor Gerak Normal", value=True)
-    with col_s2:
-        m_audio_ok = st.checkbox("Speaker & Getar Berfungsi", value=True)
-
-    # 5. Tombol Kirim ke Kasir
-    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-    if st.button("Kirim Hasil Diagnostik ke Laptop Kasir", type="primary", use_container_width=True):
-        payload = {
-            "session_id": session_id,
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "brand": m_brand,
-            "model": m_model,
-            "device_model": f"{m_brand} {m_model}",
-            "is_ios": is_ios,
-            "user_agent": "Mobile Streamlit Web Diagnostic Client",
-            "battery": {
-                "level_pct": m_bat_level,
-                "is_charging": m_charging,
-                "health_pct": m_bat_level
-            },
-            "touchscreen": {
-                "cells_passed": 24 if m_touch_ok else 18,
-                "total_cells": 24,
-                "zero_deadzone": m_touch_ok
-            },
-            "sensors": {
-                "gyro_responsive": m_sensor_ok,
-                "sample_alpha": 12.0,
-                "sample_beta": 4.5
-            },
-            "audio_haptic": {
-                "tested": m_audio_ok,
-                "passed": m_audio_ok
-            }
-        }
-        if set_mobile_session_result:
-            set_mobile_session_result(session_id, payload)
-        st.success("Diagnostik Berhasil Terkirim ke Laptop Kasir!")
-        st.markdown(f"""
-        <div style="background: #065F46; border: 1px solid #10B981; border-radius: 12px; padding: 20px; text-align: center; color: white; margin-top: 14px;">
-            <h3 style="margin: 0; color: #34D399; font-size: 1.15rem;">Data Diterima Laptop Kasir</h3>
-            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #E2E8F0;">
-                Unit: <b>{m_brand} {m_model}</b> &bull; Baterai: <b>{m_bat_level}%</b><br>
-                Silakan kembali melihat layar monitor kasir untuk proses penaksiran gadai selanjutnya.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+    html_code = get_mobile_diagnostic_html(session_id) if get_mobile_diagnostic_html else ""
+    if html_code:
+        try:
+            st.html(html_code)
+        except Exception:
+            st.components.v1.html(html_code, height=920, scrolling=True)
 
 
 # Route standalone mobile test directly if accessed via smartphone
 _qp = getattr(st, "query_params", {})
-if _qp.get("mode") == "mobile" or _qp.get("mobile") == "1":
+if _qp.get("mode") == "mobile_done":
+    _m_sid = _qp.get("session", "PGI-SESSION")
+    _raw_data = _qp.get("data", "")
+    render_mobile_completion_screen(_m_sid, _raw_data)
+    st.stop()
+elif _qp.get("mode") in ["mobile", "diagnose"] or _qp.get("mobile") == "1":
     _m_sid = _qp.get("session", "PGI-SESSION")
     render_standalone_mobile_diagnostic(_m_sid)
     st.stop()
@@ -1936,39 +1925,70 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
 
                 q_c1, q_c2 = st.columns([1, 1.4])
                 with q_c1:
-                    st.image(qr_img, caption="Arahkan Kamera HP ke Sini", width=160)
+                    if qr_img is not None:
+                        try:
+                            st.image(qr_img, caption="Arahkan Kamera HP ke Sini", width=160)
+                        except Exception:
+                            fallback_qr = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={urllib.parse.quote(diag_url, safe='')}"
+                            st.image(fallback_qr, caption="Arahkan Kamera HP ke Sini", width=160)
                 with q_c2:
                     st.markdown(f"""
                     <div style="font-size: 0.78rem; color: #4B5563; line-height: 1.45;">
                         <b>Instruksi Nasabah (Android & iPhone):</b><br>
                         1. Buka kamera bawaan HP (atau Safari/Chrome).<br>
                         2. Arahkan lensa ke QR Code di samping.<br>
-                        3. Buka tautan di peramban HP & usap 24 kotak.<br>
-                        4. Klik tombol <b>Kirim ke Kasir</b> di HP.<br>
+                        3. Perangkat & sensor akan <b>terdeteksi otomatis</b>.<br>
+                        4. Usap 24 kotak di HP lalu klik <b>Kirim ke Kasir</b>.<br>
                         <br>
                         <b>Tautan Alternatif (Buka Langsung):</b><br>
                         <a href="{diag_url}" target="_blank" style="color: #2563EB; font-weight: 600; word-break: break-all; font-size: 0.75rem;">{diag_url}</a>
                     </div>
                     """, unsafe_allow_html=True)
 
-                # Cek apakah hasil sudah diterima
-                received_payload = m_service.get_received_result(m_session)
+                # Cek apakah hasil sudah diterima (dari memory atau SQLite database)
+                received_payload = m_service.get_received_result(m_session) if m_service else (get_mobile_session_result(m_session) if get_mobile_session_result else None)
+                if not received_payload and DiagnosticDatabase:
+                    try:
+                        _db = DiagnosticDatabase()
+                        _db_row = _db.get_diagnostic(m_session)
+                        if _db_row and _db_row.get("raw_json"):
+                            received_payload = json.loads(_db_row["raw_json"])
+                    except Exception:
+                        pass
+
                 if received_payload:
                     dev_name = received_payload.get('device_model') or f"{received_payload.get('brand', 'Smartphone')} {received_payload.get('model', '')}"
-                    st.success(f"Data Diagnostik Diterima dari HP: {dev_name} ({received_payload.get('timestamp', '')[:19]})")
+                    st.success(f"Data Diagnostik Diterima dari HP: {dev_name} ({str(received_payload.get('timestamp', ''))[:19]})")
                     if dm:
                         mobile_diag_record = dm.create_diagnostic_from_mobile_web(received_payload)
                         selected_dev = mobile_diag_record.device
-                else:
-                    st.info("Status: Menunggu hasil pengujian dikirim dari HP nasabah...")
-                    sim_c1, sim_c2 = st.columns(2)
-                    with sim_c1:
-                        if st.button("Simulasi: Android (Oppo A18)", use_container_width=True):
-                            m_service.inject_simulated_mobile_result(m_session, brand="Oppo", model="A18")
+                        if st.session_state.get("last_synced_session") != m_session:
+                            st.session_state["current_diag_record"] = mobile_diag_record
+                            st.session_state["current_sim_dev"] = selected_dev
+                            st.session_state["last_synced_session"] = m_session
+                            if DiagnosticDatabase:
+                                try:
+                                    DiagnosticDatabase().save_diagnostic(m_session, mobile_diag_record)
+                                except Exception:
+                                    pass
                             st.rerun()
-                    with sim_c2:
-                        if st.button("Simulasi: Apple iPhone (iOS)", use_container_width=True):
-                            m_service.inject_simulated_mobile_result(m_session, brand="Apple", model="iPhone 14 Pro")
+                else:
+                    if st_autorefresh is not None and st.session_state.get("current_diag_record") is None:
+                        st_autorefresh(interval=3000, limit=120, key=f"poll_{m_session}")
+
+                    st.markdown("""
+                    <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid #3B82F6; border-radius: 8px; padding: 8px 12px; font-size: 0.80rem; color: #1E3A8A; margin-bottom: 8px;">
+                        <b>Status:</b> Menunggu hasil uji dari kamera HP nasabah... (Auto-Sync Aktif)
+                    </div>
+                    """, unsafe_allow_html=True)
+                    sync_c1, sync_c2 = st.columns([1.2, 1])
+                    with sync_c1:
+                        if st.button("Sinkronkan Data HP Sekarang", type="primary", use_container_width=True):
+                            st.rerun()
+                    with sync_c2:
+                        if st.button("Simulasi: Masukkan Data Demo", use_container_width=True):
+                            if m_service:
+                                m_service.inject_simulated_mobile_result(m_session, brand="Oppo", model="A18")
                             st.rerun()
 
     elif conn_mode == "Deteksi Otomatis Kabel USB (Plug & Play - Tanpa Opsi Pengembang)":
@@ -2081,10 +2101,22 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         if diag_rec:
             st.session_state["current_diag_record"] = diag_rec
             st.session_state["current_sim_dev"] = selected_dev
+            if DiagnosticDatabase:
+                try:
+                    s_id = getattr(selected_dev, "serial", f"PGI-{int(time.time())}")
+                    DiagnosticDatabase().save_diagnostic(s_id, diag_rec)
+                except Exception:
+                    pass
 
     elif mobile_diag_record is not None and st.session_state.get("current_diag_record") is None:
         st.session_state["current_diag_record"] = mobile_diag_record
         st.session_state["current_sim_dev"] = selected_dev
+        if DiagnosticDatabase:
+            try:
+                s_id = getattr(selected_dev, "serial", f"PGI-{int(time.time())}")
+                DiagnosticDatabase().save_diagnostic(s_id, mobile_diag_record)
+            except Exception:
+                pass
 
     diag_rec = st.session_state.get("current_diag_record")
 
@@ -2569,6 +2601,103 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             </p>
         </div>
         """, unsafe_allow_html=True)
+
+    # ---------------------------------------------------------
+    # Database Riwayat Diagnostik Hardware & Software (SQLite)
+    # ---------------------------------------------------------
+    st.markdown("---")
+    st.markdown("#### Database & Riwayat Diagnostik Smartphone (Arsip SQLite)")
+    st.markdown("<p style='color: #64748B; font-size: 0.84rem; margin-top: -8px;'>Seluruh hasil inspeksi hardware dan software (QR Web, USB Plug & Play, ADB) tersimpan permanen di database lokal SQLite.</p>", unsafe_allow_html=True)
+
+    if DiagnosticDatabase is not None:
+        db = DiagnosticDatabase()
+        stats = db.get_summary_stats()
+
+        # Ringkasan Metrik Arsip
+        m_c1, m_c2, m_c3, m_c4 = st.columns(4)
+        with m_c1:
+            st.metric("Total HP Terinspeksi", f"{stats.get('total_inspections', 0)} Unit")
+        with m_c2:
+            st.metric("Lolos Grade A/B", f"{stats.get('passed_count', 0)} Unit")
+        with m_c3:
+            st.metric("Gagal / Veto (Grade D)", f"{stats.get('failed_count', 0)} Unit")
+        with m_c4:
+            st.metric("Rata-Rata Baterai", f"{stats.get('avg_battery_health', 0.0)}%", help="Kesehatan baterai rata-rata seluruh unit.")
+
+        # Tabel Riwayat
+        df_history = db.get_all_diagnostics(limit=100)
+        if not df_history.empty:
+            filter_c1, filter_c2 = st.columns([1.5, 1])
+            with filter_c1:
+                search_kw = st.text_input("Cari Sesi / Merk / Model:", placeholder="Ketik Oppo, Samsung, iPhone, atau ID Sesi...")
+            with filter_c2:
+                grade_filter = st.selectbox("Filter Grade:", ["Semua Grade", "Lolos (PASS)", "Gagal (FAIL)"])
+
+            filtered_df = df_history.copy()
+            if search_kw:
+                kw = search_kw.strip().lower()
+                filtered_df = filtered_df[
+                    filtered_df["session_id"].str.lower().str.contains(kw) |
+                    filtered_df["brand"].str.lower().str.contains(kw) |
+                    filtered_df["model"].str.lower().str.contains(kw)
+                ]
+            if grade_filter == "Lolos (PASS)":
+                filtered_df = filtered_df[filtered_df["functional_grade"].str.contains("PASS", na=False)]
+            elif grade_filter == "Gagal (FAIL)":
+                filtered_df = filtered_df[filtered_df["functional_grade"].str.contains("FAIL", na=False)]
+
+            display_cols = ["session_id", "created_at", "brand", "model", "battery_level", "battery_health", "touch_passed", "functional_grade", "functional_score_pct"]
+            display_cols = [c for c in display_cols if c in filtered_df.columns]
+            rename_map = {
+                "session_id": "ID Sesi",
+                "created_at": "Waktu Inspeksi",
+                "brand": "Merk",
+                "model": "Model",
+                "battery_level": "Baterai (%)",
+                "battery_health": "Kesehatan (%)",
+                "touch_passed": "Layar (1=Lolos)",
+                "functional_grade": "Grade",
+                "functional_score_pct": "Skor (%)"
+            }
+            show_df = filtered_df[display_cols].rename(columns=rename_map)
+            st.dataframe(show_df, hide_index=True, use_container_width=True)
+
+            # Aksi Arsip
+            down_c1, down_c2 = st.columns([1, 1])
+            with down_c1:
+                csv_bytes = filtered_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Unduh Riwayat Diagnostik (CSV)",
+                    data=csv_bytes,
+                    file_name=f"riwayat_diagnostik_pgi_{int(time.time())}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            with down_c2:
+                sess_list = filtered_df["session_id"].tolist()
+                if sess_list:
+                    selected_sess = st.selectbox(
+                        "Pilih Sesi untuk Dimuat Kembali:",
+                        sess_list,
+                        key="sel_past_session"
+                    )
+                    if st.button("Muat Sesi Ini ke Tab Inspeksi", use_container_width=True):
+                        past_row = db.get_diagnostic(selected_sess)
+                        if past_row and past_row.get("raw_json"):
+                            try:
+                                past_payload = json.loads(past_row["raw_json"])
+                                if dm:
+                                    reloaded_rec = dm.create_diagnostic_from_mobile_web(past_payload)
+                                    st.session_state["current_diag_record"] = reloaded_rec
+                                    st.session_state["current_sim_dev"] = reloaded_rec.device
+                                    st.success(f"Sesi {selected_sess} berhasil dimuat kembali!")
+                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"Gagal memuat sesi: {e}")
+        else:
+            st.info("Database masih kosong. Lakukan pengujian hardware via QR Code atau USB untuk menyimpan rekaman inspeksi pertama.")
+    else:
+        st.warning("Modul DiagnosticDatabase belum terhubung.")
 
 
 # ---------------------------------------------------------
