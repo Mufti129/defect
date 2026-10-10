@@ -261,16 +261,25 @@ class DeviceManager:
         brand = payload.get("brand", "Smartphone")
         model = payload.get("model", "Mobile Web Client")
         ua = payload.get("user_agent", "")
-        if "iPhone" in ua or "iPad" in ua:
+        is_ios = payload.get("is_ios", False)
+
+        if is_ios or "iPhone" in ua or "iPad" in ua:
             dev_type = "ios"
             brand = "Apple"
-            model = "iPhone"
+            if payload.get("model") and "iPhone" in payload.get("model"):
+                model = payload.get("model")
+            else:
+                model = "iPhone"
         else:
             dev_type = "android"
-            if "Samsung" in ua: brand = "Samsung"
+            if payload.get("brand") and payload.get("brand") not in ["Smartphone", "Android"]:
+                brand = payload.get("brand")
+            elif "Samsung" in ua: brand = "Samsung"
             elif "Oppo" in ua: brand = "Oppo"
             elif "Xiaomi" in ua or "Redmi" in ua: brand = "Xiaomi"
             elif "Vivo" in ua: brand = "Vivo"
+            if payload.get("model") and payload.get("model") != "Mobile Device":
+                model = payload.get("model")
 
         session_id = payload.get("session_id", "MOBILE-SESSION")
         device = ConnectedDevice(
