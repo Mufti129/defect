@@ -232,3 +232,124 @@ class DeviceManager:
             functional_grade=functional_grade,
             timestamp=time.strftime("%Y-%m-%d %H:%M:%S")
         )
+
+    def create_device_from_usb_hardware(self, usb_dev: Any) -> ConnectedDevice:
+        """Converts raw USB bus hardware descriptor into a ConnectedDevice instance."""
+        brand = getattr(usb_dev, "brand", "Smartphone")
+        model = getattr(usb_dev, "product_name", "Unit")
+        serial = getattr(usb_dev, "serial_number", "USB-0001")
+        dev_type = getattr(usb_dev, "device_type", "android")
+        speed = getattr(usb_dev, "connection_speed", "High-Speed USB")
+
+        return ConnectedDevice(
+            serial=serial,
+            brand=brand,
+            model=model,
+            market_name=f"{brand} {model}",
+            os_version=f"{'iOS' if dev_type == 'ios' else 'Android OS'} (USB Descriptor)",
+            soc=f"{brand} Mobile Hardware Controller",
+            imei=f"35{abs(hash(serial)) % 10000000000000:013d}",
+            ram_gb=8 if "samsung" in brand.lower() else (6 if "apple" in brand.lower() else 4),
+            storage_gb=usb_dev.details.get("capacity_gb", 128) if hasattr(usb_dev, "details") else 128,
+            connection_type=f"Kabel USB Plug & Play ({speed})",
+            device_type=dev_type,
+            is_simulated=False
+        )
+
+    def create_diagnostic_from_mobile_web(self, payload: Dict[str, Any]) -> FullDiagnosticRecord:
+        """Converts mobile HTML5 web diagnostic payload into a FullDiagnosticRecord."""
+        brand = payload.get("brand", "Smartphone")
+        model = payload.get("model", "Mobile Web Client")
+        ua = payload.get("user_agent", "")
+        if "iPhone" in ua or "iPad" in ua:
+            dev_type = "ios"
+            brand = "Apple"
+            model = "iPhone"
+        else:
+            dev_type = "android"
+            if "Samsung" in ua: brand = "Samsung"
+            elif "Oppo" in ua: brand = "Oppo"
+            elif "Xiaomi" in ua or "Redmi" in ua: brand = "Xiaomi"
+            elif "Vivo" in ua: brand = "Vivo"
+
+        session_id = payload.get("session_id", "MOBILE-SESSION")
+        device = ConnectedDevice(
+            serial=f"MOB-{session_id[-8:]}",
+            brand=brand,
+            model=model,
+            market_name=f"{brand} {model} (Web Diagnostic)",
+            os_version="Mobile Browser Web API",
+            soc="Arm Mobile Architecture",
+            imei=f"35{abs(hash(session_id)) % 10000000000000:013d}",
+            ram_gb=4,
+            storage_gb=128,
+            connection_type="QR Web Scanner (Nol-Sentuh)",
+            device_type=dev_type,
+            is_simulated=False
+        )
+
+        # Parse battery
+        bat_data = payload.get("battery", {})
+        bat_level = bat_data.get("level_pct", 88)
+        bat_health = bat_data.get("health_pct", 90)
+        is_charging = bat_data.get("is_charging", False)
+
+        raw_battery = {
+            "level": bat_level,
+            "gas_gauge": bat_health,
+            "cycle_count": 210,
+            "temperature_c": 31.0,
+            "voltage_mv": 4150,
+            "is_charging": is_charging,
+            "health_code": 2 if bat_health >= 80 else 3
+        }
+        battery_report = self.battery_analyzer.analyze_battery(raw_battery, dev_type)
+
+        # Parse touch
+        touch_data = payload.get("touchscreen", {})
+        zero_deadzone = touch_data.get("zero_deadzone", True)
+
+        interactive_report = self.interactive_runner.run_tests()
+        interactive_report.touch_grid_passed = zero_deadzone
+        if not zero_deadzone:
+            interactive_report.all_passed = False
+            interactive_report.penalty_points += 15.0
+
+        sensor_report = self.sensor_validator.validate_sensors({}, dev_type)
+        oem_report = self.oem_checker.check_authenticity({
+            "screen_replaced": False,
+            "battery_replaced": False,
+            "camera_replaced": False,
+            "cloud_lock": "UNLOCKED"
+        }, dev_type)
+
+        total_penalty = (
+            battery_report.penalty_points
+            + sensor_report.penalty_points
+            + oem_report.penalty_points
+            + interactive_report.penalty_points
+        )
+        functional_score_pct = max(0.0, min(100.0, 100.0 - (total_penalty * 2.5)))
+
+        if not zero_deadzone:
+            functional_grade = "FAIL (D)"
+        elif total_penalty == 0.0 and battery_report.status == "PASS":
+            functional_grade = "PASS (A/B)"
+        elif battery_report.status == "SERVICE_REQUIRED":
+            functional_grade = "SERVICE_WARNING (B-)"
+        elif total_penalty <= 8.0:
+            functional_grade = "MINOR_WARNING (B)"
+        else:
+            functional_grade = "FAIL (D)"
+
+        return FullDiagnosticRecord(
+            device=device,
+            battery=battery_report,
+            sensors=sensor_report,
+            oem_authenticity=oem_report,
+            interactive_test=interactive_report,
+            functional_score_pct=round(functional_score_pct, 1),
+            total_penalty_dpi=round(total_penalty, 2),
+            functional_grade=functional_grade,
+            timestamp=payload.get("timestamp", time.strftime("%Y-%m-%d %H:%M:%S"))
+        )

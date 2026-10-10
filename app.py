@@ -52,7 +52,11 @@ try:
         BatteryAnalyzer,
         SensorValidator,
         OEMAuthenticityChecker,
-        InteractiveTestRunner
+        InteractiveTestRunner,
+        USBHardwareDetector,
+        USBHardwareDevice,
+        MobileDiagnosticWebService,
+        get_local_lan_ip
     )
 except ImportError:
     try:
@@ -62,10 +66,17 @@ except ImportError:
             BatteryAnalyzer,
             SensorValidator,
             OEMAuthenticityChecker,
-            InteractiveTestRunner
+            InteractiveTestRunner,
+            USBHardwareDetector,
+            USBHardwareDevice,
+            MobileDiagnosticWebService,
+            get_local_lan_ip
         )
     except ImportError:
         DeviceManager = None
+        USBHardwareDetector = None
+        MobileDiagnosticWebService = None
+        get_local_lan_ip = None
 
 # ---------------------------------------------------------
 # Page Configuration & Flutter "Belajarku" Styling
@@ -1721,15 +1732,93 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
     with ctrl_col1:
         conn_mode = st.radio(
             "Pilih Mode Deteksi Perangkat:",
-            ["Simulasi & Profil Demo (Bench Test)", "Deteksi Perangkat Fisik (Port USB)"],
+            [
+                "Deteksi Otomatis Kabel USB (Plug & Play - Tanpa Opsi Pengembang)",
+                "Diagnostik Web Instan (Scan QR Code via Kamera HP - Nol Sentuh Pengaturan)",
+                "Akses Mendalam ADB / iOS USB (Mode Teknisi Lanjutan)",
+                "Simulasi & Profil Demo (Bench Test)"
+            ],
             index=0,
             horizontal=False
         )
 
     selected_dev = None
-    if conn_mode == "Deteksi Perangkat Fisik (Port USB)":
+    mobile_diag_record = None
+
+    if conn_mode == "Deteksi Otomatis Kabel USB (Plug & Play - Tanpa Opsi Pengembang)":
         with ctrl_col2:
-            st.markdown("<b>Pindai Port USB:</b>", unsafe_allow_html=True)
+            st.markdown("<b>Deteksi Sinyal Port USB (Plug & Play):</b>", unsafe_allow_html=True)
+            if "usb_detector" not in st.session_state:
+                st.session_state["usb_detector"] = USBHardwareDetector() if USBHardwareDetector else None
+
+            usb_det = st.session_state.get("usb_detector")
+            if st.button("Pindai Port USB (Cek Colokan Kabel)", use_container_width=True):
+                if usb_det:
+                    st.session_state["plugged_usb_devices"] = usb_det.scan_usb_devices()
+                else:
+                    st.session_state["plugged_usb_devices"] = []
+
+            plugged_devs = st.session_state.get("plugged_usb_devices", [])
+            if plugged_devs:
+                dev_labels = [d.display_name for d in plugged_devs]
+                chosen_idx = st.selectbox("Pilih Smartphone USB Terdeteksi:", range(len(plugged_devs)), format_func=lambda i: dev_labels[i])
+                usb_dev_obj = plugged_devs[chosen_idx]
+                if dm:
+                    selected_dev = dm.create_device_from_usb_hardware(usb_dev_obj)
+                st.success(f"Terhubung Plug & Play: {usb_dev_obj.brand} {usb_dev_obj.product_name}")
+            else:
+                st.info("Belum ada perangkat fisik terhubung via USB. Menggunakan profil simulasi Plug & Play Oppo A18.")
+                if usb_det and dm:
+                    sim_usb_obj = usb_det.get_simulated_plugged_device("oppo_a18")
+                    selected_dev = dm.create_device_from_usb_hardware(sim_usb_obj)
+
+    elif conn_mode == "Diagnostik Web Instan (Scan QR Code via Kamera HP - Nol Sentuh Pengaturan)":
+        if "mobile_web_service" not in st.session_state:
+            st.session_state["mobile_web_service"] = MobileDiagnosticWebService(port=8503) if MobileDiagnosticWebService else None
+        if "mobile_diagnostic_session" not in st.session_state:
+            st.session_state["mobile_diagnostic_session"] = f"PGI-{int(time.time()) % 1000000:06d}"
+
+        m_service = st.session_state.get("mobile_web_service")
+        m_session = st.session_state.get("mobile_diagnostic_session")
+
+        with ctrl_col2:
+            st.markdown("<b>Scan QR Code Menggunakan Kamera HP Nasabah:</b>", unsafe_allow_html=True)
+            if m_service:
+                qr_bytes = m_service.generate_qr_png_bytes(m_session)
+                diag_url = m_service.get_diagnostic_url(m_session)
+                q_c1, q_c2 = st.columns([1, 1.3])
+                with q_c1:
+                    if qr_bytes:
+                        st.image(qr_bytes, width=150)
+                with q_c2:
+                    st.markdown(f"""
+                    <div style="font-size: 0.78rem; color: #4B5563; line-height: 1.45;">
+                        <b>Instruksi Nasabah:</b><br>
+                        1. Buka aplikasi kamera di HP.<br>
+                        2. Arahkan ke QR Code.<br>
+                        3. Ketuk tautan web dan lakukan tes usap layar sentuh.<br>
+                        <br>
+                        <b>URL Alternatif:</b><br>
+                        <code>{diag_url}</code>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # Cek apakah hasil sudah diterima
+                received_payload = m_service.get_received_result(m_session)
+                if received_payload:
+                    st.success(f"Data Diagnostik Diterima dari HP: {received_payload.get('brand', 'Smartphone')} ({received_payload.get('timestamp', '')[:19]})")
+                    if dm:
+                        mobile_diag_record = dm.create_diagnostic_from_mobile_web(received_payload)
+                        selected_dev = mobile_diag_record.device
+                else:
+                    st.info("Status: Menunggu hasil pengujian dikirim dari HP nasabah...")
+                    if st.button("Simulasikan Pengujian dari HP (Test Demo)", use_container_width=True):
+                        m_service.inject_simulated_mobile_result(m_session, brand="Oppo", model="A18")
+                        st.rerun()
+
+    elif conn_mode == "Akses Mendalam ADB / iOS USB (Mode Teknisi Lanjutan)":
+        with ctrl_col2:
+            st.markdown("<b>Pindai Port USB (Mode Shell ADB & iOS):</b>", unsafe_allow_html=True)
             if st.button("Pindai Port USB (Scan ADB & iOS)", use_container_width=True):
                 if dm:
                     st.session_state["physical_devices"] = dm.scan_devices()
@@ -1741,12 +1830,13 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 dev_labels = [f"[{d.device_type.upper()}] {d.market_name} (SN: {d.serial})" for d in phys_devs]
                 chosen_idx = st.selectbox("Pilih Perangkat Fisik Terdeteksi:", range(len(phys_devs)), format_func=lambda i: dev_labels[i])
                 selected_dev = phys_devs[chosen_idx]
-                st.success(f"Terhubung: {selected_dev.market_name}")
+                st.success(f"Terhubung ADB: {selected_dev.market_name}")
             else:
-                st.info("Belum ada perangkat fisik terhubung via USB. Menggunakan profil simulasi Oppo A18.")
+                st.info("Belum ada perangkat fisik terhubung via ADB/iOS. Menggunakan profil simulasi Oppo A18.")
                 if dm:
                     selected_dev = dm.get_simulated_device("oppo_a18")
     else:
+        # Simulasi & Profil Demo
         with ctrl_col2:
             mock_profile_map = {
                 "oppo_a18": "Oppo A18 4/128GB (Android 14 / ColorOS)",
@@ -1779,7 +1869,9 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
 
     # Eksekusi diagnostik saat tombol ditekan atau inisialisasi awal
     if run_diag_btn or st.session_state["current_diag_record"] is None:
-        if dm and selected_dev:
+        if mobile_diag_record is not None:
+            diag_rec = mobile_diag_record
+        elif dm and selected_dev:
             diag_rec = dm.run_full_diagnostics(
                 device=selected_dev,
                 simulation_battery_health=sim_battery_health,
@@ -1796,7 +1888,10 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 diag_rec.interactive_test.all_passed = False
                 diag_rec.interactive_test.penalty_points += 15.0
                 diag_rec.functional_grade = "FAIL (D)"
+        else:
+            diag_rec = None
 
+        if diag_rec:
             st.session_state["current_diag_record"] = diag_rec
             st.session_state["current_sim_dev"] = selected_dev
 

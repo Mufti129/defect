@@ -14,6 +14,8 @@ from .battery_analyzer import BatteryAnalyzer, BatteryReport
 from .sensor_validator import SensorValidator, SensorReport
 from .oem_authenticity import OEMAuthenticityChecker, OEMPartReport
 from .interactive_test_runner import InteractiveTestRunner, InteractiveTestResult
+from .usb_detector import USBHardwareDetector, USBHardwareDevice
+from .mobile_web_service import MobileDiagnosticWebService, get_local_lan_ip
 
 __all__ = [
     "DeviceManager",
@@ -28,4 +30,8 @@ __all__ = [
     "OEMPartReport",
     "InteractiveTestRunner",
     "InteractiveTestResult",
+    "USBHardwareDetector",
+    "USBHardwareDevice",
+    "MobileDiagnosticWebService",
+    "get_local_lan_ip",
 ]
