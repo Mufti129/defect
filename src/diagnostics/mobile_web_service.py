@@ -52,12 +52,12 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PGI Smart Diagnostic — Uji Mandiri Smartphone</title>
+    <title>Mufti Computer Vision — Smart Hardware Diagnostic</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; }
         body { background: #0A0F1D; color: #F8FAFC; padding: 14px; min-height: 100vh; -webkit-tap-highlight-color: transparent; }
         .header { background: linear-gradient(135deg, #151E32 0%, #1E293B 100%); border-radius: 16px; padding: 18px; margin-bottom: 14px; border: 1px solid #243352; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
-        .header h1 { font-size: 1.22rem; color: #38BDF8; font-weight: 800; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
+        .header h1 { font-size: 1.25rem; color: #38BDF8; font-weight: 800; letter-spacing: -0.3px; display: flex; align-items: center; gap: 8px; }
         .header p { font-size: 0.80rem; color: #94A3B8; margin-top: 4px; line-height: 1.4; }
         .tag-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
         .pill { display: inline-block; background: #1E293B; color: #38BDF8; font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; border: 1px solid #334155; }
@@ -98,11 +98,11 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
 </head>
 <body>
     <div class="header">
-        <h1>Pusat Gadai Indonesia</h1>
-        <p>Sistem Diagnostik Mandiri Smartphone (Universal Android & iOS)</p>
+        <h1>Mufti Computer Vision</h1>
+        <p>Sistem Diagnostik AI & Computer Vision Smartphone (Universal Android & iOS)</p>
         <div class="tag-row">
-            <span class="pill pill-neon" id="device-pill">Mendeteksi Spesifikasi Otomatis...</span>
-            <span class="pill">Sesi: <b id="session-label" style="color: #38BDF8;">...</b></span>
+            <span class="pill pill-neon" id="device-pill">Mendeteksi Spesifikasi Otomatis (Instan)...</span>
+            <span class="pill">Sesi: <b id="session-label" style="color: #38BDF8;">__SESSION_ID__</b></span>
         </div>
     </div>
 
@@ -110,14 +110,14 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
     <div class="card">
         <div class="card-title">
             <span>1. Spesifikasi Hardware Smartphone</span>
-            <span class="badge badge-pass" id="hw-badge">TERDETEKSI OTOMATIS</span>
+            <span class="badge badge-pass" id="hw-badge">MEMINDAI (0.1 DETIK)</span>
         </div>
         <div class="stat-grid">
-            <div class="stat-box"><span>Merk / Brand HP</span><b id="val-brand">Mendeteksi...</b></div>
-            <div class="stat-box"><span>Model / Tipe HP</span><b id="val-model">Mendeteksi...</b></div>
-            <div class="stat-box"><span>Sistem Operasi</span><b id="val-os">Mendeteksi...</b></div>
-            <div class="stat-box"><span>Resolusi Layar</span><b id="val-res">Mendeteksi...</b></div>
-            <div class="stat-box" style="grid-column: span 2;"><span>Chipset Grafis (GPU WebGL)</span><b id="val-gpu" style="font-size: 0.82rem; color: #34D399;">Mendeteksi...</b></div>
+            <div class="stat-box"><span>Merk / Brand HP</span><b id="val-brand">Smartphone</b></div>
+            <div class="stat-box"><span>Model / Tipe HP</span><b id="val-model">Mobile Device</b></div>
+            <div class="stat-box"><span>Sistem Operasi</span><b id="val-os">Mobile OS</b></div>
+            <div class="stat-box"><span>Resolusi Layar</span><b id="val-res">1080 x 2400 px</b></div>
+            <div class="stat-box" style="grid-column: span 2;"><span>Chipset Grafis (GPU WebGL)</span><b id="val-gpu" style="font-size: 0.82rem; color: #34D399;">Mobile GPU</b></div>
         </div>
         <div style="font-size: 0.70rem; color: #64748B; margin-top: 8px;" id="val-ua">User Agent memindai...</div>
     </div>
@@ -193,12 +193,15 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         <div class="success-box" id="success-banner">
             <h3 style="color: #34D399; font-size: 1.05rem;">Diagnostik Berhasil Terkirim!</h3>
             <p style="font-size: 0.82rem; color: #E2E8F0; margin-top: 4px;">Data sedang disinkronkan ke layar inspeksi laptop kasir...</p>
+            <a id="done-redirect-btn" href="#" target="_top" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #2563EB; color: white; border-radius: 8px; font-weight: 700; font-size: 0.82rem; text-decoration: none;">Klik di Sini Jika Halaman Belum Berpindah</a>
         </div>
     </div>
 
     <script>
+        const injectedAppBase = "__APP_BASE_URL__";
+        const injectedSessionId = "__SESSION_ID__";
         const urlParams = new URLSearchParams(window.location.search);
-        const sessionId = urlParams.get('session') || 'PGI-MOBILE';
+        const sessionId = (injectedSessionId && !injectedSessionId.startsWith("__")) ? injectedSessionId : (urlParams.get('session') || 'MCV-MOBILE');
         document.getElementById('session-label').innerText = sessionId;
 
         let batteryData = { level: 90, charging: false };
@@ -285,6 +288,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         document.getElementById('val-res').innerText = screenRes;
         document.getElementById('val-gpu').innerText = gpuName;
         document.getElementById('val-ua').innerText = ua.substring(0, 95) + '...';
+        document.getElementById('hw-badge').innerText = 'LOLOS INSTAN';
         document.getElementById('device-pill').innerText = brandName + " " + modelName + " (AI Terdeteksi)";
 
         function updateIOSBattery(val) {
@@ -328,7 +332,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         }
 
         function handleTouch(e) {
-            const touches = e.touches || [e];
+            const touches = e.touches ? Array.from(e.touches) : [e];
             for (let i = 0; i < touches.length; i++) {
                 const el = document.elementFromPoint(touches[i].clientX, touches[i].clientY);
                 if (el && el.classList.contains('touch-cell') && !el.classList.contains('touched')) {
@@ -346,6 +350,10 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         }
         grid.addEventListener('touchstart', handleTouch, { passive: true });
         grid.addEventListener('touchmove', handleTouch, { passive: true });
+        let isMouseDown = false;
+        grid.addEventListener('mousedown', (e) => { isMouseDown = true; handleTouch(e); });
+        grid.addEventListener('mousemove', (e) => { if (isMouseDown) handleTouch(e); });
+        window.addEventListener('mouseup', () => { isMouseDown = false; });
 
         // 4. Motion sensors (Gyroscope bubble level)
         function handleOrientation(e) {
@@ -453,10 +461,20 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             btn.innerText = 'Mengirim & Menyinkronkan...';
             btn.style.background = '#8B5CF6';
 
-            // Submit directly via Streamlit query parameters
-            const submitUrl = window.location.origin + window.location.pathname + 
-                '?mode=mobile_done&session=' + encodeURIComponent(sessionId) + 
+            // Construct destination URL using injected base or fallback
+            let targetBase = injectedAppBase;
+            if (!targetBase || targetBase.startsWith("__")) {
+                targetBase = window.location.origin + window.location.pathname;
+            }
+            const submitUrl = targetBase + (targetBase.includes('?') ? '&' : '?') + 
+                'mode=mobile_done&session=' + encodeURIComponent(sessionId) + 
                 '&data=' + encodeURIComponent(JSON.stringify(payload));
+
+            // Set manual fallback button in banner
+            const doneLink = document.getElementById('done-redirect-btn');
+            if (doneLink) {
+                doneLink.href = submitUrl;
+            }
 
             // Also try POST if running local background HTTP daemon
             try {
@@ -470,7 +488,15 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             document.getElementById('success-banner').style.display = 'block';
 
             setTimeout(() => {
-                window.location.href = submitUrl;
+                try {
+                    if (window.top && window.top !== window) {
+                        window.top.location.href = submitUrl;
+                    } else {
+                        window.location.href = submitUrl;
+                    }
+                } catch(err) {
+                    window.location.href = submitUrl;
+                }
             }, 350);
         }
     </script>
@@ -499,7 +525,7 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(json.dumps({"status": "running", "service": "pgi-mobile-qa"}).encode("utf-8"))
+            self.wfile.write(json.dumps({"status": "running", "service": "mcv-mobile-qa"}).encode("utf-8"))
         else:
             self.send_response(404)
             self.end_headers()
@@ -534,8 +560,11 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
 
 
 def get_mobile_diagnostic_html(session_id: str, app_base_url: str = "") -> str:
-    """Returns the full mobile HTML diagnostic suite."""
-    return HTML_MOBILE_DIAGNOSTIC_PAGE
+    """Returns the full mobile HTML diagnostic suite with session and base URL injected."""
+    html = HTML_MOBILE_DIAGNOSTIC_PAGE
+    html = html.replace("__SESSION_ID__", session_id)
+    html = html.replace("__APP_BASE_URL__", app_base_url or "")
+    return html
 
 
 def set_mobile_session_result(session_id: str, payload: Dict[str, Any]) -> None:

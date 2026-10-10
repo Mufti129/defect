@@ -174,12 +174,13 @@ def render_mobile_completion_screen(session_id: str, raw_payload_str: str):
     st.markdown(f"""
     <div style="max-width: 440px; margin: 30px auto; padding: 0 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
         <div style="background: linear-gradient(135deg, #151E32 0%, #1E293B 100%); border: 1px solid #243352; border-radius: 20px; padding: 26px 20px; box-shadow: 0 12px 30px rgba(0,0,0,0.5); text-align: center;">
+            <div style="font-size: 0.85rem; font-weight: 800; color: #38BDF8; margin-bottom: 12px; letter-spacing: 0.5px;">MUFTI COMPUTER VISION</div>
             <div style="width: 70px; height: 70px; background: rgba(16, 185, 129, 0.15); border: 2px solid #10B981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);">
                 <span style="font-size: 34px; color: #34D399; font-weight: bold;">&#10003;</span>
             </div>
             <h2 style="color: #34D399; font-size: 1.25rem; font-weight: 800; margin: 0;">Diagnostik Selesai & Terkirim!</h2>
             <p style="color: #94A3B8; font-size: 0.82rem; margin-top: 6px; line-height: 1.45;">
-                Data pengujian smartphone telah berhasil disinkronkan ke layar inspeksi laptop kasir secara otomatis.
+                Data pengujian smartphone telah berhasil disinkronkan ke layar inspeksi Mufti Computer Vision secara otomatis.
             </p>
             
             <div style="background: #0A0F1D; border-radius: 12px; padding: 14px; margin: 18px 0; border: 1px solid #1E293B; text-align: left; font-size: 0.82rem;">
@@ -202,7 +203,7 @@ def render_mobile_completion_screen(session_id: str, raw_payload_str: str):
             </div>
 
             <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3B82F6; border-radius: 10px; padding: 12px; font-size: 0.80rem; color: #93C5FD; line-height: 1.4;">
-                Silakan kembali ke petugas kasir untuk melanjutkan proses penaksiran gadai smartphone Anda.
+                Silakan kembali ke petugas kasir untuk melanjutkan proses inspeksi & penaksiran smartphone Anda.
             </div>
         </div>
     </div>
@@ -212,7 +213,7 @@ def render_mobile_completion_screen(session_id: str, raw_payload_str: str):
 def render_standalone_mobile_diagnostic(session_id: str):
     """
     Renders standalone mobile web diagnostic UI when smartphone scans the QR code.
-    Runs inside the Streamlit process directly, avoiding port timeouts.
+    Runs inside the Streamlit process directly using components.html for full JavaScript execution.
     """
     st.markdown("""
     <style>
@@ -221,26 +222,32 @@ def render_standalone_mobile_diagnostic(session_id: str):
         header { display: none !important; }
         #MainMenu { display: none !important; }
         footer { display: none !important; }
+        .block-container {
+            padding-top: 0rem !important;
+            padding-bottom: 0rem !important;
+            padding-left: 0.2rem !important;
+            padding-right: 0.2rem !important;
+            max-width: 100% !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 
-    html_code = get_mobile_diagnostic_html(session_id) if get_mobile_diagnostic_html else ""
+    app_base = get_app_base_url()
+    html_code = get_mobile_diagnostic_html(session_id, app_base_url=app_base) if get_mobile_diagnostic_html else ""
     if html_code:
-        try:
-            st.html(html_code)
-        except Exception:
-            st.components.v1.html(html_code, height=920, scrolling=True)
+        import streamlit.components.v1 as components
+        components.html(html_code, height=1250, scrolling=True)
 
 
 # Route standalone mobile test directly if accessed via smartphone
 _qp = getattr(st, "query_params", {})
 if _qp.get("mode") == "mobile_done":
-    _m_sid = _qp.get("session", "PGI-SESSION")
+    _m_sid = _qp.get("session", "MCV-SESSION")
     _raw_data = _qp.get("data", "")
     render_mobile_completion_screen(_m_sid, _raw_data)
     st.stop()
 elif _qp.get("mode") in ["mobile", "diagnose"] or _qp.get("mobile") == "1":
-    _m_sid = _qp.get("session", "PGI-SESSION")
+    _m_sid = _qp.get("session", "MCV-SESSION")
     render_standalone_mobile_diagnostic(_m_sid)
     st.stop()
 
@@ -1905,13 +1912,13 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         if "mobile_web_service" not in st.session_state:
             st.session_state["mobile_web_service"] = MobileDiagnosticWebService(port=8503) if MobileDiagnosticWebService else None
         if "mobile_diagnostic_session" not in st.session_state:
-            st.session_state["mobile_diagnostic_session"] = f"PGI-{int(time.time()) % 1000000:06d}"
+            st.session_state["mobile_diagnostic_session"] = f"MCV-{int(time.time()) % 1000000:06d}"
 
         m_service = st.session_state.get("mobile_web_service")
         m_session = st.session_state.get("mobile_diagnostic_session")
 
         with ctrl_col2:
-            st.markdown("<b>Scan QR Code Menggunakan Kamera HP Nasabah (Universal Android & iOS):</b>", unsafe_allow_html=True)
+            st.markdown("<b>Scan QR Code Menggunakan Kamera HP (Universal Android & iOS — Mufti Computer Vision):</b>", unsafe_allow_html=True)
             if m_service:
                 app_base = get_app_base_url()
                 default_target_url = f"{app_base}/?mode=mobile&session={m_session}"
