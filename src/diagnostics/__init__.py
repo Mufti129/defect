@@ -15,7 +15,13 @@ from .sensor_validator import SensorValidator, SensorReport
 from .oem_authenticity import OEMAuthenticityChecker, OEMPartReport
 from .interactive_test_runner import InteractiveTestRunner, InteractiveTestResult
 from .usb_detector import USBHardwareDetector, USBHardwareDevice
-from .mobile_web_service import MobileDiagnosticWebService, get_local_lan_ip
+from .mobile_web_service import (
+    MobileDiagnosticWebService,
+    get_local_lan_ip,
+    set_mobile_session_result,
+    get_mobile_session_result,
+    generate_qr_for_url
+)
 
 __all__ = [
     "DeviceManager",
@@ -34,4 +40,7 @@ __all__ = [
     "USBHardwareDevice",
     "MobileDiagnosticWebService",
     "get_local_lan_ip",
+    "set_mobile_session_result",
+    "get_mobile_session_result",
+    "generate_qr_for_url",
 ]

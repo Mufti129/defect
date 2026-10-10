@@ -56,7 +56,10 @@ try:
         USBHardwareDetector,
         USBHardwareDevice,
         MobileDiagnosticWebService,
-        get_local_lan_ip
+        get_local_lan_ip,
+        set_mobile_session_result,
+        get_mobile_session_result,
+        generate_qr_for_url
     )
 except ImportError:
     try:
@@ -70,13 +73,19 @@ except ImportError:
             USBHardwareDetector,
             USBHardwareDevice,
             MobileDiagnosticWebService,
-            get_local_lan_ip
+            get_local_lan_ip,
+            set_mobile_session_result,
+            get_mobile_session_result,
+            generate_qr_for_url
         )
     except ImportError:
         DeviceManager = None
         USBHardwareDetector = None
         MobileDiagnosticWebService = None
         get_local_lan_ip = None
+        set_mobile_session_result = None
+        get_mobile_session_result = None
+        generate_qr_for_url = None
 
 # ---------------------------------------------------------
 # Page Configuration & Flutter "Belajarku" Styling
@@ -87,6 +96,164 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+
+def get_app_base_url() -> str:
+    """Detects public URL of Streamlit app across cloud and local."""
+    try:
+        headers = getattr(st.context, "headers", None)
+        if headers:
+            host = headers.get("host") or headers.get("Host") or headers.get("x-forwarded-host")
+            if host:
+                host_str = str(host)
+                if "streamlit.app" in host_str:
+                    return f"https://{host_str}"
+                if "localhost" in host_str or "127.0.0.1" in host_str:
+                    lan_ip = get_local_lan_ip() if get_local_lan_ip else "127.0.0.1"
+                    port_str = f":{host_str.split(':')[1]}" if ":" in host_str else ":8501"
+                    return f"http://{lan_ip}{port_str}"
+                proto = headers.get("x-forwarded-proto", "http")
+                return f"{proto}://{host_str}"
+    except Exception:
+        pass
+    lan_ip = get_local_lan_ip() if get_local_lan_ip else "127.0.0.1"
+    return f"http://{lan_ip}:8501"
+
+
+def render_standalone_mobile_diagnostic(session_id: str):
+    """
+    Renders standalone mobile web diagnostic UI when smartphone scans the QR code.
+    Runs inside the Streamlit process directly, avoiding port timeouts.
+    """
+    st.markdown("""
+    <style>
+        [data-testid="stSidebar"] { display: none !important; }
+        .stApp { background-color: #0F172A; color: #F8FAFC; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+    <div style="background: #1E293B; border-radius: 14px; padding: 18px; border: 1px solid #334155; margin-bottom: 16px;">
+        <h2 style="margin: 0; color: #38BDF8; font-size: 1.25rem; font-weight: 800;">Pusat Gadai Indonesia</h2>
+        <p style="margin: 4px 0 0 0; color: #94A3B8; font-size: 0.82rem;">Sistem Diagnostik Mandiri Smartphone (Universal Android & iOS)</p>
+        <div style="margin-top: 8px; display: inline-block; background: #334155; color: #F8FAFC; padding: 3px 10px; border-radius: 6px; font-size: 0.74rem; font-weight: 700;">
+            ID Sesi: <span style="color: #38BDF8;">{session_id}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 1. Identitas HP
+    st.markdown("##### 1. Identitas Smartphone:")
+    m_os = st.radio("Platform Sistem Operasi:", ["Android (Samsung, Oppo, Xiaomi, Vivo, dll.)", "Apple iPhone (iOS)"], horizontal=True)
+    is_ios = "Apple" in m_os
+
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        if is_ios:
+            m_brand = "Apple"
+            st.selectbox("Merk:", ["Apple"], disabled=True)
+        else:
+            m_brand = st.selectbox("Merk:", ["Oppo", "Samsung", "Xiaomi", "Vivo", "Realme", "Infinix", "Lainnya"])
+    with col_m2:
+        default_model = "iPhone 14 Pro" if is_ios else "A18"
+        m_model = st.text_input("Tipe / Model:", value=default_model)
+
+    # 2. Baterai & Daya
+    st.markdown("##### 2. Baterai & Daya:")
+    st.markdown("<p style='font-size: 0.8rem; color: #94A3B8; margin-top: -8px;'>Lihat indikator baterai di pojok kanan atas layar HP Anda:</p>", unsafe_allow_html=True)
+    m_bat_level = st.slider("Persentase Baterai Saat Ini (%):", min_value=50, max_value=100, value=89, step=1)
+    m_charging = st.checkbox("HP Sedang Terhubung Charger (Mengisi Daya)", value=False)
+
+    # 3. Layar Sentuh Digitizer (24 Kotak)
+    st.markdown("##### 3. Layar Sentuh (Usap 24 Kotak di Bawah):")
+    touch_grid_html = """
+    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; height: 160px; touch-action: none; background: #0F172A; padding: 4px; border-radius: 8px;">
+        """ + "".join([f'<div id="c{i}" style="background: #334155; border-radius: 4px; transition: background 0.1s;"></div>' for i in range(24)]) + """
+    </div>
+    <div id="touch-status" style="font-size: 0.82rem; color: #FDE047; margin-top: 6px; font-weight: 700; text-align: center;">Usap jari Anda melewati seluruh 24 kotak di atas</div>
+    <script>
+        let touched = 0;
+        function handle(e) {
+            const touches = e.touches || [e];
+            for (let i = 0; i < touches.length; i++) {
+                const el = document.elementFromPoint(touches[i].clientX, touches[i].clientY);
+                if (el && el.id && el.id.startsWith('c') && el.style.background !== 'rgb(16, 185, 129)') {
+                    el.style.background = '#10B981';
+                    touched++;
+                    document.getElementById('touch-status').innerText = touched + ' / 24 Kotak Teruji';
+                    if (touched >= 24) {
+                        document.getElementById('touch-status').innerText = '100% Bebas Dead-Zone (Sempurna)';
+                        document.getElementById('touch-status').style.color = '#34D399';
+                    }
+                }
+            }
+        }
+        window.addEventListener('touchstart', handle, {passive: true});
+        window.addEventListener('touchmove', handle, {passive: true});
+    </script>
+    """
+    st.components.v1.html(touch_grid_html, height=205)
+    m_touch_ok = st.checkbox("Seluruh 24 Kotak Berhasil Diusap Hijau (Zero Dead-Zone)", value=True)
+
+    # 4. Sensor & Audio
+    st.markdown("##### 4. Sensor Gerak & Speaker Audio:")
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+        m_sensor_ok = st.checkbox("Sensor Gerak Normal", value=True)
+    with col_s2:
+        m_audio_ok = st.checkbox("Speaker & Getar Berfungsi", value=True)
+
+    # 5. Tombol Kirim ke Kasir
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+    if st.button("Kirim Hasil Diagnostik ke Laptop Kasir", type="primary", use_container_width=True):
+        payload = {
+            "session_id": session_id,
+            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "brand": m_brand,
+            "model": m_model,
+            "device_model": f"{m_brand} {m_model}",
+            "is_ios": is_ios,
+            "user_agent": "Mobile Streamlit Web Diagnostic Client",
+            "battery": {
+                "level_pct": m_bat_level,
+                "is_charging": m_charging,
+                "health_pct": m_bat_level
+            },
+            "touchscreen": {
+                "cells_passed": 24 if m_touch_ok else 18,
+                "total_cells": 24,
+                "zero_deadzone": m_touch_ok
+            },
+            "sensors": {
+                "gyro_responsive": m_sensor_ok,
+                "sample_alpha": 12.0,
+                "sample_beta": 4.5
+            },
+            "audio_haptic": {
+                "tested": m_audio_ok,
+                "passed": m_audio_ok
+            }
+        }
+        if set_mobile_session_result:
+            set_mobile_session_result(session_id, payload)
+        st.success("Diagnostik Berhasil Terkirim ke Laptop Kasir!")
+        st.markdown(f"""
+        <div style="background: #065F46; border: 1px solid #10B981; border-radius: 12px; padding: 20px; text-align: center; color: white; margin-top: 14px;">
+            <h3 style="margin: 0; color: #34D399; font-size: 1.15rem;">Data Diterima Laptop Kasir</h3>
+            <p style="margin: 8px 0 0 0; font-size: 0.85rem; color: #E2E8F0;">
+                Unit: <b>{m_brand} {m_model}</b> &bull; Baterai: <b>{m_bat_level}%</b><br>
+                Silakan kembali melihat layar monitor kasir untuk proses penaksiran gadai selanjutnya.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# Route standalone mobile test directly if accessed via smartphone
+_qp = getattr(st, "query_params", {})
+if _qp.get("mode") == "mobile" or _qp.get("mobile") == "1":
+    _m_sid = _qp.get("session", "PGI-SESSION")
+    render_standalone_mobile_diagnostic(_m_sid)
+    st.stop()
 
 # Custom CSS for Flutter Belajarku White & Purple Theme
 st.markdown("""
@@ -1733,8 +1900,8 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         conn_mode = st.radio(
             "Pilih Mode Deteksi Perangkat:",
             [
-                "Deteksi Otomatis Kabel USB (Plug & Play - Tanpa Opsi Pengembang)",
                 "Diagnostik Web Instan (Scan QR Code via Kamera HP - Nol Sentuh Pengaturan)",
+                "Deteksi Otomatis Kabel USB (Plug & Play - Tanpa Opsi Pengembang)",
                 "Akses Mendalam ADB / iOS USB (Mode Teknisi Lanjutan)",
                 "Simulasi & Profil Demo (Bench Test)"
             ],
@@ -1745,7 +1912,66 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
     selected_dev = None
     mobile_diag_record = None
 
-    if conn_mode == "Deteksi Otomatis Kabel USB (Plug & Play - Tanpa Opsi Pengembang)":
+    if conn_mode == "Diagnostik Web Instan (Scan QR Code via Kamera HP - Nol Sentuh Pengaturan)":
+        if "mobile_web_service" not in st.session_state:
+            st.session_state["mobile_web_service"] = MobileDiagnosticWebService(port=8503) if MobileDiagnosticWebService else None
+        if "mobile_diagnostic_session" not in st.session_state:
+            st.session_state["mobile_diagnostic_session"] = f"PGI-{int(time.time()) % 1000000:06d}"
+
+        m_service = st.session_state.get("mobile_web_service")
+        m_session = st.session_state.get("mobile_diagnostic_session")
+
+        with ctrl_col2:
+            st.markdown("<b>Scan QR Code Menggunakan Kamera HP Nasabah (Universal Android & iOS):</b>", unsafe_allow_html=True)
+            if m_service:
+                app_base = get_app_base_url()
+                default_target_url = f"{app_base}/?mode=mobile&session={m_session}"
+                diag_url = st.text_input(
+                    "Tautan Web Diagnostik HP:",
+                    value=default_target_url,
+                    help="Tautan ini dikonversi otomatis menjadi QR Code di bawah. Anda dapat menyesuaikannya jika perlu.",
+                    key="qr_target_url_input"
+                )
+                qr_img = generate_qr_for_url(diag_url) if generate_qr_for_url else m_service.generate_qr_image(diag_url)
+
+                q_c1, q_c2 = st.columns([1, 1.4])
+                with q_c1:
+                    st.image(qr_img, caption="Arahkan Kamera HP ke Sini", width=160)
+                with q_c2:
+                    st.markdown(f"""
+                    <div style="font-size: 0.78rem; color: #4B5563; line-height: 1.45;">
+                        <b>Instruksi Nasabah (Android & iPhone):</b><br>
+                        1. Buka kamera bawaan HP (atau Safari/Chrome).<br>
+                        2. Arahkan lensa ke QR Code di samping.<br>
+                        3. Buka tautan di peramban HP & usap 24 kotak.<br>
+                        4. Klik tombol <b>Kirim ke Kasir</b> di HP.<br>
+                        <br>
+                        <b>Tautan Alternatif (Buka Langsung):</b><br>
+                        <a href="{diag_url}" target="_blank" style="color: #2563EB; font-weight: 600; word-break: break-all; font-size: 0.75rem;">{diag_url}</a>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # Cek apakah hasil sudah diterima
+                received_payload = m_service.get_received_result(m_session)
+                if received_payload:
+                    dev_name = received_payload.get('device_model') or f"{received_payload.get('brand', 'Smartphone')} {received_payload.get('model', '')}"
+                    st.success(f"Data Diagnostik Diterima dari HP: {dev_name} ({received_payload.get('timestamp', '')[:19]})")
+                    if dm:
+                        mobile_diag_record = dm.create_diagnostic_from_mobile_web(received_payload)
+                        selected_dev = mobile_diag_record.device
+                else:
+                    st.info("Status: Menunggu hasil pengujian dikirim dari HP nasabah...")
+                    sim_c1, sim_c2 = st.columns(2)
+                    with sim_c1:
+                        if st.button("Simulasi: Android (Oppo A18)", use_container_width=True):
+                            m_service.inject_simulated_mobile_result(m_session, brand="Oppo", model="A18")
+                            st.rerun()
+                    with sim_c2:
+                        if st.button("Simulasi: Apple iPhone (iOS)", use_container_width=True):
+                            m_service.inject_simulated_mobile_result(m_session, brand="Apple", model="iPhone 14 Pro")
+                            st.rerun()
+
+    elif conn_mode == "Deteksi Otomatis Kabel USB (Plug & Play - Tanpa Opsi Pengembang)":
         with ctrl_col2:
             st.markdown("<b>Deteksi Sinyal Port USB (Plug & Play):</b>", unsafe_allow_html=True)
             if "usb_detector" not in st.session_state:
@@ -1771,57 +1997,6 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 if usb_det and dm:
                     sim_usb_obj = usb_det.get_simulated_plugged_device("oppo_a18")
                     selected_dev = dm.create_device_from_usb_hardware(sim_usb_obj)
-
-    elif conn_mode == "Diagnostik Web Instan (Scan QR Code via Kamera HP - Nol Sentuh Pengaturan)":
-        if "mobile_web_service" not in st.session_state:
-            st.session_state["mobile_web_service"] = MobileDiagnosticWebService(port=8503) if MobileDiagnosticWebService else None
-        if "mobile_diagnostic_session" not in st.session_state:
-            st.session_state["mobile_diagnostic_session"] = f"PGI-{int(time.time()) % 1000000:06d}"
-
-        m_service = st.session_state.get("mobile_web_service")
-        m_session = st.session_state.get("mobile_diagnostic_session")
-
-        with ctrl_col2:
-            st.markdown("<b>Scan QR Code Menggunakan Kamera HP Nasabah (Universal Android & iOS):</b>", unsafe_allow_html=True)
-            if m_service:
-                diag_url = m_service.get_diagnostic_url(m_session)
-                qr_img = m_service.get_qr_image_data(m_session)
-                q_c1, q_c2 = st.columns([1, 1.4])
-                with q_c1:
-                    st.image(qr_img, caption="Scan via Kamera HP", width=160)
-                with q_c2:
-                    st.markdown(f"""
-                    <div style="font-size: 0.78rem; color: #4B5563; line-height: 1.45;">
-                        <b>Instruksi Nasabah (Android & iPhone):</b><br>
-                        1. Buka kamera bawaan HP (atau Safari/Chrome).<br>
-                        2. Arahkan lensa ke QR Code di samping.<br>
-                        3. Buka tautan di peramban HP.<br>
-                        4. Ikuti uji usap layar sentuh, audio, & sensor.<br>
-                        <br>
-                        <b>Tautan Diagnostik Mandiri:</b><br>
-                        <a href="{diag_url}" target="_blank" style="color: #2563EB; font-weight: 600; word-break: break-all; font-size: 0.75rem;">{diag_url}</a>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                # Cek apakah hasil sudah diterima
-                received_payload = m_service.get_received_result(m_session)
-                if received_payload:
-                    dev_name = received_payload.get('device_model') or f"{received_payload.get('brand', 'Smartphone')} {received_payload.get('model', '')}"
-                    st.success(f"Data Diagnostik Diterima dari HP: {dev_name} ({received_payload.get('timestamp', '')[:19]})")
-                    if dm:
-                        mobile_diag_record = dm.create_diagnostic_from_mobile_web(received_payload)
-                        selected_dev = mobile_diag_record.device
-                else:
-                    st.info("Status: Menunggu hasil pengujian dikirim dari HP nasabah...")
-                    sim_c1, sim_c2 = st.columns(2)
-                    with sim_c1:
-                        if st.button("Simulasi: Android (Oppo A18)", use_container_width=True):
-                            m_service.inject_simulated_mobile_result(m_session, brand="Oppo", model="A18")
-                            st.rerun()
-                    with sim_c2:
-                        if st.button("Simulasi: Apple iPhone (iOS)", use_container_width=True):
-                            m_service.inject_simulated_mobile_result(m_session, brand="Apple", model="iPhone 14 Pro")
-                            st.rerun()
 
     elif conn_mode == "Akses Mendalam ADB / iOS USB (Mode Teknisi Lanjutan)":
         with ctrl_col2:
@@ -1861,6 +2036,11 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
     with ctrl_col3:
         st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
         run_diag_btn = st.button("Jalankan Diagnostik", type="primary", use_container_width=True)
+        if st.session_state.get("current_diag_record") is not None:
+            if st.button("Reset / Mulai Sesi Baru", use_container_width=True):
+                st.session_state["current_diag_record"] = None
+                st.session_state["mobile_diagnostic_session"] = f"PGI-{int(time.time()) % 1000000:06d}"
+                st.rerun()
 
     # Simulation Parameter Overrides (Expandable)
     with st.expander("Konfigurasi Parameter Uji & Simulasi Cacat Hardware (Pengujian Kasus Uji)", expanded=False):
@@ -1874,8 +2054,8 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         with param_col4:
             sim_cloud_lock = st.selectbox("Status Kunci Akun / Keamanan:", ["UNLOCKED", "ICLOUD_LOCKED", "GOOGLE_FRP_LOCKED"], index=0)
 
-    # Eksekusi diagnostik saat tombol ditekan atau inisialisasi awal
-    if run_diag_btn or st.session_state["current_diag_record"] is None:
+    # Eksekusi diagnostik HANYA jika tombol ditekan ATAU data QR HP baru masuk
+    if run_diag_btn:
         if mobile_diag_record is not None:
             diag_rec = mobile_diag_record
         elif dm and selected_dev:
@@ -1901,6 +2081,10 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         if diag_rec:
             st.session_state["current_diag_record"] = diag_rec
             st.session_state["current_sim_dev"] = selected_dev
+
+    elif mobile_diag_record is not None and st.session_state.get("current_diag_record") is None:
+        st.session_state["current_diag_record"] = mobile_diag_record
+        st.session_state["current_sim_dev"] = selected_dev
 
     diag_rec = st.session_state.get("current_diag_record")
 
@@ -2369,6 +2553,22 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 type="primary",
                 use_container_width=True
             )
+    else:
+        # Tampilan Standby saat belum ada aksi jalankan diagnostik
+        st.markdown("""
+        <div style="background: white; border: 2px dashed #CBD5E1; border-radius: 18px; padding: 48px 24px; text-align: center; margin: 24px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+            <div style="width: 56px; height: 56px; background: #EEF2FF; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                    <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                </svg>
+            </div>
+            <h3 style="margin: 0; color: #1E293B; font-weight: 800; font-size: 1.25rem;">Menunggu Eksekusi Diagnostik Hardware</h3>
+            <p style="margin: 8px auto 0 auto; color: #64748B; font-size: 0.88rem; max-width: 560px; line-height: 1.5;">
+                Pilih salah satu metode di atas (<b>Diagnostik Web Scan QR Code</b>, <b>Deteksi Kabel USB</b>, atau <b>Simulasi Demo</b>), lalu klik tombol <b>Jalankan Diagnostik</b> untuk memulai pemeriksaan menyeluruh jeroan smartphone.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------

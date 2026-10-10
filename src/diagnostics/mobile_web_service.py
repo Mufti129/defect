@@ -434,6 +434,41 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 
+def set_mobile_session_result(session_id: str, payload: Dict[str, Any]) -> None:
+    """Registers a diagnostic result for a given session ID."""
+    global _SESSION_RESULTS
+    payload["received_at"] = time.time()
+    _SESSION_RESULTS[session_id] = payload
+
+
+def get_mobile_session_result(session_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieves the diagnostic result for a given session ID."""
+    return _SESSION_RESULTS.get(session_id)
+
+
+def generate_qr_for_url(target_url: str):
+    """
+    Generates a PIL Image from target_url if qrcode library is available.
+    Returns the online image URL (api.qrserver.com) as a 100% reliable fallback.
+    """
+    if qrcode is not None:
+        try:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_M,
+                box_size=8,
+                border=2,
+            )
+            qr.add_data(target_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="#0F172A", back_color="#FFFFFF")
+            return img
+        except Exception:
+            pass
+    encoded = urllib.parse.quote(target_url, safe="")
+    return f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={encoded}"
+
+
 class MobileDiagnosticWebService:
     """
     Manages the background HTTP daemon and QR code generator for the mobile scanner.
@@ -489,15 +524,17 @@ class MobileDiagnosticWebService:
                 pass
         return b""
 
+    def generate_qr_image(self, target_url: str):
+        """Generates a PIL Image or URL string for any target URL."""
+        return generate_qr_for_url(target_url)
+
     def get_qr_image_data(self, session_id: str, custom_host: Optional[str] = None):
         """
-        Returns either PNG bytes (if qrcode library generates it)
+        Returns either a PIL Image (if local qrcode generates it)
         or the fallback web URL string so st.image can always render it directly.
         """
-        png_bytes = self.generate_qr_png_bytes(session_id, custom_host)
-        if png_bytes and len(png_bytes) > 100:
-            return png_bytes
-        return self.get_qr_fallback_url(session_id, custom_host)
+        url = self.get_diagnostic_url(session_id, custom_host)
+        return generate_qr_for_url(url)
 
     def get_received_result(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Retrieves results submitted by the mobile device for the given session."""
