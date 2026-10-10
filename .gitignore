@@ -55,3 +55,9 @@ weights_v6/
 # Collected Session Images
 data/collected_data/
 streamlit_inspection_app/data/collected_data/
+sample_card_output.jpg
+weights/model_tambahan.pt
+!weights/phone_defect_model_v6_best.pt
+!weights/phone_defect_model_v5_best.pt
+!weights/phone_defect_model_v4.pt
+!weights/phone_defect_model.pt
