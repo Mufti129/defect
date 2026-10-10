@@ -64,6 +64,7 @@ try:
         get_local_lan_ip,
         set_mobile_session_result,
         get_mobile_session_result,
+        get_mobile_session_devices,
         generate_qr_for_url,
         get_mobile_diagnostic_html,
         DiagnosticDatabase
@@ -83,6 +84,7 @@ except ImportError:
             get_local_lan_ip,
             set_mobile_session_result,
             get_mobile_session_result,
+            get_mobile_session_devices,
             generate_qr_for_url,
             get_mobile_diagnostic_html,
             DiagnosticDatabase
@@ -94,6 +96,7 @@ except ImportError:
         get_local_lan_ip = None
         set_mobile_session_result = None
         get_mobile_session_result = None
+        get_mobile_session_devices = None
         generate_qr_for_url = None
         get_mobile_diagnostic_html = None
         DiagnosticDatabase = None
@@ -131,7 +134,7 @@ def get_app_base_url() -> str:
     return f"http://{lan_ip}:8501"
 
 
-def render_mobile_completion_screen(session_id: str, raw_payload_str: str):
+def render_mobile_completion_screen(session_id: str, raw_payload_str: str, record_id: str = ""):
     """
     Renders high-tech completion and verification screen on smartphone
     after results are submitted and synchronized to cashier's desktop.
@@ -157,12 +160,15 @@ def render_mobile_completion_screen(session_id: str, raw_payload_str: str):
                 payload = {}
 
     if payload:
+        if record_id:
+            payload["record_id"] = record_id
         if set_mobile_session_result:
             set_mobile_session_result(session_id, payload)
         if DiagnosticDatabase:
             try:
                 db = DiagnosticDatabase()
-                db.save_diagnostic(session_id, payload)
+                rec_key = record_id or payload.get("record_id")
+                db.save_diagnostic(session_id, payload, record_id=rec_key)
             except Exception:
                 pass
 
@@ -244,7 +250,8 @@ _qp = getattr(st, "query_params", {})
 if _qp.get("mode") == "mobile_done":
     _m_sid = _qp.get("session", "MCV-SESSION")
     _raw_data = _qp.get("data", "")
-    render_mobile_completion_screen(_m_sid, _raw_data)
+    _m_rid = _qp.get("record_id", "")
+    render_mobile_completion_screen(_m_sid, _raw_data, record_id=_m_rid)
     st.stop()
 elif _qp.get("mode") in ["mobile", "diagnose"] or _qp.get("mobile") == "1":
     _m_sid = _qp.get("session", "MCV-SESSION")
@@ -1941,62 +1948,102 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 with q_c2:
                     st.markdown(f"""
                     <div style="font-size: 0.78rem; color: #4B5563; line-height: 1.45;">
-                        <b>Instruksi Nasabah (Android & iPhone):</b><br>
-                        1. Buka kamera bawaan HP (atau Safari/Chrome).<br>
-                        2. Arahkan lensa ke QR Code di samping.<br>
-                        3. Perangkat & sensor akan <b>terdeteksi otomatis</b>.<br>
-                        4. Usap 24 kotak di HP lalu klik <b>Kirim ke Kasir</b>.<br>
+                        <b>Instruksi Pengujian (Universal Android & iPhone):</b><br>
+                        1. Arahkan kamera HP nasabah ke QR Code di samping.<br>
+                        2. Spesifikasi fisik & baterai akan <b>terdeteksi otomatis</b>.<br>
+                        3. Usap layar penuh (*Full Screen Digitizer*) & verifikasi getar.<br>
+                        4. Klik <b>Kirim ke Kasir</b> untuk menyinkronkan data.<br>
                         <br>
-                        <b>Tautan Alternatif (Buka Langsung):</b><br>
-                        <a href="{diag_url}" target="_blank" style="color: #2563EB; font-weight: 600; word-break: break-all; font-size: 0.75rem;">{diag_url}</a>
+                        <b>Tautan Langsung:</b> <a href="{diag_url}" target="_blank" style="color: #2563EB; font-weight: 600; word-break: break-all; font-size: 0.75rem;">{diag_url}</a>
                     </div>
                     """, unsafe_allow_html=True)
 
-                # Cek apakah hasil sudah diterima (dari memory atau SQLite database)
-                received_payload = m_service.get_received_result(m_session) if m_service else (get_mobile_session_result(m_session) if get_mobile_session_result else None)
-                if not received_payload and DiagnosticDatabase:
+                st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+                sess_btn_c1, sess_btn_c2 = st.columns([1, 1])
+                with sess_btn_c1:
+                    if st.button("➕ Buat QR Baru untuk HP Berikutnya", use_container_width=True, help="Buat sesi QR terpisah baru untuk nasabah atau HP berikutnya agar data tidak tercampur."):
+                        st.session_state["mobile_diagnostic_session"] = f"MCV-{int(time.time()) % 1000000:06d}"
+                        st.session_state["current_diag_record"] = None
+                        st.session_state["current_sim_dev"] = None
+                        st.session_state["last_synced_record_id"] = None
+                        st.rerun()
+                with sess_btn_c2:
+                    if st.button("🔄 Sinkronkan Data HP Sekarang", type="primary", use_container_width=True):
+                        st.rerun()
+
+                # Cek apakah hasil sudah diterima (Multi-Device Support dari SQLite / memory)
+                submitted_devices = []
+                if DiagnosticDatabase:
                     try:
-                        _db = DiagnosticDatabase()
-                        _db_row = _db.get_diagnostic(m_session)
-                        if _db_row and _db_row.get("raw_json"):
-                            received_payload = json.loads(_db_row["raw_json"])
+                        db_rows = DiagnosticDatabase().get_diagnostics_by_session(m_session)
+                        for r in db_rows:
+                            if r.get("raw_json"):
+                                try:
+                                    p = json.loads(r["raw_json"])
+                                    submitted_devices.append(p)
+                                except Exception:
+                                    pass
                     except Exception:
                         pass
 
+                if not submitted_devices:
+                    if get_mobile_session_devices:
+                        submitted_devices = get_mobile_session_devices(m_session)
+                    elif m_service and hasattr(m_service, "get_all_received_devices"):
+                        submitted_devices = m_service.get_all_received_devices(m_session)
+                    else:
+                        single_p = m_service.get_received_result(m_session) if m_service else None
+                        if single_p:
+                            submitted_devices = [single_p]
+
+                received_payload = None
+                if submitted_devices:
+                    if len(submitted_devices) > 1:
+                        st.markdown(f"<b>📱 Terdeteksi {len(submitted_devices)} Smartphone pada Sesi Ini (Data Terpisah):</b>", unsafe_allow_html=True)
+                        dev_opts = [
+                            f"HP {i+1}: {d.get('brand','')} {d.get('model','')} ({str(d.get('timestamp',''))[11:19]}) — {d.get('client_device_id','DEV')}"
+                            for i, d in enumerate(submitted_devices)
+                        ]
+                        picked_idx = st.selectbox(
+                            "Pilih Smartphone untuk Ditinjau:",
+                            range(len(submitted_devices)),
+                            format_func=lambda i: dev_opts[i],
+                            key=f"pick_dev_{m_session}"
+                        )
+                        received_payload = submitted_devices[picked_idx]
+                    else:
+                        received_payload = submitted_devices[0]
+
                 if received_payload:
                     dev_name = received_payload.get('device_model') or f"{received_payload.get('brand', 'Smartphone')} {received_payload.get('model', '')}"
-                    st.success(f"Data Diagnostik Diterima dari HP: {dev_name} ({str(received_payload.get('timestamp', ''))[:19]})")
+                    rom_info = received_payload.get('confirmed_rom', '')
+                    time_info = str(received_payload.get('timestamp', ''))[11:19]
+                    st.success(f"✓ Data Diterima dari HP: {dev_name} {f'({rom_info})' if rom_info else ''} [{time_info}] — ID: {received_payload.get('client_device_id', 'DEV')}")
                     if dm:
                         mobile_diag_record = dm.create_diagnostic_from_mobile_web(received_payload)
                         selected_dev = mobile_diag_record.device
-                        if st.session_state.get("last_synced_session") != m_session:
+                        curr_rec_id = received_payload.get("record_id") or received_payload.get("client_device_id") or m_session
+                        if st.session_state.get("last_synced_record_id") != curr_rec_id:
                             st.session_state["current_diag_record"] = mobile_diag_record
                             st.session_state["current_sim_dev"] = selected_dev
-                            st.session_state["last_synced_session"] = m_session
-                            if DiagnosticDatabase:
-                                try:
-                                    DiagnosticDatabase().save_diagnostic(m_session, mobile_diag_record)
-                                except Exception:
-                                    pass
+                            st.session_state["last_synced_record_id"] = curr_rec_id
                             st.rerun()
+                        else:
+                            st.session_state["current_diag_record"] = mobile_diag_record
+                            st.session_state["current_sim_dev"] = selected_dev
                 else:
                     if st_autorefresh is not None and st.session_state.get("current_diag_record") is None:
                         st_autorefresh(interval=3000, limit=120, key=f"poll_{m_session}")
 
                     st.markdown("""
-                    <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid #3B82F6; border-radius: 8px; padding: 8px 12px; font-size: 0.80rem; color: #1E3A8A; margin-bottom: 8px;">
+                    <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid #3B82F6; border-radius: 8px; padding: 8px 12px; font-size: 0.80rem; color: #1E3A8A; margin-top: 10px; margin-bottom: 8px;">
                         <b>Status:</b> Menunggu hasil uji dari kamera HP nasabah... (Auto-Sync Aktif)
                     </div>
                     """, unsafe_allow_html=True)
-                    sync_c1, sync_c2 = st.columns([1.2, 1])
-                    with sync_c1:
-                        if st.button("Sinkronkan Data HP Sekarang", type="primary", use_container_width=True):
-                            st.rerun()
-                    with sync_c2:
-                        if st.button("Simulasi: Masukkan Data Demo", use_container_width=True):
-                            if m_service:
-                                m_service.inject_simulated_mobile_result(m_session, brand="Oppo", model="A18")
-                            st.rerun()
+                    if st.button("Simulasi: Masukkan Data Demo", use_container_width=True):
+                        if m_service:
+                            m_service.inject_simulated_mobile_result(m_session, brand="Oppo", model="A18")
+                        st.rerun()
 
     elif conn_mode == "Deteksi Otomatis Kabel USB (Plug & Play - Tanpa Opsi Pengembang)":
         with ctrl_col2:
@@ -2653,10 +2700,11 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             elif grade_filter == "Gagal (FAIL)":
                 filtered_df = filtered_df[filtered_df["functional_grade"].str.contains("FAIL", na=False)]
 
-            display_cols = ["session_id", "created_at", "brand", "model", "battery_level", "battery_health", "touch_passed", "functional_grade", "functional_score_pct"]
+            display_cols = ["session_id", "record_id", "created_at", "brand", "model", "battery_level", "battery_health", "touch_passed", "functional_grade", "functional_score_pct"]
             display_cols = [c for c in display_cols if c in filtered_df.columns]
             rename_map = {
                 "session_id": "ID Sesi",
+                "record_id": "ID Unit",
                 "created_at": "Waktu Inspeksi",
                 "brand": "Merk",
                 "model": "Model",
@@ -2676,15 +2724,15 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 st.download_button(
                     label="Unduh Riwayat Diagnostik (CSV)",
                     data=csv_bytes,
-                    file_name=f"riwayat_diagnostik_pgi_{int(time.time())}.csv",
+                    file_name=f"riwayat_diagnostik_mcv_{int(time.time())}.csv",
                     mime="text/csv",
                     use_container_width=True
                 )
             with down_c2:
-                sess_list = filtered_df["session_id"].tolist()
+                sess_list = filtered_df["record_id"].tolist() if "record_id" in filtered_df.columns else filtered_df["session_id"].tolist()
                 if sess_list:
                     selected_sess = st.selectbox(
-                        "Pilih Sesi untuk Dimuat Kembali:",
+                        "Pilih Unit Smartphone untuk Dimuat Kembali:",
                         sess_list,
                         key="sel_past_session"
                     )

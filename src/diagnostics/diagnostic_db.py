@@ -33,13 +33,68 @@ class DiagnosticDatabase:
         return conn
 
     def _init_db(self):
-        """Initializes database schema if not present."""
+        """Initializes database schema and migrates old schema if needed."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
+            # Check if migration from older session_id UNIQUE constraint is required
+            cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='diagnostic_sessions';")
+            tbl_info = cursor.fetchone()
+            if tbl_info and tbl_info[0] and "session_id TEXT UNIQUE" in tbl_info[0]:
+                try:
+                    cursor.execute("ALTER TABLE diagnostic_sessions RENAME TO diagnostic_sessions_old;")
+                    cursor.execute("""
+                    CREATE TABLE diagnostic_sessions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        record_id TEXT UNIQUE NOT NULL,
+                        session_id TEXT NOT NULL,
+                        created_at TEXT NOT NULL,
+                        brand TEXT,
+                        model TEXT,
+                        market_name TEXT,
+                        device_type TEXT,
+                        connection_type TEXT,
+                        os_version TEXT,
+                        screen_res TEXT,
+                        gpu_chipset TEXT,
+                        battery_level INTEGER,
+                        battery_health INTEGER,
+                        battery_charging INTEGER,
+                        touch_passed INTEGER,
+                        touch_cells_passed INTEGER,
+                        touch_total_cells INTEGER,
+                        sensors_passed INTEGER,
+                        audio_passed INTEGER,
+                        oem_status TEXT,
+                        penalty_points REAL,
+                        functional_score_pct REAL,
+                        functional_grade TEXT,
+                        raw_json TEXT,
+                        notes TEXT
+                    );
+                    """)
+                    cursor.execute("""
+                    INSERT INTO diagnostic_sessions (
+                        record_id, session_id, created_at, brand, model, market_name, device_type, connection_type,
+                        os_version, screen_res, gpu_chipset, battery_level, battery_health, battery_charging,
+                        touch_passed, touch_cells_passed, touch_total_cells, sensors_passed, audio_passed,
+                        oem_status, penalty_points, functional_score_pct, functional_grade, raw_json, notes
+                    )
+                    SELECT
+                        session_id || '_rec' || id, session_id, created_at, brand, model, market_name, device_type, connection_type,
+                        os_version, screen_res, gpu_chipset, battery_level, battery_health, battery_charging,
+                        touch_passed, touch_cells_passed, touch_total_cells, sensors_passed, audio_passed,
+                        oem_status, penalty_points, functional_score_pct, functional_grade, raw_json, notes
+                    FROM diagnostic_sessions_old;
+                    """)
+                    cursor.execute("DROP TABLE diagnostic_sessions_old;")
+                except Exception as ex:
+                    print(f"[DiagnosticDB Migration Warning] {ex}")
+
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS diagnostic_sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT UNIQUE NOT NULL,
+                record_id TEXT UNIQUE NOT NULL,
+                session_id TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 brand TEXT,
                 model TEXT,
@@ -66,12 +121,14 @@ class DiagnosticDatabase:
             );
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_id ON diagnostic_sessions(session_id);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_record_id ON diagnostic_sessions(record_id);")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_created_at ON diagnostic_sessions(created_at);")
             conn.commit()
 
-    def save_diagnostic(self, session_id: str, data: Any) -> bool:
+    def save_diagnostic(self, session_id: str, data: Any, record_id: Optional[str] = None) -> bool:
         """
         Saves a diagnostic record or payload dictionary to SQLite.
+        Guarantees multi-device isolation using unique record_id.
         Accepts either FullDiagnosticRecord or raw mobile payload dict.
         """
         try:
@@ -177,16 +234,27 @@ class DiagnosticDatabase:
                 functional_grade = "PASS (A/B)" if penalty_points == 0.0 else ("MINOR_WARNING (B)" if penalty_points <= 10.0 else "FAIL (D)")
                 raw_json_str = json.dumps(data)
 
+            # Determine unique record_id to avoid multi-device overwrites
+            if record_id:
+                rec_id = record_id
+            elif isinstance(data, dict):
+                c_dev_id = data.get("client_device_id") or data.get("device_id")
+                rec_id = data.get("record_id") or (f"{session_id}_{c_dev_id}" if c_dev_id else f"{session_id}_{int(time.time() * 1000) % 1000000:06d}")
+            else:
+                dev_serial = getattr(getattr(data, "device", None), "serial", None)
+                rec_id = f"{session_id}_{dev_serial}" if dev_serial else f"{session_id}_{int(time.time() * 1000) % 1000000:06d}"
+
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
                 INSERT INTO diagnostic_sessions (
-                    session_id, created_at, brand, model, market_name, device_type, connection_type,
+                    record_id, session_id, created_at, brand, model, market_name, device_type, connection_type,
                     os_version, screen_res, gpu_chipset, battery_level, battery_health, battery_charging,
                     touch_passed, touch_cells_passed, touch_total_cells, sensors_passed, audio_passed,
                     oem_status, penalty_points, functional_score_pct, functional_grade, raw_json, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(session_id) DO UPDATE SET
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(record_id) DO UPDATE SET
+                    session_id = excluded.session_id,
                     created_at = excluded.created_at,
                     brand = excluded.brand,
                     model = excluded.model,
@@ -211,7 +279,7 @@ class DiagnosticDatabase:
                     raw_json = excluded.raw_json,
                     notes = excluded.notes;
                 """, (
-                    session_id, now_str, brand, model, market_name, device_type, connection_type,
+                    rec_id, session_id, now_str, brand, model, market_name, device_type, connection_type,
                     os_version, screen_res, gpu_chipset, battery_level, battery_health, battery_charging,
                     touch_passed, touch_cells_passed, touch_total_cells, sensors_passed, audio_passed,
                     oem_status, penalty_points, functional_score_pct, functional_grade, raw_json_str, notes
@@ -222,18 +290,33 @@ class DiagnosticDatabase:
             print(f"[DiagnosticDB Error] Failed to save diagnostic record {session_id}: {e}")
             return False
 
-    def get_diagnostic(self, session_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieves a single session record by its session_id."""
+    def get_diagnostic(self, identifier: str) -> Optional[Dict[str, Any]]:
+        """Retrieves a single session record by its record_id or session_id (latest)."""
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT * FROM diagnostic_sessions WHERE session_id = ? LIMIT 1;", (session_id,))
+                cursor.execute(
+                    "SELECT * FROM diagnostic_sessions WHERE record_id = ? OR session_id = ? ORDER BY id DESC LIMIT 1;",
+                    (identifier, identifier)
+                )
                 row = cursor.fetchone()
                 if row:
                     return dict(row)
         except Exception as e:
-            print(f"[DiagnosticDB Error] Failed to fetch session {session_id}: {e}")
+            print(f"[DiagnosticDB Error] Failed to fetch session {identifier}: {e}")
         return None
+
+    def get_diagnostics_by_session(self, session_id: str) -> List[Dict[str, Any]]:
+        """Retrieves all diagnostic device records submitted under a given session ID."""
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM diagnostic_sessions WHERE session_id = ? ORDER BY id DESC;", (session_id,))
+                rows = cursor.fetchall()
+                return [dict(r) for r in rows]
+        except Exception as e:
+            print(f"[DiagnosticDB Error] Failed to fetch devices for session {session_id}: {e}")
+            return []
 
     def get_all_diagnostics(self, limit: int = 100) -> pd.DataFrame:
         """Retrieves recent diagnostic records as a pandas DataFrame."""
