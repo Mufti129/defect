@@ -64,12 +64,17 @@ class GradingEngine:
         self,
         unit_id: str,
         view_images: Dict[str, str],
-        conf_threshold: Optional[float] = None
+        conf_threshold: Optional[float] = None,
+        version: Optional[str] = None
     ) -> Dict:
         """
         Runs inspection across housing views of a single smartphone unit (skips front).
-        view_images: {"back": path, "left": path, ...}
+        Routes specifically to specialized Rule of Thumb V7 when version == 'v7',
+        while preserving 100% of legacy evaluation logic for all other model versions.
         """
+        if version == "v7":
+            return self.evaluate_phone_unit_v7(unit_id, view_images, conf_threshold=conf_threshold)
+
         start_time = time.time()
         detections_by_view = {}
         all_defects = []
@@ -147,6 +152,161 @@ class GradingEngine:
             "_defect_instances_by_view": detections_by_view
         }
         return report
+
+    def evaluate_phone_unit_v7(
+        self,
+        unit_id: str,
+        view_images: Dict[str, str],
+        conf_threshold: Optional[float] = None
+    ) -> Dict:
+        """
+        Specialized Rule of Thumb Engine for Model Versi 7 (V7):
+        - 4 Unified Defect Classes: scratch, chip, dent, hard_damage
+        - Sub-Millimeter Physical Tolerances & Zone Weighting
+        - Fast-Fail Hard Veto for hard_damage >= 1 (Zero-Tolerance)
+        - Dedicated Grade C isolation for dent (without false Grade D triggers)
+        """
+        start_time = time.time()
+        detections_by_view = {}
+        all_defects = []
+
+        # 1. Run detection on each view, skipping front
+        for view_side, img_path in view_images.items():
+            if view_side == "front" or not os.path.exists(img_path):
+                continue
+            defects = self.detector.detect_image(
+                img_path,
+                view_side=view_side,
+                conf_threshold=conf_threshold
+            )
+            detections_by_view[view_side] = defects
+            all_defects.extend(defects)
+
+        # 2. Aggregate statistics for V7 classes
+        class_counts = {c: 0 for c in ["scratch", "chip", "dent", "hard_damage"]}
+        for d in all_defects:
+            # Map legacy class names if any fallback weights are used during transition
+            c_name = d.class_name
+            if c_name in ["broken", "crack"]:
+                c_name = "hard_damage"
+            if c_name in class_counts:
+                class_counts[c_name] += 1
+
+        # V7 Defect Severity Weights
+        V7_DEFECT_WEIGHTS = {
+            "scratch": 1.0,
+            "chip": 3.5,
+            "dent": 3.0,
+            "hard_damage": 25.0
+        }
+
+        # 3. Calculate Defect Penalty Index (DPI)
+        total_dpi = 0.0
+        frame_dpi = 0.0
+        bottom_back_dpi = 0.0
+
+        for d in all_defects:
+            c_name = "hard_damage" if d.class_name in ["broken", "crack"] else d.class_name
+            cls_w = V7_DEFECT_WEIGHTS.get(c_name, 1.0)
+            zone_w = ZONE_WEIGHTS.get(d.view_side, 1.0)
+            size_factor = max(1.0, d.length_mm / 3.0)
+            penalty = cls_w * zone_w * size_factor
+
+            total_dpi += penalty
+            if d.view_side in ["left", "right", "top"]:
+                frame_dpi += penalty
+            else:
+                bottom_back_dpi += penalty
+
+        # 4. Two-Tier Decision Logic (Rule of Thumb V7)
+        reasons = []
+        is_veto = False
+        grade = "A"
+        confidence = 0.95
+
+        hd_cnt = class_counts["hard_damage"]
+        dent_cnt = class_counts["dent"]
+        chip_cnt = class_counts["chip"]
+        scratch_cnt = class_counts["scratch"]
+
+        max_len = max([d.length_mm for d in all_defects], default=0.0)
+
+        # TIER 1: FAST-FAIL HARD VETO
+        if hd_cnt > 0:
+            is_veto = True
+            grade = "D"
+            confidence = 1.0
+            reasons.append(f"Veto Operasional V7: Ditemukan {hd_cnt} titik kerusakan struktural berat / sompal fatal (hard_damage).")
+        elif any((d.class_name == "chip" and d.length_mm >= 4.5) for d in all_defects):
+            is_veto = True
+            grade = "D"
+            confidence = 0.98
+            reasons.append(f"Veto Operasional V7: Ditemukan cacat sompal material bodi dalam (chip >= 4.5 mm).")
+        elif any((d.class_name == "dent" and d.length_mm >= 5.0) for d in all_defects):
+            is_veto = True
+            grade = "D"
+            confidence = 0.96
+            reasons.append(f"Veto Operasional V7: Ditemukan deformasi bent / penyok parah bingkai (dent >= 5.0 mm).")
+        elif total_dpi >= 40.0:
+            is_veto = True
+            grade = "D"
+            confidence = 0.95
+            reasons.append(f"Veto Operasional V7: Akumulasi penalti cacat bodi melampaui batas toleransi (DPI {total_dpi:.1f} >= 40.0).")
+        else:
+            # TIER 2: CONTINUOUS RULE-OF-THUMB BOUNDARIES
+            if len(all_defects) == 0:
+                grade = "A"
+                confidence = 0.98
+                reasons.append("Kondisi bodi sempurna tanpa cacat fisik (Pristine / Zero Defect).")
+            elif total_dpi < 3.0 and dent_cnt == 0 and chip_cnt <= 1 and max_len <= 3.0:
+                grade = "A"
+                confidence = 0.92
+                reasons.append(f"Kondisi bodi Like New / Sangat Mulus (DPI {total_dpi:.1f} < 3.0, 0 penyok).")
+            elif total_dpi < 15.0 and dent_cnt <= 1 and (max_len <= 8.0 or chip_cnt <= 3):
+                grade = "B"
+                confidence = 0.88
+                reasons.append(f"Kondisi bodi wajar pemakaian normal (DPI {total_dpi:.1f} < 15.0, baret mikro/cuil cat ringan).")
+            elif total_dpi < 40.0 and dent_cnt <= 4:
+                grade = "C"
+                confidence = 0.85
+                reasons.append(f"Kondisi bodi aus berat / penyok bodi terisolasi tanpa rekahan kaca (DPI {total_dpi:.1f}, {dent_cnt} dent).")
+            else:
+                grade = "D"
+                confidence = 0.90
+                reasons.append(f"Kondisi bodi melampaui toleransi kosmetik Grade C (DPI {total_dpi:.1f}).")
+
+        probs = {
+            "A": 0.95 if grade == "A" else (0.05 if grade == "B" else 0.0),
+            "B": 0.90 if grade == "B" else (0.08 if grade in ["A", "C"] else 0.0),
+            "C": 0.88 if grade == "C" else (0.10 if grade in ["B", "D"] else 0.0),
+            "D": 1.0 if (grade == "D" and is_veto) else (0.90 if grade == "D" else 0.0)
+        }
+        # Normalize probs
+        p_sum = sum(probs.values()) or 1.0
+        probs = {k: round(v / p_sum, 4) for k, v in probs.items()}
+
+        defects_dict_list = [d.to_dict() for d in all_defects]
+        elapsed_sec = round(time.time() - start_time, 3)
+
+        return {
+            "unit_id": unit_id,
+            "final_grade": grade,
+            "grade_confidence": round(confidence, 4),
+            "grade_probabilities": probs,
+            "grading_method": "RULE_OF_THUMB_V7_UNIFIED_4CLASS",
+            "is_veto_triggered": is_veto,
+            "total_dpi": round(total_dpi, 2),
+            "frame_dpi": round(frame_dpi, 2),
+            "bottom_back_dpi": round(bottom_back_dpi, 2),
+            "total_defects_count": len(all_defects),
+            "defect_breakdown": class_counts,
+            "reasons": reasons,
+            "inspection_time_sec": elapsed_sec,
+            "views_inspected": [v for v in view_images.keys() if v != "front"],
+            "defects_detail": defects_dict_list,
+            "detections_by_view": {v: [d.to_dict() for d in defs] for v, defs in detections_by_view.items()},
+            "_defect_instances_by_view": detections_by_view
+        }
 
     def _classify_grade(
         self,

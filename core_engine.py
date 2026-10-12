@@ -372,7 +372,8 @@ class StreamlitInspectionEngine:
         report = self.grading_engine.evaluate_phone_unit(
             unit_id,
             inspected_views,
-            conf_threshold=conf_threshold
+            conf_threshold=conf_threshold,
+            version=self.version
         )
 
         # Inject model metadata & Stage 1 results
