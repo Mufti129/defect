@@ -2257,7 +2257,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             st.session_state["current_sim_dev"] = selected_dev
             if DiagnosticDatabase:
                 try:
-                    s_id = getattr(selected_dev, "serial", f"PGI-{int(time.time())}")
+                    s_id = getattr(selected_dev, "serial", f"MCV-{int(time.time())}")
                     DiagnosticDatabase().save_diagnostic(s_id, diag_rec)
                 except Exception:
                     pass
@@ -2267,7 +2267,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         st.session_state["current_sim_dev"] = selected_dev
         if DiagnosticDatabase:
             try:
-                s_id = getattr(selected_dev, "serial", f"PGI-{int(time.time())}")
+                s_id = getattr(selected_dev, "serial", f"MCV-{int(time.time())}")
                 DiagnosticDatabase().save_diagnostic(s_id, mobile_diag_record)
             except Exception:
                 pass
@@ -2777,7 +2777,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
 
             # Ekspor JSON Sertifikat
             cert_data = {
-                "sertifikat_id": f"CERT-PGI-{int(time.time())}",
+                "sertifikat_id": f"CERT-MCV-{int(time.time())}",
                 "waktu_inspeksi": _safe_get(diag_rec, "timestamp", time.strftime("%Y-%m-%dT%H:%M:%SZ")),
                 "perangkat": {
                     "brand": dev_brand,
@@ -2837,7 +2837,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 st.download_button(
                     label="Unduh Sertifikat Taksiran Resmi (PDF)",
                     data=pdf_bytes,
-                    file_name=f"Sertifikat_Taksiran_PGI_{dev_brand}_{dev_model}_{int(time.time())}.pdf",
+                    file_name=f"Sertifikat_Taksiran_MCV_{dev_brand}_{dev_model}_{int(time.time())}.pdf",
                     mime="application/pdf",
                     type="primary",
                     use_container_width=True
