@@ -38,6 +38,20 @@ import tempfile
 # MODEL REGISTRY: Definisi 5 Versi Model AI Smartphone Defect Detection
 # -------------------------------------------------------------------------
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "v7": {
+        "id": "v7",
+        "name": "Model Versi 7 (Unified Hard Damage & Spatial Density Detector — YOLOv8s)",
+        "short_name": "Versi 7 (YOLOv8s 800px)",
+        "badge": "TRAINING IN PROGRESS (V7)",
+        "badge_color": "#F59E0B",
+        "yolo_file": "phone_defect_model_v7_best.pt",
+        "ml_file": "ml_grading_model_v3.joblib",
+        "arch": "YOLOv8s Detect (800x800, 11.2M Params — Transfer Fine-Tuned dari V6 Best)",
+        "dataset": "dataset_v7 (4.558 Citra Bodi / 26.811 Bounding Box Riil)",
+        "focus": "Housing & Bezel 4-Kelas (Scratch, Chip, Dent, Hard Damage)",
+        "status": "Pelatihan 40 Epochs Sedang Berjalan (Auto-Sync Real-Time)",
+        "description": "Model generasi ke-7 dengan arsitektur terpadu 4-kelas cacat (scratch, chip, dent, hard_damage) pada resolusi tinggi 800x800 px. Di-fine-tune dari bobot V6 dengan loss rebalancing untuk menangani kerusakan struktural/hard damage berat."
+    },
     "model_tambahan": {
         "id": "model_tambahan",
         "name": "Model Tambahan (Custom Defect Model — model_tambahan.pt)",
@@ -170,7 +184,11 @@ class StreamlitInspectionEngine:
             os.path.join(str(PARENT_DIR), yolo_filename),
             os.path.join(str(CURRENT_DIR), "weights", yolo_filename),
             os.path.join(str(PARENT_DIR), "weights", yolo_filename),
+            os.path.join(str(CURRENT_DIR), f"weights_{version}", yolo_filename),
             os.path.join(str(PARENT_DIR), f"weights_{version}", yolo_filename),
+            os.path.join(str(PARENT_DIR), "runs", "detect", "runs_v7_training", "defect_v7_model", "weights", "best.pt"),
+            os.path.join(str(PARENT_DIR), "runs_v7_training", "defect_v7_model", "weights", "best.pt"),
+            os.path.join(str(CURRENT_DIR), "runs", "detect", "runs_v7_training", "defect_v7_model", "weights", "best.pt"),
         ]
         
         yolo_path = None
@@ -180,17 +198,30 @@ class StreamlitInspectionEngine:
                 break
         
         if yolo_path is None:
-            # Fallback to standard production weights if custom file is not yet placed
-            alt_candidates = [
-                os.path.join(weights_dir, "phone_defect_model_v5_best.pt"),
-                os.path.join(str(PARENT_DIR), "weights", "phone_defect_model_v5_best.pt"),
-                os.path.join(weights_dir, "phone_defect_model.pt"),
-                os.path.join(str(PARENT_DIR), "weights", "phone_defect_model.pt"),
-            ]
-            for alt in alt_candidates:
-                if os.path.exists(alt):
-                    yolo_path = alt
-                    break
+            # Fallback to base model: for V7 use V6 best (its warm start base)
+            if version == "v7":
+                v6_candidates = [
+                    os.path.join(weights_dir, "phone_defect_model_v6_best.pt"),
+                    os.path.join(str(PARENT_DIR), "weights", "phone_defect_model_v6_best.pt"),
+                    os.path.join(str(PARENT_DIR), "weights_v6", "phone_defect_model_v6_best.pt"),
+                ]
+                for v6_c in v6_candidates:
+                    if os.path.exists(v6_c):
+                        yolo_path = v6_c
+                        break
+
+            if yolo_path is None:
+                # Fallback to standard production weights if custom file is not yet placed
+                alt_candidates = [
+                    os.path.join(weights_dir, "phone_defect_model_v5_best.pt"),
+                    os.path.join(str(PARENT_DIR), "weights", "phone_defect_model_v5_best.pt"),
+                    os.path.join(weights_dir, "phone_defect_model.pt"),
+                    os.path.join(str(PARENT_DIR), "weights", "phone_defect_model.pt"),
+                ]
+                for alt in alt_candidates:
+                    if os.path.exists(alt):
+                        yolo_path = alt
+                        break
             if yolo_path is None:
                 yolo_path = os.path.join(weights_dir, yolo_filename)
 
