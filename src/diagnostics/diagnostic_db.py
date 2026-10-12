@@ -179,9 +179,10 @@ class DiagnosticDatabase:
                     battery_charging = 1 if bat.is_charging else 0
 
                 if inter:
-                    touch_passed = 1 if inter.touch_grid_passed else 0
-                    touch_cells_passed = 24 if inter.touch_grid_passed else 18
-                    audio_passed = 1 if inter.audio_playback_ok else 0
+                    touch_passed = 1 if getattr(inter, "touch_grid_passed", True) else 0
+                    touch_cells_passed = getattr(inter, "touch_cells_passed", 84 if touch_passed else 65)
+                    touch_total_cells = getattr(inter, "touch_total_cells", 84)
+                    audio_passed = 1 if getattr(inter, "audio_loopback_passed", True) else 0
 
                 if sens:
                     sensors_passed = 1 if getattr(sens, "all_healthy", True) else 0

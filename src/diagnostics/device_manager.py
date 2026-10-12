@@ -409,8 +409,8 @@ class DeviceManager:
 
         touch_data = payload.get("touchscreen", {})
         coverage_pct = float(touch_data.get("coverage_pct", 100))
-        cells_passed = int(touch_data.get("cells_passed", 24))
-        total_cells = int(touch_data.get("total_cells", 24))
+        cells_passed = int(touch_data.get("cells_passed", 84))
+        total_cells = int(touch_data.get("total_cells", 84))
         zero_deadzone = bool(touch_data.get("zero_deadzone", True))
 
         sensor_details = {
@@ -429,7 +429,7 @@ class DeviceManager:
             "touch_digitizer": {
                 "name": "Digitizer Layar Sentuh Adaptif",
                 "status": "PASS" if zero_deadzone else "FAIL",
-                "value": f"Cakupan: {coverage_pct}% ({cells_passed}/{total_cells} sel)",
+                "value": f"Cakupan: {coverage_pct:.0f}% ({cells_passed}/{total_cells} sel)",
                 "desc": "Deteksi multi-touch edge-to-edge bebas dead-zone"
             },
             "proximity_light": {
@@ -472,23 +472,37 @@ class DeviceManager:
             penalty_points=sens_penalty
         )
 
-        # Parse interactive tests
+        # Parse interactive tests (CIT: Touch, Speaker, Mic Loopback, Haptic, Buttons)
         audio_data = payload.get("audio_haptic", {})
         audio_tested = bool(audio_data.get("tested", False))
-        audio_quality = audio_data.get("audio_quality", "clear")
+        audio_quality = audio_data.get("speaker_quality") or audio_data.get("audio_quality", "clear")
         haptic_quality = audio_data.get("haptic_quality", "strong")
-        audio_passed = bool(audio_data.get("passed", True))
+        mic_quality = audio_data.get("mic_quality", "clear")
+        mic_passed = bool(audio_data.get("mic_passed", (mic_quality == "clear")))
+
+        btn_data = audio_data.get("buttons", {}) or {}
+        btn_vol_up = btn_data.get("vol_up", "PASS")
+        btn_vol_down = btn_data.get("vol_down", "PASS")
+        btn_power = btn_data.get("power", "PASS")
+        buttons_all_ok = (btn_vol_up == "PASS" and btn_vol_down == "PASS" and btn_power == "PASS" and haptic_quality != "none")
+
+        buttons_status_map = {
+            "vol_up": "LOLOS (Responsif)" if btn_vol_up == "PASS" else "CACAT / AMBLAS",
+            "vol_down": "LOLOS (Responsif)" if btn_vol_down == "PASS" else "CACAT / AMBLAS",
+            "power": "LOLOS (Responsif)" if btn_power == "PASS" else "CACAT / AMBLAS",
+        }
 
         inter_notes = []
         inter_penalty = 0.0
 
         if not zero_deadzone:
             inter_penalty += 15.0
-            inter_notes.append(f"Layar sentuh memiliki dead-zone (cakupan {coverage_pct}%).")
+            inter_notes.append(f"Layar sentuh memiliki dead-zone (cakupan {coverage_pct:.0f}%, {cells_passed}/{total_cells} sel).")
         else:
-            inter_notes.append(f"Layar sentuh lolos penuh (cakupan {coverage_pct}% bebas dead-zone).")
+            inter_notes.append(f"Layar sentuh lolos penuh (cakupan {coverage_pct:.0f}% bebas dead-zone, {cells_passed}/{total_cells} sel).")
 
         if audio_tested:
+            # Speaker verification
             if audio_quality == "distorted":
                 inter_penalty += 6.0
                 inter_notes.append("Speaker audio sember / pecah saat uji 3 nada.")
@@ -496,8 +510,9 @@ class DeviceManager:
                 inter_penalty += 12.0
                 inter_notes.append("Speaker audio mati / tidak ada suara sama sekali.")
             else:
-                inter_notes.append("Speaker audio jernih (lolos uji 3 nada).")
+                inter_notes.append("Speaker audio jernih (lolos uji 3 nada bertingkat 261-1046 Hz).")
 
+            # Haptic verification
             if haptic_quality == "weak":
                 inter_penalty += 3.0
                 inter_notes.append("Motor getar haptic sangat lemah.")
@@ -505,18 +520,51 @@ class DeviceManager:
                 inter_penalty += 8.0
                 inter_notes.append("Motor getar haptic mati / tidak bergetar.")
             else:
-                inter_notes.append("Motor getar haptic kuat & stabil (3 denyut getar).")
+                inter_notes.append("Motor getar haptic kuat & stabil (3 denyut getar fisik).")
+
+            # Microphone loopback verification
+            if mic_quality == "noisy":
+                inter_penalty += 5.0
+                inter_notes.append("Mikrofon utama sember / bising kresek saat uji loopback akustik.")
+            elif mic_quality == "silent":
+                inter_penalty += 10.0
+                inter_notes.append("Mikrofon utama mati / tidak menangkap suara saat uji rekaman.")
+            else:
+                inter_notes.append("Mikrofon utama lolos uji loopback akustik (suara terekam & diputar jernih).")
+
+            # Physical buttons verification
+            if not buttons_all_ok:
+                failed_btns = []
+                if btn_vol_up != "PASS": failed_btns.append("Volume Up (+)")
+                if btn_vol_down != "PASS": failed_btns.append("Volume Down (-)")
+                if btn_power != "PASS": failed_btns.append("Power / Kunci")
+                if failed_btns:
+                    inter_penalty += 4.0 * len(failed_btns)
+                    inter_notes.append(f"Tombol fisik mengalami gangguan respon / amblas: {', '.join(failed_btns)}.")
+            else:
+                inter_notes.append("Tombol fisik (Volume Up, Volume Down, Power / Kunci Layar) responsif 100%.")
+
+        speaker_status_str = "LOLOS (Jernih)" if audio_quality == "clear" else ("PERINGATAN (Sember/Pecah)" if audio_quality == "distorted" else "RUSAK (Mati)")
+        haptic_status_str = "AKTIF (Kuat & Stabil)" if haptic_quality == "strong" else ("PERINGATAN (Getaran Lemah)" if haptic_quality == "weak" else "RUSAK (Tidak Bergetar)")
+        mic_status_str = "LOLOS (Audio Loopback Jernih)" if mic_quality == "clear" else ("PERINGATAN (Suara Kresek/Kecil)" if mic_quality == "noisy" else "RUSAK (Tidak Merespons)")
 
         interactive_report = InteractiveTestResult(
             touch_grid_passed=zero_deadzone,
             touch_coverage_pct=coverage_pct,
-            audio_loopback_passed=(audio_quality == "clear"),
+            audio_loopback_passed=(audio_quality == "clear" and mic_passed),
             speaker_spl_db=84.5 if audio_quality == "clear" else (65.0 if audio_quality == "distorted" else 0.0),
-            buttons_passed=(haptic_quality != "none"),
-            buttons_tested=["Volume Up", "Volume Down", "Power / Lock", "Motor Getar Haptic"],
-            all_passed=(zero_deadzone and audio_passed),
+            buttons_passed=buttons_all_ok,
+            buttons_tested=["Volume Up", "Volume Down", "Power / Lock", "Motor Getar Haptic", "Mikrofon Loopback"],
+            all_passed=(zero_deadzone and audio_quality == "clear" and mic_passed and buttons_all_ok),
             penalty_points=round(inter_penalty, 1),
-            notes=inter_notes
+            notes=inter_notes,
+            touch_cells_passed=cells_passed,
+            touch_total_cells=total_cells,
+            speaker_status=speaker_status_str,
+            haptic_status=haptic_status_str,
+            mic_loopback_passed=mic_passed,
+            mic_status=mic_status_str,
+            buttons_status=buttons_status_map
         )
 
         # OEM Authenticity
