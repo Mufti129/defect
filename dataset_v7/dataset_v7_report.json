@@ -1,0 +1,22 @@
+{
+  "dataset_name": "dataset_v7",
+  "yaml_file": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/dataset_v7/data_v7.yaml",
+  "total_images": 4558,
+  "train_images": 4062,
+  "val_images": 496,
+  "total_boxes": 26811,
+  "train_boxes": 23955,
+  "val_boxes": 2856,
+  "class_distribution": {
+    "scratch": 3649,
+    "chip": 14112,
+    "dent": 721,
+    "hard_damage": 109
+  },
+  "classes": {
+    "0": "scratch",
+    "1": "chip",
+    "2": "dent",
+    "3": "hard_damage"
+  }
+}

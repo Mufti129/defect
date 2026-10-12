@@ -1,0 +1,9 @@
+path: /Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/dataset_v7
+train: images/train
+val: images/val
+
+names:
+  0: scratch
+  1: chip
+  2: dent
+  3: hard_damage

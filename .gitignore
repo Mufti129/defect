@@ -25,6 +25,8 @@ dataset_v5/
 dataset_v5_full/
 dataset_v5_pilot/
 dataset_v6/
+dataset_v7/images/
+dataset_v7/labels/
 dataset_yolo_seg/
 archive_legacy/
 uploaded_inspections/
@@ -34,6 +36,7 @@ scratch/
 # Training artifacts & runs
 runs/
 runs_v5_training/
+runs_v7_training/
 
 # Large Model Weights (>50MB / binary weights)
 *.onnx
