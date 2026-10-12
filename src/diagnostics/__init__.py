@@ -25,6 +25,7 @@ from .mobile_web_service import (
     get_mobile_diagnostic_html
 )
 from .diagnostic_db import DiagnosticDatabase
+from .model_lookup import lookup_commercial_model, COMMERCIAL_DEVICE_DATABASE
 
 __all__ = [
     "DeviceManager",
@@ -49,4 +50,6 @@ __all__ = [
     "generate_qr_for_url",
     "get_mobile_diagnostic_html",
     "DiagnosticDatabase",
+    "lookup_commercial_model",
+    "COMMERCIAL_DEVICE_DATABASE",
 ]

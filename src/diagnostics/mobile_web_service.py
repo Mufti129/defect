@@ -429,49 +429,180 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         let touchResult = { fullscreen_passed: false, coverage_pct: 0, cells_passed: 0, total_cells: 0 };
 
         const MODEL_DATABASE = {
-            "CPH2579": { brand: "Oppo", model: "A18" },
-            "CPH2477": { brand: "Oppo", model: "A78" },
-            "CPH2375": { brand: "Oppo", model: "Reno8 5G" },
-            "CPH2269": { brand: "Oppo", model: "A16" },
-            "CPH2185": { brand: "Oppo", model: "A15" },
-            "CPH2083": { brand: "Oppo", model: "A12" },
-            "CPH1937": { brand: "Oppo", model: "A9 (2020)" },
-            "CPH1939": { brand: "Oppo", model: "A5 (2020)" },
-            "CPH2387": { brand: "Oppo", model: "A57" },
-            "CPH2527": { brand: "Oppo", model: "A58" },
-            "CPH2565": { brand: "Oppo", model: "A38" },
-            "CPH2607": { brand: "Oppo", model: "Reno11 5G" },
-            "SM-A055F": { brand: "Samsung", model: "Galaxy A05" },
-            "SM-A146P": { brand: "Samsung", model: "Galaxy A14 5G" },
-            "SM-A155F": { brand: "Samsung", model: "Galaxy A15" },
-            "SM-A245F": { brand: "Samsung", model: "Galaxy A24" },
-            "SM-A346E": { brand: "Samsung", model: "Galaxy A34 5G" },
-            "SM-A546E": { brand: "Samsung", model: "Galaxy A54 5G" },
-            "SM-A556E": { brand: "Samsung", model: "Galaxy A55 5G" },
-            "SM-S901B": { brand: "Samsung", model: "Galaxy S22" },
-            "SM-S911B": { brand: "Samsung", model: "Galaxy S23" },
-            "SM-S918B": { brand: "Samsung", model: "Galaxy S23 Ultra" },
-            "SM-S928B": { brand: "Samsung", model: "Galaxy S24 Ultra" },
-            "RMX3760": { brand: "Realme", model: "C53" },
-            "RMX3710": { brand: "Realme", model: "C55" },
-            "RMX3834": { brand: "Realme", model: "12 5G" },
-            "RMX3630": { brand: "Realme", model: "10" },
-            "RMX3511": { brand: "Realme", model: "C35" },
-            "23129RAA4G": { brand: "Xiaomi", model: "Redmi Note 13 4G" },
-            "2201117TY": { brand: "Xiaomi", model: "Redmi Note 11" },
-            "23028RN4DG": { brand: "Xiaomi", model: "Redmi 12C" },
-            "23053RN02A": { brand: "Xiaomi", model: "Redmi 12" },
-            "22071212AG": { brand: "Xiaomi", model: "Redmi Note 11 Pro 5G" },
-            "V2250": { brand: "Vivo", model: "V27 5G" },
-            "V2310": { brand: "Vivo", model: "Y27 5G" },
-            "V2144": { brand: "Vivo", model: "T1 5G" },
-            "V2043": { brand: "Vivo", model: "Y20" },
-            "V2303": { brand: "Vivo", model: "V29 5G" },
-            "X6525": { brand: "Infinix", model: "Smart 8" },
-            "X6831": { brand: "Infinix", model: "Hot 30" },
-            "X688B": { brand: "Infinix", model: "Hot 10 Play" },
-            "X6833B": { brand: "Infinix", model: "Hot 30i" },
-            "X6711": { brand: "Infinix", model: "Note 30 5G" }
+            // Oppo
+            "CPH2579": { brand: "Oppo", model: "A18", soc: "MediaTek Helio G85" },
+            "CPH2565": { brand: "Oppo", model: "A38", soc: "MediaTek Helio G85" },
+            "CPH2527": { brand: "Oppo", model: "A58 4G", soc: "MediaTek Helio G85" },
+            "CPH2477": { brand: "Oppo", model: "A78 4G", soc: "Qualcomm Snapdragon 680" },
+            "CPH2483": { brand: "Oppo", model: "A78 5G", soc: "MediaTek Dimensity 700" },
+            "CPH2387": { brand: "Oppo", model: "A57", soc: "MediaTek Helio G35" },
+            "CPH2269": { brand: "Oppo", model: "A16", soc: "MediaTek Helio G35" },
+            "CPH2271": { brand: "Oppo", model: "A16e", soc: "MediaTek Helio P22" },
+            "CPH2185": { brand: "Oppo", model: "A15", soc: "MediaTek Helio P35" },
+            "CPH2179": { brand: "Oppo", model: "A15s", soc: "MediaTek Helio P35" },
+            "CPH2083": { brand: "Oppo", model: "A12", soc: "MediaTek Helio P35" },
+            "CPH2077": { brand: "Oppo", model: "A12", soc: "MediaTek Helio P35" },
+            "CPH1937": { brand: "Oppo", model: "A9 (2020)", soc: "Qualcomm Snapdragon 665" },
+            "CPH1939": { brand: "Oppo", model: "A5 (2020)", soc: "Qualcomm Snapdragon 665" },
+            "CPH1909": { brand: "Oppo", model: "A5s", soc: "MediaTek Helio P35" },
+            "CPH1923": { brand: "Oppo", model: "A1k", soc: "MediaTek Helio P22" },
+            "CPH2219": { brand: "Oppo", model: "A74 4G", soc: "Qualcomm Snapdragon 662" },
+            "CPH2211": { brand: "Oppo", model: "A54", soc: "MediaTek Helio P35" },
+            "CPH2239": { brand: "Oppo", model: "A54", soc: "MediaTek Helio P35" },
+            "CPH2359": { brand: "Oppo", model: "Reno8 4G", soc: "Qualcomm Snapdragon 680" },
+            "CPH2375": { brand: "Oppo", model: "Reno8 5G", soc: "MediaTek Dimensity 1300" },
+            "CPH2457": { brand: "Oppo", model: "Reno8 T 4G", soc: "MediaTek Helio G99" },
+            "CPH2505": { brand: "Oppo", model: "Reno8 T 5G", soc: "Qualcomm Snapdragon 695" },
+            "CPH2525": { brand: "Oppo", model: "Reno10 5G", soc: "MediaTek Dimensity 7050" },
+            "CPH2531": { brand: "Oppo", model: "Reno10 Pro 5G", soc: "Qualcomm Snapdragon 778G" },
+            "CPH2607": { brand: "Oppo", model: "Reno11 5G", soc: "MediaTek Dimensity 7050" },
+            "CPH2603": { brand: "Oppo", model: "Reno11 F 5G", soc: "MediaTek Dimensity 7050" },
+            "CPH2625": { brand: "Oppo", model: "Reno12 5G", soc: "MediaTek Dimensity 7300-Energy" },
+            "CPH2629": { brand: "Oppo", model: "Reno12 F 5G", soc: "MediaTek Dimensity 6300" },
+            "CPH2307": { brand: "Oppo", model: "Find X5 Pro", soc: "Qualcomm Snapdragon 8 Gen 1" },
+            // Samsung
+            "SM-A032F": { brand: "Samsung", model: "Galaxy A03 Core", soc: "Unisoc SC9863A" },
+            "SM-A035F": { brand: "Samsung", model: "Galaxy A03", soc: "Unisoc T606" },
+            "SM-A042F": { brand: "Samsung", model: "Galaxy A04e", soc: "MediaTek Helio P35" },
+            "SM-A045F": { brand: "Samsung", model: "Galaxy A04", soc: "MediaTek Helio P35" },
+            "SM-A047F": { brand: "Samsung", model: "Galaxy A04s", soc: "Samsung Exynos 850" },
+            "SM-A055F": { brand: "Samsung", model: "Galaxy A05", soc: "MediaTek Helio G85" },
+            "SM-A057F": { brand: "Samsung", model: "Galaxy A05s", soc: "Qualcomm Snapdragon 680" },
+            "SM-A065F": { brand: "Samsung", model: "Galaxy A06", soc: "MediaTek Helio G85" },
+            "SM-A135F": { brand: "Samsung", model: "Galaxy A13", soc: "Samsung Exynos 850" },
+            "SM-A145F": { brand: "Samsung", model: "Galaxy A14 4G", soc: "MediaTek Helio G80" },
+            "SM-A146P": { brand: "Samsung", model: "Galaxy A14 5G", soc: "MediaTek Dimensity 700" },
+            "SM-A146M": { brand: "Samsung", model: "Galaxy A14 5G", soc: "Samsung Exynos 1330" },
+            "SM-A155F": { brand: "Samsung", model: "Galaxy A15 4G", soc: "MediaTek Helio G99" },
+            "SM-A156E": { brand: "Samsung", model: "Galaxy A15 5G", soc: "MediaTek Dimensity 6100+" },
+            "SM-A235F": { brand: "Samsung", model: "Galaxy A23", soc: "Qualcomm Snapdragon 680" },
+            "SM-A245F": { brand: "Samsung", model: "Galaxy A24", soc: "MediaTek Helio G99" },
+            "SM-A256E": { brand: "Samsung", model: "Galaxy A25 5G", soc: "Samsung Exynos 1280" },
+            "SM-A336B": { brand: "Samsung", model: "Galaxy A33 5G", soc: "Samsung Exynos 1280" },
+            "SM-A346E": { brand: "Samsung", model: "Galaxy A34 5G", soc: "MediaTek Dimensity 1080" },
+            "SM-A356E": { brand: "Samsung", model: "Galaxy A35 5G", soc: "Samsung Exynos 1380" },
+            "SM-A525F": { brand: "Samsung", model: "Galaxy A52", soc: "Qualcomm Snapdragon 720G" },
+            "SM-A528B": { brand: "Samsung", model: "Galaxy A52s 5G", soc: "Qualcomm Snapdragon 778G" },
+            "SM-A536E": { brand: "Samsung", model: "Galaxy A53 5G", soc: "Samsung Exynos 1280" },
+            "SM-A546E": { brand: "Samsung", model: "Galaxy A54 5G", soc: "Samsung Exynos 1380" },
+            "SM-A556E": { brand: "Samsung", model: "Galaxy A55 5G", soc: "Samsung Exynos 1480" },
+            "SM-S901B": { brand: "Samsung", model: "Galaxy S22", soc: "Qualcomm Snapdragon 8 Gen 1" },
+            "SM-S906B": { brand: "Samsung", model: "Galaxy S22+", soc: "Qualcomm Snapdragon 8 Gen 1" },
+            "SM-S908B": { brand: "Samsung", model: "Galaxy S22 Ultra", soc: "Qualcomm Snapdragon 8 Gen 1" },
+            "SM-S911B": { brand: "Samsung", model: "Galaxy S23", soc: "Qualcomm Snapdragon 8 Gen 2" },
+            "SM-S916B": { brand: "Samsung", model: "Galaxy S23+", soc: "Qualcomm Snapdragon 8 Gen 2" },
+            "SM-S918B": { brand: "Samsung", model: "Galaxy S23 Ultra", soc: "Qualcomm Snapdragon 8 Gen 2" },
+            "SM-S711B": { brand: "Samsung", model: "Galaxy S23 FE", soc: "Samsung Exynos 2200" },
+            "SM-S921B": { brand: "Samsung", model: "Galaxy S24", soc: "Samsung Exynos 2400" },
+            "SM-S926B": { brand: "Samsung", model: "Galaxy S24+", soc: "Samsung Exynos 2400" },
+            "SM-S928B": { brand: "Samsung", model: "Galaxy S24 Ultra", soc: "Qualcomm Snapdragon 8 Gen 3" },
+            "SM-F711B": { brand: "Samsung", model: "Galaxy Z Flip3 5G", soc: "Qualcomm Snapdragon 888" },
+            "SM-F721B": { brand: "Samsung", model: "Galaxy Z Flip4", soc: "Qualcomm Snapdragon 8+ Gen 1" },
+            "SM-F731B": { brand: "Samsung", model: "Galaxy Z Flip5", soc: "Qualcomm Snapdragon 8 Gen 2" },
+            "SM-F741B": { brand: "Samsung", model: "Galaxy Z Flip6", soc: "Qualcomm Snapdragon 8 Gen 3" },
+            "SM-F926B": { brand: "Samsung", model: "Galaxy Z Fold3 5G", soc: "Qualcomm Snapdragon 888" },
+            "SM-F936B": { brand: "Samsung", model: "Galaxy Z Fold4", soc: "Qualcomm Snapdragon 8+ Gen 1" },
+            "SM-F946B": { brand: "Samsung", model: "Galaxy Z Fold5", soc: "Qualcomm Snapdragon 8 Gen 2" },
+            "SM-F956B": { brand: "Samsung", model: "Galaxy Z Fold6", soc: "Qualcomm Snapdragon 8 Gen 3" },
+            // Xiaomi / Redmi / POCO
+            "23129RAA4G": { brand: "Xiaomi", model: "Redmi Note 13 4G", soc: "Qualcomm Snapdragon 685" },
+            "23117RA68G": { brand: "Xiaomi", model: "Redmi Note 13 5G", soc: "MediaTek Dimensity 6080" },
+            "2312DRA50G": { brand: "Xiaomi", model: "Redmi Note 13 Pro 5G", soc: "Qualcomm Snapdragon 7s Gen 2" },
+            "23090RA98G": { brand: "Xiaomi", model: "Redmi Note 13 Pro+ 5G", soc: "MediaTek Dimensity 7200-Ultra" },
+            "23028RN4DG": { brand: "Xiaomi", model: "Redmi 12C", soc: "MediaTek Helio G85" },
+            "23053RN02A": { brand: "Xiaomi", model: "Redmi 12", soc: "MediaTek Helio G88" },
+            "23053RN02Y": { brand: "Xiaomi", model: "Redmi 12", soc: "MediaTek Helio G88" },
+            "23108RN04Y": { brand: "Xiaomi", model: "Redmi 13C", soc: "MediaTek Helio G85" },
+            "23106RN0DA": { brand: "Xiaomi", model: "Redmi 13C", soc: "MediaTek Helio G85" },
+            "24040RN64Y": { brand: "Xiaomi", model: "Redmi 13", soc: "MediaTek Helio G91-Ultra" },
+            "2409BRN2CG": { brand: "Xiaomi", model: "Redmi 14C", soc: "MediaTek Helio G81-Ultra" },
+            "2201117TY": { brand: "Xiaomi", model: "Redmi Note 11", soc: "Qualcomm Snapdragon 680" },
+            "2201117TG": { brand: "Xiaomi", model: "Redmi Note 11", soc: "Qualcomm Snapdragon 680" },
+            "2201116TG": { brand: "Xiaomi", model: "Redmi Note 11S", soc: "MediaTek Helio G96" },
+            "22071212AG": { brand: "Xiaomi", model: "Redmi Note 11 Pro 5G", soc: "Qualcomm Snapdragon 695" },
+            "23021RAA2Y": { brand: "Xiaomi", model: "Redmi Note 12 4G", soc: "Qualcomm Snapdragon 685" },
+            "22111317G": { brand: "Xiaomi", model: "Redmi Note 12 5G", soc: "Qualcomm Snapdragon 4 Gen 1" },
+            "22101316G": { brand: "Xiaomi", model: "Redmi Note 12 Pro 5G", soc: "MediaTek Dimensity 1080" },
+            "23049PCD8G": { brand: "POCO", model: "POCO X5 5G", soc: "Qualcomm Snapdragon 695" },
+            "23122PCD1G": { brand: "POCO", model: "POCO X6 5G", soc: "Qualcomm Snapdragon 7s Gen 2" },
+            "2311DRK48G": { brand: "POCO", model: "POCO X6 Pro 5G", soc: "MediaTek Dimensity 8300-Ultra" },
+            "22041216UG": { brand: "POCO", model: "POCO F4", soc: "Qualcomm Snapdragon 870" },
+            "2304FPN6DC": { brand: "POCO", model: "POCO F5", soc: "Qualcomm Snapdragon 7+ Gen 2" },
+            "2304FPN6DG": { brand: "POCO", model: "POCO F5", soc: "Qualcomm Snapdragon 7+ Gen 2" },
+            "24069PC21G": { brand: "POCO", model: "POCO F6", soc: "Qualcomm Snapdragon 8s Gen 3" },
+            "23076PC4BI": { brand: "POCO", model: "POCO M6 Pro", soc: "MediaTek Helio G99-Ultra" },
+            "23076PC4BG": { brand: "POCO", model: "POCO M6 Pro", soc: "MediaTek Helio G99-Ultra" },
+            "22127PC95G": { brand: "POCO", model: "POCO C65", soc: "MediaTek Helio G85" },
+            // Realme
+            "RMX3760": { brand: "Realme", model: "C53", soc: "Unisoc T612" },
+            "RMX3761": { brand: "Realme", model: "C53", soc: "Unisoc T612" },
+            "RMX3710": { brand: "Realme", model: "C55", soc: "MediaTek Helio G88" },
+            "RMX3834": { brand: "Realme", model: "12 5G", soc: "MediaTek Dimensity 6100+" },
+            "RMX3840": { brand: "Realme", model: "12 Pro+ 5G", soc: "Qualcomm Snapdragon 7s Gen 2" },
+            "RMX3842": { brand: "Realme", model: "12+ 5G", soc: "MediaTek Dimensity 7050" },
+            "RMX3630": { brand: "Realme", model: "10", soc: "MediaTek Helio G99" },
+            "RMX3686": { brand: "Realme", model: "10 Pro 5G", soc: "Qualcomm Snapdragon 695" },
+            "RMX3687": { brand: "Realme", model: "10 Pro+ 5G", soc: "MediaTek Dimensity 1080" },
+            "RMX3511": { brand: "Realme", model: "C35", soc: "Unisoc T616" },
+            "RMX3501": { brand: "Realme", model: "C31", soc: "Unisoc T612" },
+            "RMX3261": { brand: "Realme", model: "C21Y", soc: "Unisoc T610" },
+            "RMX3263": { brand: "Realme", model: "C21Y", soc: "Unisoc T610" },
+            "RMX3201": { brand: "Realme", model: "C25", soc: "MediaTek Helio G70" },
+            "RMX3191": { brand: "Realme", model: "C25s", soc: "MediaTek Helio G85" },
+            "RMX3231": { brand: "Realme", model: "C11 (2021)", soc: "Unisoc SC9863A" },
+            "RMX2185": { brand: "Realme", model: "C11 (2020)", soc: "MediaTek Helio G35" },
+            "RMX2195": { brand: "Realme", model: "C15", soc: "MediaTek Helio G35" },
+            "RMX3706": { brand: "Realme", model: "GT Neo 3", soc: "MediaTek Dimensity 8100" },
+            "RMX3850": { brand: "Realme", model: "GT 6", soc: "Qualcomm Snapdragon 8s Gen 3" },
+            // Vivo
+            "V2310": { brand: "Vivo", model: "Y27 5G", soc: "MediaTek Dimensity 6020" },
+            "V2249": { brand: "Vivo", model: "Y27 4G", soc: "MediaTek Helio G85" },
+            "V2322": { brand: "Vivo", model: "Y28", soc: "MediaTek Helio G85" },
+            "V2324": { brand: "Vivo", model: "Y28", soc: "MediaTek Helio G85" },
+            "V2303": { brand: "Vivo", model: "V29 5G", soc: "Qualcomm Snapdragon 778G" },
+            "V2318": { brand: "Vivo", model: "V29e", soc: "Qualcomm Snapdragon 695" },
+            "V2344": { brand: "Vivo", model: "V30 5G", soc: "Qualcomm Snapdragon 7 Gen 3" },
+            "V2343": { brand: "Vivo", model: "V30e", soc: "Qualcomm Snapdragon 6 Gen 1" },
+            "V2359": { brand: "Vivo", model: "V40 5G", soc: "Qualcomm Snapdragon 7 Gen 3" },
+            "V2250": { brand: "Vivo", model: "V27 5G", soc: "MediaTek Dimensity 7200" },
+            "V2246": { brand: "Vivo", model: "V27e", soc: "MediaTek Helio G99" },
+            "V2201": { brand: "Vivo", model: "V25 5G", soc: "MediaTek Dimensity 900" },
+            "V2202": { brand: "Vivo", model: "V25e", soc: "MediaTek Helio G99" },
+            "V2144": { brand: "Vivo", model: "T1 5G", soc: "MediaTek Dimensity 810" },
+            "V2145": { brand: "Vivo", model: "T1 Pro 5G", soc: "Qualcomm Snapdragon 778G" },
+            "V2158": { brand: "Vivo", model: "Y02", soc: "MediaTek Helio P22" },
+            "V2236": { brand: "Vivo", model: "Y02t", soc: "MediaTek Helio P35" },
+            "V2333": { brand: "Vivo", model: "Y03", soc: "MediaTek Helio G85" },
+            "V2120": { brand: "Vivo", model: "Y15s", soc: "MediaTek Helio P35" },
+            "V2147": { brand: "Vivo", model: "Y16", soc: "MediaTek Helio P35" },
+            "V2237": { brand: "Vivo", model: "Y17s", soc: "MediaTek Helio G85" },
+            "V2111": { brand: "Vivo", model: "Y21", soc: "MediaTek Helio P35" },
+            "V2156": { brand: "Vivo", model: "Y33s", soc: "MediaTek Helio G80" },
+            "V2142": { brand: "Vivo", model: "Y35", soc: "Qualcomm Snapdragon 680" },
+            "V2252": { brand: "Vivo", model: "Y36", soc: "Qualcomm Snapdragon 680" },
+            "V2043": { brand: "Vivo", model: "Y20", soc: "Qualcomm Snapdragon 460" },
+            // Infinix & Tecno
+            "X6525": { brand: "Infinix", model: "Smart 8", soc: "Unisoc T606" },
+            "X6515": { brand: "Infinix", model: "Smart 7", soc: "Unisoc SC9863A1" },
+            "X6512": { brand: "Infinix", model: "Smart 6", soc: "Unisoc SC9863A" },
+            "X6831": { brand: "Infinix", model: "Hot 30", soc: "MediaTek Helio G88" },
+            "X6833B": { brand: "Infinix", model: "Hot 30i", soc: "MediaTek Helio G37" },
+            "X6836": { brand: "Infinix", model: "Hot 40 Pro", soc: "MediaTek Helio G99" },
+            "X6837": { brand: "Infinix", model: "Hot 40i", soc: "Unisoc T606" },
+            "X688B": { brand: "Infinix", model: "Hot 10 Play", soc: "MediaTek Helio G25" },
+            "X6816D": { brand: "Infinix", model: "Hot 12 Play", soc: "Unisoc T610" },
+            "X6817": { brand: "Infinix", model: "Hot 20i", soc: "MediaTek Helio G25" },
+            "X6711": { brand: "Infinix", model: "Note 30 5G", soc: "MediaTek Dimensity 6080" },
+            "X6716B": { brand: "Infinix", model: "Note 30 Pro", soc: "MediaTek Helio G99" },
+            "X6850": { brand: "Infinix", model: "Note 40", soc: "MediaTek Helio G99 Ultimate" },
+            "X6851": { brand: "Infinix", model: "Note 40 Pro", soc: "MediaTek Helio G99 Ultimate" },
+            "X6853": { brand: "Infinix", model: "GT 10 Pro", soc: "MediaTek Dimensity 8050" },
+            "X6871": { brand: "Infinix", model: "GT 20 Pro", soc: "MediaTek Dimensity 8200 Ultimate" },
+            "KI5Q": { brand: "Tecno", model: "Spark 10C", soc: "Unisoc T606" },
+            "KI7": { brand: "Tecno", model: "Spark 10 Pro", soc: "MediaTek Helio G88" },
+            "BG6": { brand: "Tecno", model: "Spark 20", soc: "MediaTek Helio G85" },
+            "BG7": { brand: "Tecno", model: "Spark 20 Pro", soc: "MediaTek Helio G99" },
+            "LH8N": { brand: "Tecno", model: "Camon 20 Pro", soc: "MediaTek Helio G99" }
         };
 
         // 1. Hardware Detection via Client Hints & WebGL
@@ -510,12 +641,13 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             document.getElementById('bat-level').innerText = '90%';
             document.getElementById('bat-charging').innerText = 'Standar';
         } else {
+            let activeLookup = null;
             if (/Samsung|SM-|GT-/i.test(ua)) {
                 brandName = "Samsung";
                 const m = ua.match(/SM-[A-Z0-9]+/i);
                 if (m) {
-                    const lookup = resolveModelLookup(m[0]);
-                    modelName = lookup ? lookup.model + " (" + m[0] + ")" : m[0];
+                    activeLookup = resolveModelLookup(m[0]);
+                    modelName = activeLookup ? activeLookup.model + " (" + m[0] + ")" : m[0];
                 } else {
                     modelName = "Galaxy Series";
                 }
@@ -523,21 +655,26 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                 brandName = "Oppo";
                 const m = ua.match(/CPH\d{4}/i);
                 if (m) {
-                    const lookup = resolveModelLookup(m[0]);
-                    modelName = lookup ? lookup.model + " (" + m[0] + ")" : ("Oppo (" + m[0] + ")");
+                    activeLookup = resolveModelLookup(m[0]);
+                    modelName = activeLookup ? activeLookup.model + " (" + m[0] + ")" : ("Oppo (" + m[0] + ")");
                 } else {
                     modelName = "Series A / Reno";
                 }
             } else if (/Xiaomi|Redmi|POCO/i.test(ua)) {
                 brandName = "Xiaomi";
                 const m = ua.match(/Redmi [A-Za-z0-9 ]+|POCO [A-Za-z0-9 ]+|2[0-9]{3}[A-Za-z0-9]+/i);
-                modelName = m ? m[0] : "Redmi / POCO Series";
+                if (m) {
+                    activeLookup = resolveModelLookup(m[0]);
+                    modelName = activeLookup ? activeLookup.model + " (" + m[0] + ")" : m[0];
+                } else {
+                    modelName = "Redmi / POCO Series";
+                }
             } else if (/Vivo|V\d{4}/i.test(ua)) {
                 brandName = "Vivo";
                 const m = ua.match(/V\d{4}[A-Z]?/i);
                 if (m) {
-                    const lookup = resolveModelLookup(m[0]);
-                    modelName = lookup ? lookup.model + " (" + m[0] + ")" : m[0];
+                    activeLookup = resolveModelLookup(m[0]);
+                    modelName = activeLookup ? activeLookup.model + " (" + m[0] + ")" : m[0];
                 } else {
                     modelName = "Y-Series / V-Series";
                 }
@@ -545,17 +682,27 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                 brandName = "Realme";
                 const m = ua.match(/RMX\d{4}/i);
                 if (m) {
-                    const lookup = resolveModelLookup(m[0]);
-                    modelName = lookup ? lookup.model + " (" + m[0] + ")" : m[0];
+                    activeLookup = resolveModelLookup(m[0]);
+                    modelName = activeLookup ? activeLookup.model + " (" + m[0] + ")" : m[0];
                 } else {
                     modelName = "Realme Series";
                 }
-            } else if (/Infinix/i.test(ua)) {
+            } else if (/Infinix|X\d{3,4}/i.test(ua)) {
                 brandName = "Infinix";
-                modelName = "Hot / Note Series";
+                const m = ua.match(/X\d{3,4}[A-Za-z0-9]*/i);
+                if (m) {
+                    activeLookup = resolveModelLookup(m[0]);
+                    modelName = activeLookup ? activeLookup.model + " (" + m[0] + ")" : "Hot / Note Series";
+                } else {
+                    modelName = "Hot / Note Series";
+                }
             }
             const andMatch = ua.match(/Android (\d+(\.\d+)?)/i);
             osName = andMatch ? "Android " + andMatch[1] : "Android OS";
+
+            if (activeLookup && activeLookup.brand) {
+                brandName = activeLookup.brand;
+            }
         }
 
         // Modern W3C Client Hints for Exact Android Hardware Model
@@ -567,6 +714,10 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                         if (lookup) {
                             brandName = lookup.brand;
                             modelName = lookup.model + " (" + hints.model + ")";
+                            if (lookup.soc) {
+                                socName = lookup.soc;
+                                document.getElementById('val-soc').innerText = socName;
+                            }
                         } else {
                             modelName = hints.model;
                         }
