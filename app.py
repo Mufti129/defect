@@ -4956,6 +4956,9 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                     PROJECT_DIR / "runs" / "detect" / "runs_v7_training" / "defect_v7_model" / "results.csv",
                     PROJECT_DIR / "runs_v7_training" / "defect_v7_model" / "results.csv",
                     APP_DIR / "runs" / "detect" / "runs_v7_training" / "defect_v7_model" / "results.csv",
+                    PROJECT_DIR / "weights_v7" / "results.csv",
+                    APP_DIR / "weights_v7" / "results.csv",
+                    APP_DIR / "weights" / "results_v7.csv",
                 ]
                 for p_csv in csv_candidates_v7:
                     if p_csv.exists():
