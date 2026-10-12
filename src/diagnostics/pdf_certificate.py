@@ -159,15 +159,24 @@ def generate_unified_inspection_pdf(
     u_deduct = float(decision.get("valuation_deduction_pct", 0.0))
     f_status = decision.get("functional_status", "PASS")
 
+    u_grade_str = str(u_grade).strip().upper()
+    u_grade_letter = u_grade_str.replace("GRADE", "").strip()
+    if not u_grade_letter:
+        u_grade_letter = "A"
+
     # Dynamic Palette based on Grade
-    if u_grade == "A":
+    if "A" in u_grade_letter:
         grade_color_hex = "#059669"
         card2_bg = colors.HexColor("#ECFDF5")
         card2_border = colors.HexColor("#10B981")
-    elif "B" in u_grade:
+    elif "B" in u_grade_letter:
         grade_color_hex = "#D97706"
         card2_bg = colors.HexColor("#FFFBEB")
         card2_border = colors.HexColor("#F59E0B")
+    elif "C" in u_grade_letter:
+        grade_color_hex = "#E11D48"
+        card2_bg = colors.HexColor("#FFF1F2")
+        card2_border = colors.HexColor("#F43F5E")
     else:
         grade_color_hex = "#DC2626"
         card2_bg = colors.HexColor("#FEF2F2")
@@ -191,7 +200,7 @@ def generate_unified_inspection_pdf(
 
     # Card 2: GRADE AKHIR TERPADU
     c2_p1 = Paragraph("GRADE AKHIR TERPADU", ParagraphStyle("C2_1", fontSize=6.5, leading=8.5, fontName="Helvetica-Bold", textColor=colors.HexColor("#475569"), alignment=1))
-    c2_p2 = Paragraph(f"<b>GRADE {u_grade}</b>", ParagraphStyle("C2_2", fontSize=15, leading=18, fontName="Helvetica-Bold", textColor=colors.HexColor(grade_color_hex), alignment=1))
+    c2_p2 = Paragraph(f"<b>GRADE {u_grade_letter}</b>", ParagraphStyle("C2_2", fontSize=15, leading=18, fontName="Helvetica-Bold", textColor=colors.HexColor(grade_color_hex), alignment=1))
     c2_p3 = Paragraph(f"<b>STATUS: {f_status}</b>", ParagraphStyle("C2_3", fontSize=7, leading=9, fontName="Helvetica-Bold", textColor=colors.HexColor(grade_color_hex), alignment=1))
 
     card2_table = Table([[ [c2_p1, Spacer(1, 0.8 * mm), c2_p2, Spacer(1, 0.8 * mm), c2_p3] ]], colWidths=[45 * mm])
@@ -206,7 +215,7 @@ def generate_unified_inspection_pdf(
     c3_p1 = Paragraph("POTONGAN TAKSIRAN", ParagraphStyle("C3_1", fontSize=6.5, leading=8.5, fontName="Helvetica-Bold", textColor=colors.HexColor("#475569"), alignment=1))
     deduct_color_hex = "#DC2626" if u_deduct > 0 else "#059669"
     c3_p2 = Paragraph(f"<b>-{u_deduct:.1f}%</b>", ParagraphStyle("C3_2", fontSize=15, leading=18, fontName="Helvetica-Bold", textColor=colors.HexColor(deduct_color_hex), alignment=1))
-    c3_p3 = Paragraph("Dari Plafon Maksimal", ParagraphStyle("C3_3", fontSize=6, leading=8, textColor=MUTED, alignment=1))
+    c3_p3 = Paragraph("Dari Plafon Taksiran Maksimal", ParagraphStyle("C3_3", fontSize=6, leading=8, textColor=MUTED, alignment=1))
 
     card3_table = Table([[ [c3_p1, Spacer(1, 0.8 * mm), c3_p2, Spacer(1, 0.8 * mm), c3_p3] ]], colWidths=[45 * mm])
     card3_table.setStyle(TableStyle([
