@@ -20,6 +20,7 @@ from .mobile_web_service import (
     get_local_lan_ip,
     set_mobile_session_result,
     get_mobile_session_result,
+    get_mobile_session_devices,
     generate_qr_for_url,
     get_mobile_diagnostic_html
 )
@@ -44,6 +45,7 @@ __all__ = [
     "get_local_lan_ip",
     "set_mobile_session_result",
     "get_mobile_session_result",
+    "get_mobile_session_devices",
     "generate_qr_for_url",
     "get_mobile_diagnostic_html",
     "DiagnosticDatabase",
