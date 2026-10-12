@@ -186,7 +186,9 @@ def render_mobile_completion_screen(session_id: str, raw_payload_str: str, recor
     brand = payload.get("brand", "Smartphone")
     model = payload.get("model", "Perangkat")
     bat = payload.get("battery", {}).get("level_pct", 90)
-    touch_pass = payload.get("touchscreen", {}).get("cells_passed", 24)
+    touch_info = payload.get("touchscreen", {})
+    touch_pass = touch_info.get("cells_passed", 49)
+    touch_tot = touch_info.get("total_cells", 49)
 
     st.markdown(f"""
     <div style="max-width: 440px; margin: 30px auto; padding: 0 10px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
@@ -215,7 +217,7 @@ def render_mobile_completion_screen(session_id: str, raw_payload_str: str, recor
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                     <span style="color: #94A3B8;">Layar Digitizer:</span>
-                    <b style="color: #34D399;">{touch_pass} / 24 Kotak (Zero Dead-Zone)</b>
+                    <b style="color: #34D399;">{touch_pass} / {touch_tot} Sel (Zero Dead-Zone)</b>
                 </div>
             </div>
 
@@ -2343,7 +2345,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             st.session_state["current_sim_dev"] = selected_dev
             if DiagnosticDatabase:
                 try:
-                    s_id = getattr(selected_dev, "serial", f"MCV-{int(time.time())}")
+                    s_id = m_session if (conn_mode.startswith("Diagnostik Web") and m_session) else getattr(selected_dev, "serial", f"MCV-{int(time.time())}")
                     DiagnosticDatabase().save_diagnostic(s_id, diag_rec)
                 except Exception:
                     pass
@@ -2353,7 +2355,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         st.session_state["current_sim_dev"] = selected_dev
         if DiagnosticDatabase:
             try:
-                s_id = getattr(selected_dev, "serial", f"MCV-{int(time.time())}")
+                s_id = m_session if m_session else getattr(selected_dev, "serial", f"MCV-{int(time.time())}")
                 DiagnosticDatabase().save_diagnostic(s_id, mobile_diag_record)
             except Exception:
                 pass
