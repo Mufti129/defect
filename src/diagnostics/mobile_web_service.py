@@ -392,7 +392,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
     <div class="card">
         <div class="card-title">
             <span>4. Sensor Gerak Gyroscope & Accelerometer (3-Axis)</span>
-            <span class="badge badge-pass" id="sensor-badge">MEMINDAI</span>
+            <span class="badge badge-wait" id="sensor-badge">MENUNGGU UJI</span>
         </div>
         <div class="bubble-track">
             <div class="bubble-target"></div>
@@ -402,11 +402,14 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             <div class="stat-box"><span>Kemiringan Roll (X)</span><b id="sens-x">0.0&deg;</b></div>
             <div class="stat-box"><span>Kemiringan Pitch (Y)</span><b id="sens-y">0.0&deg;</b></div>
             <div class="stat-box"><span>Arah Heading Yaw (Z)</span><b id="sens-z">0.0&deg;</b></div>
-            <div class="stat-box"><span>Status Respons</span><b id="sens-status" style="color: #34D399;">Aktif</b></div>
+            <div class="stat-box"><span>Status Respons</span><b id="sens-status" style="color: #F59E0B;">Belum Diuji</b></div>
         </div>
-        <button class="btn-action" id="btn-ios-motion" onclick="requestIOSMotion()" style="display: none; background: #7C3AED;">
-            Izinkan Sensor Gerak (Khusus Apple iOS)
+        <button class="btn-action" id="btn-sensor-test" onclick="startSensorTest()" style="margin-top: 8px; background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); color: white; border: none;">
+            Izinkan Akses & Uji Sensor Gerak
         </button>
+        <p style="font-size: 0.72rem; color: #94A3B8; margin-top: 6px;" id="sensor-help-label">
+            Tekan tombol di atas lalu miringkan HP ke kiri-kanan & depan-belakang. Bola gelembung harus bergerak mengikuti gerakan HP.
+        </p>
     </div>
 
     <!-- 5. Uji Audio Loopback & Respons Fisik (CIT) -->
@@ -418,14 +421,19 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
 
         <!-- Bagian A: Loudspeaker & Getar Haptic -->
         <div style="background: #0A0F1D; border-radius: 10px; padding: 12px; border: 1px solid #1E293B; margin-bottom: 10px;">
-            <div style="font-size: 0.80rem; font-weight: 700; color: #38BDF8; margin-bottom: 6px;">
-                A. Loudspeaker Utama & Motor Getar (3 Nada & 3x Getar)
+            <div style="font-size: 0.80rem; font-weight: 700; color: #38BDF8; margin-bottom: 4px;">
+                A. Uji Loudspeaker Utama & Motor Getar Haptic
             </div>
-            <button class="btn-action" id="btn-audio" onclick="runSequentialAudioHapticTest()">
+            <p style="font-size: 0.72rem; color: #94A3B8; margin-bottom: 8px; line-height: 1.4;">
+                Sistem akan membunyikan <b style="color: #F1F5F9;">3 nada bertingkat</b> (Do-261Hz → Mi-523Hz → Do'-1046Hz) melalui speaker utama HP secara berurutan,
+                disertai <b style="color: #F1F5F9;">3 getaran haptic</b> (180ms → 220ms → 300ms) pada motor getar fisik.
+                Pastikan volume HP tidak dalam mode senyap (silent) sebelum mulai uji.
+            </p>
+            <button class="btn-action" id="btn-audio" onclick="runSequentialAudioHapticTest()" style="background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%); color: white; border: none;">
                 Mulai Uji Suara 3 Nada & 3x Getar Fisik
             </button>
             <p style="font-size: 0.72rem; color: #94A3B8; margin-top: 6px;" id="audio-status-label">
-                Tekan tombol di atas untuk membunyikan 3 nada bertingkat dan menggetarkan HP 3 kali berturut-turut.
+                Tekan tombol di atas. HP harus mengeluarkan 3 nada jernih bertingkat dan bergetar 3 kali berturut-turut di tangan Anda.
             </p>
 
             <!-- Kotak Verifikasi Speaker & Getar -->
@@ -646,7 +654,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         document.getElementById('session-label').innerText = sessionId;
         document.getElementById('dev-tag').innerText = clientDevId;
 
-        let batteryData = { level: 90, charging: false, health_pct: 92, stress_passed: true };
+        let batteryData = { level: 0, charging: false, health_pct: 92, stress_passed: false };
         let confirmedROM = '128 GB';
         let customModelOverride = '';
         let motionData = { alpha: 0, beta: 0, gamma: 0 };
@@ -1677,7 +1685,8 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         document.getElementById('val-ram').innerText = ramEst;
         document.getElementById('val-cpu').innerText = cpuEst;
         document.getElementById('val-gpu').innerText = gpuName;
-        document.getElementById('touch-res-label').innerText = screenRes;
+        const _touchResLbl = document.getElementById('touch-res-label');
+        if (_touchResLbl) _touchResLbl.innerText = screenRes;
         document.getElementById('device-pill').innerText = brandName + " " + modelName + " (AI Terverifikasi)";
 
         // Display Refresh Rate Measurement
@@ -2081,8 +2090,10 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         buildInlineGrid();
 
         // 4. Motion Sensors (Gyroscope 3-Axis)
+        let sensorDataReceived = false;
         function handleOrientation(e) {
             if (e.alpha !== null) {
+                sensorDataReceived = true;
                 motionData.alpha = Math.round(e.alpha);
                 motionData.beta = Math.round(e.beta || 0);
                 motionData.gamma = Math.round(e.gamma || 0);
@@ -2090,36 +2101,91 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                 document.getElementById('sens-y').innerHTML = motionData.beta + '&deg;';
                 document.getElementById('sens-z').innerHTML = motionData.alpha + '&deg;';
                 document.getElementById('sensor-badge').innerText = 'LOLOS RESPONSIF';
+                document.getElementById('sensor-badge').className = 'badge badge-pass';
+                document.getElementById('sens-status').innerText = 'Aktif & Responsif';
+                document.getElementById('sens-status').style.color = '#34D399';
 
                 const bubble = document.getElementById('bubble-dot');
                 const clampX = Math.max(-120, Math.min(120, motionData.gamma * 4));
                 bubble.style.transform = `translateX(${clampX}px)`;
+
+                const btnTest = document.getElementById('btn-sensor-test');
+                if (btnTest) {
+                    btnTest.innerText = 'Sensor Gerak Terdeteksi & Aktif';
+                    btnTest.style.background = '#10B981';
+                }
+                const helpLbl = document.getElementById('sensor-help-label');
+                if (helpLbl) helpLbl.innerText = 'Sensor gyroscope & accelerometer merespons gerakan HP dengan normal. Data X/Y/Z diperbarui secara real-time.';
             }
         }
 
-        if (window.DeviceOrientationEvent) {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                document.getElementById('btn-ios-motion').style.display = 'block';
-                document.getElementById('sensor-badge').innerText = 'IZIN DIBUTUHKAN';
-                document.getElementById('sensor-badge').className = 'badge badge-wait';
-            } else {
-                window.addEventListener('deviceorientation', handleOrientation);
-                document.getElementById('sensor-badge').innerText = 'LOLOS RESPONSIF';
-            }
-        }
+        function startSensorTest() {
+            const btn = document.getElementById('btn-sensor-test');
+            btn.disabled = true;
+            btn.innerText = 'Meminta Izin Sensor...';
+            btn.style.background = '#8B5CF6';
 
-        function requestIOSMotion() {
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS Safari — requires explicit permission request via user gesture
                 DeviceOrientationEvent.requestPermission()
                     .then(response => {
                         if (response === 'granted') {
                             window.addEventListener('deviceorientation', handleOrientation);
-                            document.getElementById('btn-ios-motion').style.display = 'none';
-                            document.getElementById('sensor-badge').innerText = 'LOLOS RESPONSIF';
-                            document.getElementById('sensor-badge').className = 'badge badge-pass';
+                            btn.innerText = 'Izin Diberikan — Miringkan HP...';
+                            document.getElementById('sensor-badge').innerText = 'MEMINDAI...';
+                            document.getElementById('sensor-badge').className = 'badge badge-info';
+                            // Timeout: jika setelah 5 detik tidak ada data, tandai tidak responsif
+                            setTimeout(() => {
+                                if (!sensorDataReceived) {
+                                    btn.disabled = false;
+                                    btn.innerText = 'Sensor Tidak Merespons — Coba Lagi';
+                                    btn.style.background = '#DC2626';
+                                    document.getElementById('sensor-badge').innerText = 'TIDAK RESPONSIF';
+                                    document.getElementById('sensor-badge').className = 'badge badge-danger';
+                                    document.getElementById('sens-status').innerText = 'Tidak Responsif';
+                                    document.getElementById('sens-status').style.color = '#F87171';
+                                }
+                            }, 5000);
+                        } else {
+                            btn.disabled = false;
+                            btn.innerText = 'Izin Ditolak — Tekan Untuk Coba Lagi';
+                            btn.style.background = '#DC2626';
+                            document.getElementById('sensor-badge').innerText = 'IZIN DITOLAK';
+                            document.getElementById('sensor-badge').className = 'badge badge-danger';
                         }
                     })
-                    .catch(console.error);
+                    .catch(err => {
+                        btn.disabled = false;
+                        btn.innerText = 'Gagal Minta Izin — Tekan Untuk Coba Lagi';
+                        btn.style.background = '#DC2626';
+                    });
+            } else if (window.DeviceOrientationEvent) {
+                // Android and non-iOS — permission not required, just listen
+                window.addEventListener('deviceorientation', handleOrientation);
+                btn.innerText = 'Sensor Diaktifkan — Miringkan HP...';
+                document.getElementById('sensor-badge').innerText = 'MEMINDAI...';
+                document.getElementById('sensor-badge').className = 'badge badge-info';
+                // Timeout: jika setelah 5 detik tidak ada data, tandai tidak responsif
+                setTimeout(() => {
+                    if (!sensorDataReceived) {
+                        btn.disabled = false;
+                        btn.innerText = 'Sensor Tidak Merespons — Coba Lagi';
+                        btn.style.background = '#DC2626';
+                        document.getElementById('sensor-badge').innerText = 'TIDAK RESPONSIF';
+                        document.getElementById('sensor-badge').className = 'badge badge-danger';
+                        document.getElementById('sens-status').innerText = 'Tidak Responsif';
+                        document.getElementById('sens-status').style.color = '#F87171';
+                    }
+                }, 5000);
+            } else {
+                // Sensor API not available at all
+                btn.disabled = false;
+                btn.innerText = 'Sensor Gerak Tidak Tersedia di Browser Ini';
+                btn.style.background = '#DC2626';
+                document.getElementById('sensor-badge').innerText = 'TIDAK TERSEDIA';
+                document.getElementById('sensor-badge').className = 'badge badge-danger';
+                document.getElementById('sens-status').innerText = 'Tidak Tersedia';
+                document.getElementById('sens-status').style.color = '#F87171';
             }
         }
 
@@ -2187,7 +2253,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             const verifySec = document.getElementById('mic-verify-section');
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                lbl.innerHTML = '<span style="color:#F59E0B;">Akses mikrofon browser dibatasi. Silakan verifikasi status fisik pada opsi di bawah:</span>';
+                lbl.innerHTML = '<span style="color:#F59E0B;">Browser ini tidak mendukung akses mikrofon secara langsung. Silakan verifikasi status mikrofon secara manual pada opsi di bawah:</span>';
                 verifySec.style.display = 'block';
                 micVerdict.tested = true;
                 updateAudioVerdict();
@@ -2196,8 +2262,9 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
 
             try {
                 btn.disabled = true;
-                btn.innerText = 'Meminta Izin Mikrofon...';
+                btn.innerText = 'Meminta Izin Akses Mikrofon...';
                 btn.style.background = '#8B5CF6';
+                lbl.innerHTML = '<span style="color:#38BDF8;">Jika muncul popup izin, tekan <b>Izinkan / Allow</b> untuk mengaktifkan mikrofon...</span>';
 
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 let audioCtx, analyser;
@@ -2223,7 +2290,16 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                 } catch(e) {}
 
                 micChunks = [];
-                micRecorder = new MediaRecorder(stream);
+                // Auto-detect best MIME type (iOS Safari doesn't support webm)
+                let recMime = '';
+                if (typeof MediaRecorder.isTypeSupported === 'function') {
+                    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) recMime = 'audio/webm;codecs=opus';
+                    else if (MediaRecorder.isTypeSupported('audio/webm')) recMime = 'audio/webm';
+                    else if (MediaRecorder.isTypeSupported('audio/mp4')) recMime = 'audio/mp4';
+                    else if (MediaRecorder.isTypeSupported('audio/ogg')) recMime = 'audio/ogg';
+                }
+                const recOptions = recMime ? { mimeType: recMime } : {};
+                micRecorder = new MediaRecorder(stream, recOptions);
                 micRecorder.ondataavailable = (e) => {
                     if (e.data.size > 0) micChunks.push(e.data);
                 };

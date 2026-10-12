@@ -3,9 +3,9 @@
   "model_version": "V7",
   "current_epoch": 1,
   "total_epochs": 40,
-  "current_batch": 600,
+  "current_batch": 700,
   "total_batches_per_epoch": 1016,
-  "epoch_progress_percent": 59.1,
-  "overall_progress_percent": 1.48,
-  "last_update": "2026-10-12 11:35:57"
+  "epoch_progress_percent": 68.9,
+  "overall_progress_percent": 1.72,
+  "last_update": "2026-10-12 11:43:03"
 }
