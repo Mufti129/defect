@@ -4147,10 +4147,10 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
     )
 
     if sampling_mode == "Proporsional Seragam per-Grade (Balanced 1:1:1:1)":
-        units_per_grade = st.slider("Jumlah Unit yang Diuji per-Grade (Grade A, B, C, D):", min_value=1, max_value=25, value=5)
+        units_per_grade = st.slider("Jumlah Unit yang Diuji per-Grade (Grade A, B, C, D):", min_value=1, max_value=100, value=5)
         st.caption(f"Total yang akan diuji secara seimbang: **{units_per_grade * 4} unit** ({units_per_grade} Grade A + {units_per_grade} Grade B + {units_per_grade} Grade C + {units_per_grade} Grade D).")
     else:
-        limit_units = st.slider("Jumlah Total Unit Maksimal yang Akan Diuji:", min_value=2, max_value=100, value=20)
+        limit_units = st.slider("Jumlah Total Unit Maksimal yang Akan Diuji:", min_value=2, max_value=400, value=20)
 
     start_batch = st.button(f"Mulai Batch Testing ({active_cfg['short_name']})", type="primary")
 
