@@ -264,7 +264,7 @@ def render_standalone_mobile_diagnostic(session_id: str):
     html_code = get_mobile_diagnostic_html(session_id, app_base_url=app_base) if get_mobile_diagnostic_html else ""
     if html_code:
         import streamlit.components.v1 as components
-        components.html(html_code, height=1250, scrolling=True)
+        components.html(html_code, height=2100, scrolling=True)
 
 
 # Route standalone mobile test directly if accessed via smartphone
@@ -2786,8 +2786,10 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                     "serial": dev_serial,
                     "imei": dev_imei,
                     "os": dev_os,
+                    "soc": dev_soc,
                     "ram_gb": dev_ram,
-                    "storage_gb": dev_storage
+                    "storage_gb": dev_storage,
+                    "screen_res": dev_res if dev_res else "1080 x 2400 px"
                 },
                 "inspeksi_visual_cv": {
                     "cosmetic_grade": cosmetic_letter
@@ -2827,14 +2829,27 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 }
             }
 
-            st.download_button(
-                label="Unduh Sertifikat Diagnostik Lengkap (JSON Resmi)",
-                data=json.dumps(cert_data, indent=2),
-                file_name=f"sertifikat_diagnostik_{dev_serial}_{int(time.time())}.json",
-                mime="application/json",
-                type="primary",
-                use_container_width=True
-            )
+            from src.diagnostics.pdf_certificate import generate_unified_inspection_pdf
+            pdf_bytes = generate_unified_inspection_pdf(cert_data, detailed_record=diag_rec)
+
+            dl_col1, dl_col2 = st.columns(2)
+            with dl_col1:
+                st.download_button(
+                    label="Unduh Sertifikat Taksiran Resmi (PDF)",
+                    data=pdf_bytes,
+                    file_name=f"Sertifikat_Taksiran_PGI_{dev_brand}_{dev_model}_{int(time.time())}.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True
+                )
+            with dl_col2:
+                st.download_button(
+                    label="Unduh Arsip Data Audit Lengkap (JSON)",
+                    data=json.dumps(cert_data, indent=2),
+                    file_name=f"sertifikat_diagnostik_{dev_serial}_{int(time.time())}.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
     else:
         # Tampilan Standby saat belum ada aksi jalankan diagnostik
         st.markdown("""
