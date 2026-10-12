@@ -296,23 +296,35 @@ class DeviceManager:
         # Determine SoC / Chipset
         gpu_renderer = payload.get("gpu_renderer", "")
         cpu_est = payload.get("cpu_est", "8 Cores")
-        soc_payload = payload.get("soc_est", "")
-        if soc_payload:
+        soc_payload = str(payload.get("soc_est", "")).strip()
+
+        # Priority 1: Verified Commercial Database hardware spec
+        if commercial and commercial.get("soc"):
+            soc_desc = commercial["soc"]
+            if gpu_renderer and "Mobile Graphics" not in gpu_renderer:
+                soc_desc = f"{commercial['soc']} ({gpu_renderer})"
+        elif soc_payload and not any(gen in soc_payload for gen in ["ARM64 Mobile Processor (Octa-Core)", "ARM64 Mobile Processor", "Mobile Graphics", "MediaTek Chipset ()"]):
             soc_desc = soc_payload
-        elif commercial and commercial.get("soc"):
-            soc_desc = f"{commercial['soc']} ({gpu_renderer or cpu_est})"
         elif "Adreno 610" in gpu_renderer:
             soc_desc = "Qualcomm Snapdragon 680 (Adreno 610 / 8-Core ARM64)"
+        elif "Adreno 619" in gpu_renderer:
+            soc_desc = "Qualcomm Snapdragon 695 5G (Adreno 619 / 8-Core ARM64)"
+        elif "Adreno 642" in gpu_renderer:
+            soc_desc = "Qualcomm Snapdragon 778G 5G (Adreno 642L / 8-Core ARM64)"
         elif "Adreno 740" in gpu_renderer:
             soc_desc = "Qualcomm Snapdragon 8 Gen 2 (Adreno 740 / 8-Core ARM64)"
         elif "Adreno 730" in gpu_renderer:
             soc_desc = "Qualcomm Snapdragon 8 Gen 1 (Adreno 730 / 8-Core ARM64)"
         elif "Adreno" in gpu_renderer:
             soc_desc = f"Qualcomm Snapdragon ({gpu_renderer} / {cpu_est})"
-        elif "Mali-G57" in gpu_renderer:
-            soc_desc = "MediaTek Helio G85/G88 (Mali-G57 / 8-Core ARM64)"
         elif "Mali-G52" in gpu_renderer:
-            soc_desc = "MediaTek Helio G35/G36 (Mali-G52 / 8-Core ARM64)"
+            soc_desc = "MediaTek Helio G80/G85 (Mali-G52 / 8-Core ARM64)"
+        elif "Mali-G57" in gpu_renderer:
+            soc_desc = "MediaTek Helio G96/G99 / Dimensity 6020 (Mali-G57 / 8-Core ARM64)"
+        elif "Mali-G68" in gpu_renderer:
+            soc_desc = "MediaTek Dimensity 1080 (Mali-G68 / 8-Core ARM64)"
+        elif "Mali-G77" in gpu_renderer:
+            soc_desc = "MediaTek Dimensity 1200 (Mali-G77 / 8-Core ARM64)"
         elif "Mali" in gpu_renderer:
             soc_desc = f"MediaTek Chipset ({gpu_renderer} / {cpu_est})"
         elif "Apple" in gpu_renderer or is_ios:
@@ -322,7 +334,18 @@ class DeviceManager:
         else:
             soc_desc = f"ARM64 Mobile Processor ({cpu_est})"
 
-        os_ver = payload.get("os_version", "Android 14" if not is_ios else "iOS 17.6")
+        # OS Version Resolution (resolving Google Chrome 'Android 10; K' User-Agent reduction)
+        confirmed_os = payload.get("confirmed_os")
+        raw_os = payload.get("os_version", "")
+        if confirmed_os:
+            os_ver = str(confirmed_os).strip()
+        elif raw_os and raw_os not in ["Android 10", "Android OS", "Android"]:
+            os_ver = str(raw_os).strip()
+        elif is_ios:
+            os_ver = "iOS 17.6"
+        else:
+            # Overcoming Google Chrome Android 10 reduction freeze
+            os_ver = "Android 14"
         session_id = payload.get("session_id", "MOBILE-SESSION")
         client_dev_id = payload.get("client_device_id", "DEV")
 
