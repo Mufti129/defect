@@ -1,0 +1,218 @@
+{
+  "benchmark_timestamp": "2026-09-19 13:24:30",
+  "total_units_evaluated": 100,
+  "total_time_seconds": 213.96,
+  "mean_latency_per_unit_sec": 2.14,
+  "mean_confidence": 0.5142,
+  "overall_accuracy": 0.69,
+  "macro_f1": 0.6828,
+  "confusion_matrix": [
+    [
+      12,
+      4,
+      1,
+      8
+    ],
+    [
+      1,
+      22,
+      0,
+      2
+    ],
+    [
+      2,
+      3,
+      14,
+      6
+    ],
+    [
+      1,
+      2,
+      1,
+      21
+    ]
+  ],
+  "per_grade": {
+    "A": {
+      "support": 25,
+      "tp": 12,
+      "fp": 4,
+      "fn": 13,
+      "precision": 0.75,
+      "recall": 0.48,
+      "f1_score": 0.5854
+    },
+    "B": {
+      "support": 25,
+      "tp": 22,
+      "fp": 9,
+      "fn": 3,
+      "precision": 0.7097,
+      "recall": 0.88,
+      "f1_score": 0.7857
+    },
+    "C": {
+      "support": 25,
+      "tp": 14,
+      "fp": 2,
+      "fn": 11,
+      "precision": 0.875,
+      "recall": 0.56,
+      "f1_score": 0.6829
+    },
+    "D": {
+      "support": 25,
+      "tp": 21,
+      "fp": 16,
+      "fn": 4,
+      "precision": 0.5676,
+      "recall": 0.84,
+      "f1_score": 0.6774
+    }
+  },
+  "risk_analysis": {
+    "over_grading_count": 10,
+    "over_grading_rate": 0.1,
+    "under_grading_count": 21,
+    "under_grading_rate": 0.21,
+    "critical_inversions": 9,
+    "critical_inversion_rate": 0.09
+  },
+  "sample_evaluations": [
+    {
+      "unit_id": "1-00022e-13__oppo__oppo-a17-4-64",
+      "true_grade": "A",
+      "predicted_grade": "D",
+      "confidence": 0.3376,
+      "dpi": 12.08,
+      "defects_count": 4,
+      "latency_sec": 2.87
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-15-pro-max-256gb",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "confidence": 0.3426,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 1.889
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-16-128gb",
+      "true_grade": "A",
+      "predicted_grade": "D",
+      "confidence": 1.0,
+      "dpi": 87.3,
+      "defects_count": 5,
+      "latency_sec": 1.652
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-16e-128gb",
+      "true_grade": "A",
+      "predicted_grade": "D",
+      "confidence": 1.0,
+      "dpi": 123.07,
+      "defects_count": 1,
+      "latency_sec": 1.794
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-xs-max-64gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.5017,
+      "dpi": 4.0,
+      "defects_count": 2,
+      "latency_sec": 2.313
+    },
+    {
+      "unit_id": "1-00033e-13__apple__iphone-16-128gb",
+      "true_grade": "A",
+      "predicted_grade": "D",
+      "confidence": 1.0,
+      "dpi": 128.08,
+      "defects_count": 2,
+      "latency_sec": 1.369
+    },
+    {
+      "unit_id": "1-00033e-13__apple__iphone-xr-64gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.4087,
+      "dpi": 2.0,
+      "defects_count": 2,
+      "latency_sec": 1.83
+    },
+    {
+      "unit_id": "1-00043e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "C",
+      "confidence": 0.315,
+      "dpi": 5.0,
+      "defects_count": 5,
+      "latency_sec": 1.269
+    },
+    {
+      "unit_id": "1-00043e-13__apple__iphone-15-128gb",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "confidence": 0.3426,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 1.946
+    },
+    {
+      "unit_id": "1-00043e-13__samsung__samsung-a06-4-64",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.4087,
+      "dpi": 2.0,
+      "defects_count": 2,
+      "latency_sec": 1.026
+    },
+    {
+      "unit_id": "1-00063e-13__apple__iphone-13-mini-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.4135,
+      "dpi": 1.0,
+      "defects_count": 1,
+      "latency_sec": 1.534
+    },
+    {
+      "unit_id": "1-00073e-13__apple__iphone-11-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.4803,
+      "dpi": 3.0,
+      "defects_count": 1,
+      "latency_sec": 1.31
+    },
+    {
+      "unit_id": "1-00083e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "D",
+      "confidence": 1.0,
+      "dpi": 511.85,
+      "defects_count": 13,
+      "latency_sec": 5.398
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-11-64gb",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "confidence": 0.3426,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 1.742
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-15-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3459,
+      "dpi": 9.0,
+      "defects_count": 3,
+      "latency_sec": 1.748
+    }
+  ]
+}

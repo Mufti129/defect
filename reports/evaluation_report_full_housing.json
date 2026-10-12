@@ -1,0 +1,111 @@
+{
+  "timestamp": "2026-09-22 08:17:06",
+  "version": "v3_full_scale_housing",
+  "dataset_scope": "Full Cropped Pool (>9,000 images / 1,918 units)",
+  "views_processed": [
+    "top",
+    "bottom",
+    "left",
+    "right"
+  ],
+  "views_excluded": [
+    "front"
+  ],
+  "total_units_in_pool": 1918,
+  "train_units": 1534,
+  "holdout_test_units": 384,
+  "overall_accuracy": 0.2318,
+  "macro_f1": 0.2321,
+  "confusion_matrix": [
+    [
+      23,
+      7,
+      6,
+      6
+    ],
+    [
+      63,
+      28,
+      39,
+      45
+    ],
+    [
+      37,
+      23,
+      18,
+      22
+    ],
+    [
+      23,
+      10,
+      14,
+      20
+    ]
+  ],
+  "per_grade": {
+    "A": {
+      "support": 42,
+      "tp": 23,
+      "fp": 123,
+      "fn": 19,
+      "precision": 0.1575,
+      "recall": 0.5476,
+      "f1_score": 0.2447
+    },
+    "B": {
+      "support": 175,
+      "tp": 28,
+      "fp": 40,
+      "fn": 147,
+      "precision": 0.4118,
+      "recall": 0.16,
+      "f1_score": 0.2305
+    },
+    "C": {
+      "support": 100,
+      "tp": 18,
+      "fp": 59,
+      "fn": 82,
+      "precision": 0.2338,
+      "recall": 0.18,
+      "f1_score": 0.2034
+    },
+    "D": {
+      "support": 67,
+      "tp": 20,
+      "fp": 73,
+      "fn": 47,
+      "precision": 0.2151,
+      "recall": 0.2985,
+      "f1_score": 0.25
+    }
+  },
+  "risk_analysis": {
+    "over_grading_count": 170,
+    "over_grading_rate": 0.4427,
+    "under_grading_count": 125,
+    "under_grading_rate": 0.3255,
+    "critical_inversions": 29,
+    "critical_inversion_rate": 0.0755
+  },
+  "feature_importances": {
+    "total_area_mm2": 0.1289,
+    "max_defect_length_mm": 0.1176,
+    "max_defect_area_mm2": 0.1162,
+    "frame_area_mm2": 0.1061,
+    "frame_max_length_mm": 0.0955,
+    "total_dpi": 0.0847,
+    "bottom_back_area_mm2": 0.069,
+    "frame_dpi": 0.0587,
+    "bottom_back_dpi": 0.0574,
+    "total_defects": 0.0417,
+    "frame_defect_count": 0.038,
+    "scratch_count": 0.0338,
+    "bottom_back_defect_count": 0.0214,
+    "chip_count": 0.0138,
+    "dent_count": 0.0077,
+    "flawless_flag": 0.005,
+    "crack_count": 0.0044,
+    "broken_count": 0.0
+  }
+}

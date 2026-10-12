@@ -1,0 +1,67 @@
+{
+  "total_dataset_units": 240,
+  "train_units": 192,
+  "test_units": 48,
+  "overall_accuracy": 0.375,
+  "macro_f1": 0.3628,
+  "confusion_matrix": [
+    [
+      4,
+      1,
+      3,
+      4
+    ],
+    [
+      3,
+      2,
+      3,
+      4
+    ],
+    [
+      0,
+      3,
+      4,
+      5
+    ],
+    [
+      0,
+      4,
+      0,
+      8
+    ]
+  ],
+  "per_grade": {
+    "A": {
+      "precision": 0.5714,
+      "recall": 0.3333,
+      "f1_score": 0.4211,
+      "support": 12
+    },
+    "B": {
+      "precision": 0.2,
+      "recall": 0.1667,
+      "f1_score": 0.1818,
+      "support": 12
+    },
+    "C": {
+      "precision": 0.4,
+      "recall": 0.3333,
+      "f1_score": 0.3636,
+      "support": 12
+    },
+    "D": {
+      "precision": 0.381,
+      "recall": 0.6667,
+      "f1_score": 0.4848,
+      "support": 12
+    }
+  },
+  "risk_analysis": {
+    "over_grading_count": 10,
+    "over_grading_rate": 0.2083,
+    "under_grading_count": 20,
+    "under_grading_rate": 0.4167,
+    "critical_inversions": 4,
+    "critical_inversion_rate": 0.0833
+  }
+}

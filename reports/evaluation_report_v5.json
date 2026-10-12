@@ -1,0 +1,395 @@
+{
+  "timestamp": "2026-10-06 08:05:37",
+  "version": "Model_V5_Real_Defect_Detector_800px",
+  "detector_architecture": "YOLOv8s Detect (800x800, 11.2M Params, 30 Epochs)",
+  "training_epochs": 30,
+  "detector_mAP50": 0.3884,
+  "detector_mAP50_95": 0.3258,
+  "detector_recall": 0.6734,
+  "detector_peak_recall": 0.7557,
+  "total_units": 100,
+  "overall_accuracy": 0.27,
+  "macro_f1": 0.2374,
+  "mean_latency_sec": 1.691,
+  "confusion_matrix": [
+    [
+      4,
+      3,
+      5,
+      13
+    ],
+    [
+      4,
+      5,
+      0,
+      16
+    ],
+    [
+      1,
+      7,
+      2,
+      15
+    ],
+    [
+      0,
+      3,
+      6,
+      16
+    ]
+  ],
+  "per_grade": {
+    "A": {
+      "support": 25,
+      "tp": 4,
+      "fp": 5,
+      "fn": 21,
+      "precision": 0.4444,
+      "recall": 0.16,
+      "f1_score": 0.2353
+    },
+    "B": {
+      "support": 25,
+      "tp": 5,
+      "fp": 13,
+      "fn": 20,
+      "precision": 0.2778,
+      "recall": 0.2,
+      "f1_score": 0.2326
+    },
+    "C": {
+      "support": 25,
+      "tp": 2,
+      "fp": 11,
+      "fn": 23,
+      "precision": 0.1538,
+      "recall": 0.08,
+      "f1_score": 0.1053
+    },
+    "D": {
+      "support": 25,
+      "tp": 16,
+      "fp": 44,
+      "fn": 9,
+      "precision": 0.2667,
+      "recall": 0.64,
+      "f1_score": 0.3765
+    }
+  },
+  "risk_analysis": {
+    "over_grading_count": 52,
+    "over_grading_rate": 0.52,
+    "under_grading_count": 21,
+    "under_grading_rate": 0.21,
+    "critical_inversions": 0,
+    "critical_inversion_rate": 0.0
+  },
+  "comparison_with_previous_versions": {
+    "v4_accuracy": 0.46,
+    "v4_mAP50": 0.014,
+    "v5_accuracy": 0.27,
+    "v5_mAP50": 0.3884,
+    "mAP50_improvement_ratio": "27.7x"
+  },
+  "sample_evaluations": [
+    {
+      "unit_id": "1-00022e-13__oppo__oppo-a17-4-64",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "D",
+      "housing_grade": "B",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 16,
+      "latency_sec": 1.769
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-15-pro-max-256gb",
+      "ground_truth": "A",
+      "predicted_grade": "C",
+      "is_correct": false,
+      "screen_grade": "C",
+      "housing_grade": "B",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 5,
+      "latency_sec": 1.705
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-16-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "B",
+      "is_correct": false,
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 3,
+      "latency_sec": 1.078
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-16e-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "A",
+      "is_correct": true,
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 0,
+      "latency_sec": 1.361
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-xs-max-64gb",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "D",
+      "housing_grade": "D",
+      "veto_triggered": true,
+      "veto_reason": "Fatal defect 'broken' (1.3mm) detected on bottom.",
+      "defect_count": 8,
+      "latency_sec": 2.115
+    },
+    {
+      "unit_id": "1-00033e-13__apple__iphone-16-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "C",
+      "is_correct": false,
+      "screen_grade": "C",
+      "housing_grade": "C",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 9,
+      "latency_sec": 1.122
+    },
+    {
+      "unit_id": "1-00033e-13__apple__iphone-xr-64gb",
+      "ground_truth": "A",
+      "predicted_grade": "C",
+      "is_correct": false,
+      "screen_grade": "C",
+      "housing_grade": "B",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 4,
+      "latency_sec": 1.059
+    },
+    {
+      "unit_id": "1-00043e-13__apple__iphone-13-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "B",
+      "is_correct": false,
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 2,
+      "latency_sec": 0.688
+    },
+    {
+      "unit_id": "1-00043e-13__apple__iphone-15-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "C",
+      "is_correct": false,
+      "screen_grade": "C",
+      "housing_grade": "A",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 4,
+      "latency_sec": 1.533
+    },
+    {
+      "unit_id": "1-00043e-13__samsung__samsung-a06-4-64",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "A",
+      "housing_grade": "D",
+      "veto_triggered": true,
+      "veto_reason": "Fatal defect 'broken' (4.6mm) detected on left.",
+      "defect_count": 9,
+      "latency_sec": 0.85
+    },
+    {
+      "unit_id": "1-00063e-13__apple__iphone-13-mini-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "B",
+      "housing_grade": "D",
+      "veto_triggered": true,
+      "veto_reason": "Fatal defect 'broken' (10.5mm) detected on bottom.",
+      "defect_count": 6,
+      "latency_sec": 1.026
+    },
+    {
+      "unit_id": "1-00073e-13__apple__iphone-11-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "C",
+      "housing_grade": "D",
+      "veto_triggered": true,
+      "veto_reason": "Fatal defect 'broken' (11.8mm) detected on top.",
+      "defect_count": 7,
+      "latency_sec": 0.924
+    },
+    {
+      "unit_id": "1-00083e-13__apple__iphone-13-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "D",
+      "housing_grade": "D",
+      "veto_triggered": true,
+      "veto_reason": "Fatal defect 'broken' (1.3mm) detected on bottom.",
+      "defect_count": 17,
+      "latency_sec": 5.691
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-11-64gb",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "D",
+      "housing_grade": "B",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 7,
+      "latency_sec": 1.087
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-15-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "D",
+      "housing_grade": "A",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 5,
+      "latency_sec": 1.235
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-17-256gb",
+      "ground_truth": "A",
+      "predicted_grade": "B",
+      "is_correct": false,
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 5,
+      "latency_sec": 1.106
+    },
+    {
+      "unit_id": "1-00103e-13__apple__iphone-13-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "A",
+      "housing_grade": "D",
+      "veto_triggered": true,
+      "veto_reason": "Fatal defect 'broken' (1.2mm) detected on bottom.",
+      "defect_count": 4,
+      "latency_sec": 1.132
+    },
+    {
+      "unit_id": "1-00103e-13__samsung__samsung-s23-8-128",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "D",
+      "housing_grade": "B",
+      "veto_triggered": true,
+      "veto_reason": "Fatal defect 'crack' (15.8mm) detected on front.",
+      "defect_count": 8,
+      "latency_sec": 1.282
+    },
+    {
+      "unit_id": "1-00133e-13__oppo__oppo-a6x-4-64",
+      "ground_truth": "A",
+      "predicted_grade": "A",
+      "is_correct": true,
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 1,
+      "latency_sec": 2.632
+    },
+    {
+      "unit_id": "1-00153e-13__oppo__oppo-a3s-6-128",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "D",
+      "housing_grade": "B",
+      "veto_triggered": true,
+      "veto_reason": "Fatal defect 'broken' (2.2mm) detected on front.",
+      "defect_count": 7,
+      "latency_sec": 0.655
+    },
+    {
+      "unit_id": "1-00163e-13__apple__iphone-13-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "A",
+      "housing_grade": "D",
+      "veto_triggered": true,
+      "veto_reason": "Fatal defect 'broken' (1.3mm) detected on bottom.",
+      "defect_count": 8,
+      "latency_sec": 1.041
+    },
+    {
+      "unit_id": "1-00163e-13__samsung__samsung-a17-8-256-5g",
+      "ground_truth": "A",
+      "predicted_grade": "D",
+      "is_correct": false,
+      "screen_grade": "D",
+      "housing_grade": "B",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 11,
+      "latency_sec": 1.598
+    },
+    {
+      "unit_id": "1-00173e-13__apple__iphone-13-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "A",
+      "is_correct": true,
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 0,
+      "latency_sec": 0.895
+    },
+    {
+      "unit_id": "1-00173e-13__apple__iphone-15-128gb",
+      "ground_truth": "A",
+      "predicted_grade": "A",
+      "is_correct": true,
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 1,
+      "latency_sec": 1.256
+    },
+    {
+      "unit_id": "1-00173e-13__apple__iphone-16-pro-max-256gb",
+      "ground_truth": "A",
+      "predicted_grade": "C",
+      "is_correct": false,
+      "screen_grade": "C",
+      "housing_grade": "A",
+      "veto_triggered": false,
+      "veto_reason": null,
+      "defect_count": 2,
+      "latency_sec": 2.352
+    }
+  ]
+}

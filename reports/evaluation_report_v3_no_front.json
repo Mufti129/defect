@@ -1,0 +1,270 @@
+{
+  "benchmark_timestamp": "2026-09-22 08:18:53",
+  "version": "v3_housing_only",
+  "total_units_evaluated": 100,
+  "views_per_unit": [
+    "bottom",
+    "left",
+    "right",
+    "top"
+  ],
+  "total_time_seconds": 98.79,
+  "mean_latency_per_unit_sec": 0.99,
+  "mean_confidence": 0.3879,
+  "overall_accuracy": 0.57,
+  "macro_f1": 0.5558,
+  "confusion_matrix": [
+    [
+      20,
+      2,
+      1,
+      2
+    ],
+    [
+      12,
+      6,
+      3,
+      4
+    ],
+    [
+      5,
+      3,
+      16,
+      1
+    ],
+    [
+      7,
+      1,
+      2,
+      15
+    ]
+  ],
+  "per_grade": {
+    "A": {
+      "support": 25,
+      "tp": 20,
+      "fp": 24,
+      "fn": 5,
+      "precision": 0.4545,
+      "recall": 0.8,
+      "f1_score": 0.5797
+    },
+    "B": {
+      "support": 25,
+      "tp": 6,
+      "fp": 6,
+      "fn": 19,
+      "precision": 0.5,
+      "recall": 0.24,
+      "f1_score": 0.3243
+    },
+    "C": {
+      "support": 25,
+      "tp": 16,
+      "fp": 6,
+      "fn": 9,
+      "precision": 0.7273,
+      "recall": 0.64,
+      "f1_score": 0.6809
+    },
+    "D": {
+      "support": 25,
+      "tp": 15,
+      "fp": 7,
+      "fn": 10,
+      "precision": 0.6818,
+      "recall": 0.6,
+      "f1_score": 0.6383
+    }
+  },
+  "risk_analysis": {
+    "over_grading_count": 30,
+    "over_grading_rate": 0.3,
+    "under_grading_count": 13,
+    "under_grading_rate": 0.13,
+    "critical_inversions": 9,
+    "critical_inversion_rate": 0.09
+  },
+  "sample_evaluations": [
+    {
+      "unit_id": "1-00022e-13__oppo__oppo-a17-4-64",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "confidence": 0.3552,
+      "dpi": 3.69,
+      "defects_count": 1,
+      "latency_sec": 1.975
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-15-pro-max-256gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3674,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 0.733
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-16-128gb",
+      "true_grade": "A",
+      "predicted_grade": "C",
+      "confidence": 0.2728,
+      "dpi": 4.0,
+      "defects_count": 4,
+      "latency_sec": 0.816
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-16e-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3674,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 0.788
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-xs-max-64gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3609,
+      "dpi": 1.0,
+      "defects_count": 1,
+      "latency_sec": 1.306
+    },
+    {
+      "unit_id": "1-00033e-13__apple__iphone-16-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.4164,
+      "dpi": 1.0,
+      "defects_count": 1,
+      "latency_sec": 0.659
+    },
+    {
+      "unit_id": "1-00033e-13__apple__iphone-xr-64gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3093,
+      "dpi": 2.0,
+      "defects_count": 2,
+      "latency_sec": 1.055
+    },
+    {
+      "unit_id": "1-00043e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "D",
+      "confidence": 0.3099,
+      "dpi": 5.0,
+      "defects_count": 5,
+      "latency_sec": 0.648
+    },
+    {
+      "unit_id": "1-00043e-13__apple__iphone-15-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3674,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 0.784
+    },
+    {
+      "unit_id": "1-00043e-13__samsung__samsung-a06-4-64",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3437,
+      "dpi": 2.0,
+      "defects_count": 2,
+      "latency_sec": 0.516
+    },
+    {
+      "unit_id": "1-00063e-13__apple__iphone-13-mini-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.5024,
+      "dpi": 1.0,
+      "defects_count": 1,
+      "latency_sec": 0.836
+    },
+    {
+      "unit_id": "1-00073e-13__apple__iphone-11-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3674,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 0.759
+    },
+    {
+      "unit_id": "1-00083e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "D",
+      "confidence": 1.0,
+      "dpi": 87.18,
+      "defects_count": 9,
+      "latency_sec": 0.826
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-11-64gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3674,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 0.808
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-15-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3674,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 0.882
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-17-256gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.4363,
+      "dpi": 16.63,
+      "defects_count": 1,
+      "latency_sec": 0.926
+    },
+    {
+      "unit_id": "1-00103e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3674,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 0.922
+    },
+    {
+      "unit_id": "1-00103e-13__samsung__samsung-s23-8-128",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.4249,
+      "dpi": 1.0,
+      "defects_count": 1,
+      "latency_sec": 1.031
+    },
+    {
+      "unit_id": "1-00133e-13__oppo__oppo-a6x-4-64",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.313,
+      "dpi": 16.52,
+      "defects_count": 1,
+      "latency_sec": 1.096
+    },
+    {
+      "unit_id": "1-00153e-13__oppo__oppo-a3s-6-128",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "confidence": 0.3674,
+      "dpi": 0.0,
+      "defects_count": 0,
+      "latency_sec": 0.323
+    }
+  ]
+}

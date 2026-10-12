@@ -1,0 +1,120 @@
+{
+  "defect_detection_metrics": {
+    "per_class": {
+      "dent": {
+        "tp": 24,
+        "fp": 0,
+        "fn": 1,
+        "support": 25,
+        "precision": 1.0,
+        "recall": 0.96,
+        "f1_score": 0.9796
+      },
+      "broken": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "support": 5,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0
+      },
+      "scratch": {
+        "tp": 28,
+        "fp": 0,
+        "fn": 2,
+        "support": 30,
+        "precision": 1.0,
+        "recall": 0.9333,
+        "f1_score": 0.9655
+      },
+      "chip": {
+        "tp": 24,
+        "fp": 0,
+        "fn": 1,
+        "support": 25,
+        "precision": 1.0,
+        "recall": 0.96,
+        "f1_score": 0.9796
+      },
+      "crack": {
+        "tp": 20,
+        "fp": 0,
+        "fn": 0,
+        "support": 20,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0
+      }
+    },
+    "macro_precision": 1.0,
+    "macro_recall": 0.9707,
+    "macro_f1": 0.9851,
+    "total_detections": 101,
+    "total_ground_truths": 105
+  },
+  "cosmetic_grading_metrics": {
+    "total_units": 100,
+    "overall_accuracy": 0.9,
+    "macro_f1": 0.9056,
+    "confusion_matrix": [
+      [
+        23,
+        2,
+        0,
+        0
+      ],
+      [
+        2,
+        24,
+        4,
+        0
+      ],
+      [
+        0,
+        1,
+        23,
+        1
+      ],
+      [
+        0,
+        0,
+        0,
+        20
+      ]
+    ],
+    "per_grade": {
+      "A": {
+        "support": 25,
+        "precision": 0.92,
+        "recall": 0.92,
+        "f1_score": 0.92
+      },
+      "B": {
+        "support": 30,
+        "precision": 0.8889,
+        "recall": 0.8,
+        "f1_score": 0.8421
+      },
+      "C": {
+        "support": 25,
+        "precision": 0.8519,
+        "recall": 0.92,
+        "f1_score": 0.8846
+      },
+      "D": {
+        "support": 20,
+        "precision": 0.9524,
+        "recall": 1.0,
+        "f1_score": 0.9756
+      }
+    },
+    "risk_analysis": {
+      "over_grading_count": 3,
+      "over_grading_rate": 0.03,
+      "under_grading_count": 7,
+      "under_grading_rate": 0.07,
+      "critical_inversions": 0
+    }
+  }
+}

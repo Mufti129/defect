@@ -1,0 +1,357 @@
+{
+  "timestamp": "2026-10-01 10:50:45",
+  "version": "Model_V4_Hierarchical_Dual_Tier",
+  "total_units": 100,
+  "overall_accuracy": 0.46,
+  "macro_f1": 0.4365,
+  "mean_latency_sec": 0.86,
+  "confusion_matrix": [
+    [
+      17,
+      7,
+      0,
+      1
+    ],
+    [
+      5,
+      12,
+      3,
+      5
+    ],
+    [
+      6,
+      5,
+      4,
+      10
+    ],
+    [
+      6,
+      4,
+      2,
+      13
+    ]
+  ],
+  "per_grade": {
+    "A": {
+      "support": 25,
+      "tp": 17,
+      "fp": 17,
+      "fn": 8,
+      "precision": 0.5,
+      "recall": 0.68,
+      "f1_score": 0.5763
+    },
+    "B": {
+      "support": 25,
+      "tp": 12,
+      "fp": 16,
+      "fn": 13,
+      "precision": 0.4286,
+      "recall": 0.48,
+      "f1_score": 0.4528
+    },
+    "C": {
+      "support": 25,
+      "tp": 4,
+      "fp": 5,
+      "fn": 21,
+      "precision": 0.4444,
+      "recall": 0.16,
+      "f1_score": 0.2353
+    },
+    "D": {
+      "support": 25,
+      "tp": 13,
+      "fp": 16,
+      "fn": 12,
+      "precision": 0.4483,
+      "recall": 0.52,
+      "f1_score": 0.4815
+    }
+  },
+  "risk_analysis": {
+    "over_grading_count": 28,
+    "over_grading_rate": 0.28,
+    "under_grading_count": 26,
+    "under_grading_rate": 0.26,
+    "critical_inversions": 11,
+    "critical_inversion_rate": 0.11
+  },
+  "sample_evaluations": [
+    {
+      "unit_id": "1-00022e-13__oppo__oppo-a17-4-64",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "total_dpi": 3.5,
+      "total_defects": 1,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-15-pro-max-256gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-16-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-16e-128gb",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "total_dpi": 3.5,
+      "total_defects": 1,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00023e-13__apple__iphone-xs-max-64gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00033e-13__apple__iphone-16-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00033e-13__apple__iphone-xr-64gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00043e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "total_dpi": 4.2,
+      "total_defects": 1,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00043e-13__apple__iphone-15-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00043e-13__samsung__samsung-a06-4-64",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "total_dpi": 3.5,
+      "total_defects": 1,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00063e-13__apple__iphone-13-mini-128gb",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "total_dpi": 5.28,
+      "total_defects": 1,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00073e-13__apple__iphone-11-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00083e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "D",
+      "screen_grade": "D",
+      "housing_grade": "B",
+      "total_dpi": 37.85,
+      "total_defects": 4,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-11-64gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-15-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00093e-13__apple__iphone-17-256gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00103e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00103e-13__samsung__samsung-s23-8-128",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00133e-13__oppo__oppo-a6x-4-64",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00153e-13__oppo__oppo-a3s-6-128",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00163e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00163e-13__samsung__samsung-a17-8-256-5g",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "total_dpi": 4.2,
+      "total_defects": 1,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00173e-13__apple__iphone-13-128gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00173e-13__apple__iphone-15-128gb",
+      "true_grade": "A",
+      "predicted_grade": "B",
+      "screen_grade": "A",
+      "housing_grade": "B",
+      "total_dpi": 4.2,
+      "total_defects": 1,
+      "is_veto": false,
+      "veto_reason": null
+    },
+    {
+      "unit_id": "1-00173e-13__apple__iphone-16-pro-max-256gb",
+      "true_grade": "A",
+      "predicted_grade": "A",
+      "screen_grade": "A",
+      "housing_grade": "A",
+      "total_dpi": 0.0,
+      "total_defects": 0,
+      "is_veto": false,
+      "veto_reason": null
+    }
+  ]
+}
