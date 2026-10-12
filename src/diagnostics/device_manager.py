@@ -17,6 +17,7 @@ from .battery_analyzer import BatteryAnalyzer, BatteryReport
 from .sensor_validator import SensorValidator, SensorReport
 from .oem_authenticity import OEMAuthenticityChecker, OEMPartReport
 from .interactive_test_runner import InteractiveTestRunner, InteractiveTestResult
+from .model_lookup import lookup_commercial_model
 
 
 @dataclass
@@ -267,24 +268,40 @@ class DeviceManager:
         is_ios = payload.get("is_ios", False)
         dev_type = "ios" if is_ios else "android"
 
+        # Commercial Database Resolution
+        lookup_target = f"{model} {payload.get('device_model', '')} {ua}"
+        commercial = lookup_commercial_model(lookup_target) or lookup_commercial_model(model)
+        if commercial:
+            brand = commercial["brand"]
+            code_suffix = f" ({commercial['code']})" if commercial["code"] not in commercial["model"] else ""
+            model = f"{commercial['model']}{code_suffix}"
+            market_name = commercial["market_name"]
+        else:
+            market_name = payload.get("device_model", f"{brand} {model}")
+
         # Determine RAM and ROM
         confirmed_rom_str = str(payload.get("confirmed_rom", "128 GB"))
         try:
             rom_val = int("".join(filter(str.isdigit, confirmed_rom_str)))
         except Exception:
-            rom_val = 128
+            rom_val = commercial.get("storage_gb", 128) if commercial else 128
 
         ram_est_str = str(payload.get("ram_est", "4 GB"))
         try:
             ram_digits = "".join(filter(str.isdigit, ram_est_str.split("-")[0]))
-            ram_val = int(ram_digits) if ram_digits else 4
+            ram_val = int(ram_digits) if ram_digits else (commercial.get("ram_gb", 4) if commercial else 4)
         except Exception:
-            ram_val = 4
+            ram_val = commercial.get("ram_gb", 4) if commercial else 4
 
         # Determine SoC / Chipset
         gpu_renderer = payload.get("gpu_renderer", "")
         cpu_est = payload.get("cpu_est", "8 Cores")
-        if "Adreno 610" in gpu_renderer:
+        soc_payload = payload.get("soc_est", "")
+        if soc_payload:
+            soc_desc = soc_payload
+        elif commercial and commercial.get("soc"):
+            soc_desc = f"{commercial['soc']} ({gpu_renderer or cpu_est})"
+        elif "Adreno 610" in gpu_renderer:
             soc_desc = "Qualcomm Snapdragon 680 (Adreno 610 / 8-Core ARM64)"
         elif "Adreno 740" in gpu_renderer:
             soc_desc = "Qualcomm Snapdragon 8 Gen 2 (Adreno 740 / 8-Core ARM64)"
@@ -316,7 +333,7 @@ class DeviceManager:
             serial=f"MOB-{session_id[-6:]}-{client_dev_id[-4:]}",
             brand=brand,
             model=model,
-            market_name=payload.get("device_model", f"{brand} {model}"),
+            market_name=market_name,
             os_version=os_ver,
             soc=soc_desc,
             imei=f"35{abs(hash(client_dev_id)) % 10000000000000:013d}",
