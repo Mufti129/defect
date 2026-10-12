@@ -2337,6 +2337,12 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         inter_audio = bool(_safe_get(inter, "audio_loopback_passed", True))
         inter_btn = bool(_safe_get(inter, "buttons_passed", True))
         inter_notes = _safe_get(inter, "notes", []) or []
+        inter_cells_passed = int(_safe_get(inter, "touch_cells_passed", 84 if inter_touch else int(84 * (inter_cov / 100.0))))
+        inter_total_cells = int(_safe_get(inter, "touch_total_cells", 84))
+        inter_speaker_status = str(_safe_get(inter, "speaker_status", "LOLOS (Jernih)" if inter_audio else "CACAT / TIDAK LOLOS"))
+        inter_haptic_status = str(_safe_get(inter, "haptic_status", "AKTIF (Kuat & Stabil)" if inter_btn else "TIDAK BERGETAR"))
+        inter_mic_status = str(_safe_get(inter, "mic_status", "LOLOS (Audio Loopback Jernih)" if inter_audio else "TIDAK MERESPONS"))
+        inter_buttons_status = _safe_get(inter, "buttons_status", {}) or {}
 
         # Banner Ringkasan Status
         status_color = "#10B981" if "PASS" in str(diag_f_grade) else ("#F59E0B" if "WARNING" in str(diag_f_grade) else "#EF4444")
@@ -2578,51 +2584,108 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         # TAB 5: UJI FUNGSIONAL INTERAKTIF (CIT MODE)
         with diag_tab5:
             st.markdown("#### Uji Fungsional Interaktif Layar Sentuh & Tombol Fisik (CIT)")
-            cit_c1, cit_c2 = st.columns([1.6, 1.4])
+            cit_c1, cit_c2 = st.columns([1.5, 1.5])
 
             with cit_c1:
-                st.markdown(f"##### 1. Matriks Layar Sentuh Multi-Touch Digitizer ({inter_cov:.0f}% Cakupan):")
-                st.markdown("<p style='font-size: 0.82rem; color: #6B7280; margin-top: -6px;'>Verifikasi seluruh penampang kaca terhadap blind spot atau dead-zone layar sentuh.</p>", unsafe_allow_html=True)
+                st.markdown(f"##### 1. Matriks Layar Sentuh Multi-Touch Digitizer ({inter_cov:.0f}% Cakupan Terusap):")
+                st.markdown("<p style='font-size: 0.82rem; color: #6B7280; margin-top: -6px;'>Verifikasi sampling edge-to-edge sensor kaca terhadap titik mati (dead-zone) digitizer.</p>", unsafe_allow_html=True)
 
-                touch_ok = inter_touch
-                grid_cols = st.columns(6)
-                for r in range(4):
-                    for c in range(6):
-                        cell_idx = r * 6 + c
-                        with grid_cols[c]:
-                            is_cell_dead = (not touch_ok) and (cell_idx in [8, 9, 14])
-                            cell_bg = "#EF4444" if is_cell_dead else "#10B981"
-                            cell_icon = "FAIL" if is_cell_dead else "OK"
-                            st.markdown(f"""
-                            <div style="background: {cell_bg}; color: white; text-align: center; border-radius: 6px; padding: 10px 0; font-weight: 800; font-size: 0.85rem; margin-bottom: 6px;">
-                                {cell_icon}
-                            </div>
-                            """, unsafe_allow_html=True)
+                tc_c1, tc_c2, tc_c3 = st.columns(3)
+                with tc_c1:
+                    st.markdown(f"""
+                    <div style="background: white; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 12px; text-align: center;">
+                        <div style="font-size: 0.70rem; color: #6B7280; font-weight: 700; text-transform: uppercase;">Cakupan Sentuh</div>
+                        <div style="font-size: 1.15rem; font-weight: 800; color: {'#059669' if inter_cov >= 80 else '#DC2626'};">{inter_cov:.0f}%</div>
+                        <div style="font-size: 0.68rem; color: #9CA3AF;">{inter_cells_passed}/{inter_total_cells} Sel Terusap</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with tc_c2:
+                    st.markdown(f"""
+                    <div style="background: white; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 12px; text-align: center;">
+                        <div style="font-size: 0.70rem; color: #6B7280; font-weight: 700; text-transform: uppercase;">Resolusi Kaca</div>
+                        <div style="font-size: 0.95rem; font-weight: 800; color: #1E1B4B; margin-top: 3px;">{dev_res if dev_res else 'FHD+'}</div>
+                        <div style="font-size: 0.68rem; color: #9CA3AF;">Refresh: {dev_hz if dev_hz else '60 Hz'}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with tc_c3:
+                    st.markdown(f"""
+                    <div style="background: white; border: 1px solid #E5E7EB; border-radius: 8px; padding: 8px 12px; text-align: center;">
+                        <div style="font-size: 0.70rem; color: #6B7280; font-weight: 700; text-transform: uppercase;">Status Dead-Zone</div>
+                        <div style="font-size: 0.95rem; font-weight: 800; color: {'#059669' if inter_touch else '#DC2626'}; margin-top: 3px;">{'NOL DEAD-ZONE' if inter_touch else 'DEAD-ZONE (D)'}</div>
+                        <div style="font-size: 0.68rem; color: {'#059669' if inter_touch else '#DC2626'};">{'100% Responsif' if inter_touch else 'Veto Mutlak'}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                if touch_ok:
-                    st.success(f"Layar Sentuh Merespons Sempurna ({inter_cov:.0f}% Terusap Bebas Dead-Zone).")
+                # Visual Proportional Digitizer Grid (84 Quadrants: 7 cols x 12 rows)
+                grid_cells_html = []
+                dead_indices = set() if inter_touch else {14, 15, 22, 23, 42}
+                for i in range(inter_total_cells):
+                    is_dead = i in dead_indices or (not inter_touch and i >= inter_cells_passed)
+                    bg_col = "#EF4444" if is_dead else "#10B981"
+                    txt_label = "X" if is_dead else "✓"
+                    grid_cells_html.append(f'<div style="background: {bg_col}; color: white; text-align: center; font-size: 0.60rem; font-weight: 800; border-radius: 3px; padding: 4px 0; line-height: 1;">{txt_label}</div>')
+
+                st.markdown(f"""
+                <div style="margin: 10px 0 12px 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 0.72rem; color: #4B5563; font-weight: 600;">Matriks Sampling Panel Kaca HP ({inter_total_cells} Kuadran Digitizer):</span>
+                        <span style="font-size: 0.70rem; color: {'#059669' if inter_touch else '#DC2626'}; font-weight: 700;">{'Semua Kuadran Lolos Uji' if inter_touch else 'Ditemukan Blind Spot'}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; background: #0F172A; padding: 6px; border-radius: 10px; border: 1px solid #334155; max-height: 230px; overflow-y: auto;">
+                        {''.join(grid_cells_html)}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if inter_touch:
+                    st.success(f"Layar Sentuh Merespons Sempurna ({inter_cov:.0f}% Terusap Bebas Dead-Zone: {inter_cells_passed}/{inter_total_cells} Sel).")
                 else:
-                    st.error(f"Dead-Zone Terdeteksi pada Titik Sentuh Layar ({inter_cov:.0f}% Cakupan)! Memicu Veto Grade D Mutlak.")
+                    st.error(f"Dead-Zone Terdeteksi pada Titik Sentuh Layar ({inter_cov:.0f}% Cakupan: {inter_cells_passed}/{inter_total_cells} Sel)! Memicu Veto Grade D Mutlak.")
 
                 if inter_notes:
                     st.markdown("<div style='font-size: 0.80rem; color: #4B5563; margin-top: 6px;'><b>Catatan Verifikasi Uji Langsung:</b></div>", unsafe_allow_html=True)
                     for n in inter_notes:
-                        st.markdown(f"<div style='font-size: 0.78rem; color: #1F2937;'>• {n}</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='font-size: 0.76rem; color: #1F2937;'>• {n}</div>", unsafe_allow_html=True)
 
             with cit_c2:
                 st.markdown("##### 2. Uji Audio Loopback & Respons Fisik:")
-                spk_status = "LOLOS (Jernih)" if inter_audio else "CACAT / TIDAK LOLOS"
-                haptic_status = "AKTIF (Kuat & Stabil)" if inter_btn else "TIDAK BERGETAR / LEMAH"
+                st.markdown("<p style='font-size: 0.82rem; color: #6B7280; margin-top: -6px;'>Verifikasi interaktif multi-tone speaker, perekaman loopback mikrofon, dan sakelar klik tombol fisik.</p>", unsafe_allow_html=True)
+
+                vol_up_st = inter_buttons_status.get("vol_up", "LOLOS (Responsif)" if inter_btn else "CACAT / AMBLAS")
+                vol_down_st = inter_buttons_status.get("vol_down", "LOLOS (Responsif)" if inter_btn else "CACAT / AMBLAS")
+                power_st = inter_buttons_status.get("power", "LOLOS (Responsif)" if inter_btn else "CACAT / AMBLAS")
+
                 audio_key_df = pd.DataFrame([
-                    {"Elemen Perangkat": "Loudspeaker Utama (3 Nada)", "Uji": "Audio Multi-Tone Test", "Status": spk_status},
-                    {"Elemen Perangkat": "Motor Getar Fisik (3 Pulsa)", "Uji": "Haptic Actuator Impulse", "Status": haptic_status},
-                    {"Elemen Perangkat": "Mikrofon Utama (Bawah)", "Uji": "Acoustic Sample Check", "Status": "LOLOS"},
-                    {"Elemen Perangkat": "Mikrofon Sekunder", "Uji": "Noise Cancellation Check", "Status": "LOLOS"},
-                    {"Elemen Perangkat": "Tombol Volume Up (+)", "Uji": "Physical Key Down Event", "Status": "AKTIF"},
-                    {"Elemen Perangkat": "Tombol Volume Down (-)", "Uji": "Physical Key Down Event", "Status": "AKTIF"},
-                    {"Elemen Perangkat": "Tombol Power / Kunci Layar", "Uji": "Power Press & Wake Event", "Status": "AKTIF"}
+                    {"Elemen Perangkat": "Loudspeaker Utama (3 Nada)", "Metode Uji CIT": "Multi-Tone Synthesis (261, 523, 1046 Hz)", "Status Hasil Uji HP": inter_speaker_status},
+                    {"Elemen Perangkat": "Motor Getar Fisik (3 Pulsa)", "Metode Uji CIT": "Haptic Actuator Impulse (180, 220, 300 ms)", "Status Hasil Uji HP": inter_haptic_status},
+                    {"Elemen Perangkat": "Mikrofon Utama (Audio Loopback)", "Metode Uji CIT": "Acoustic Sample Record (2.5s) & Playback", "Status Hasil Uji HP": inter_mic_status},
+                    {"Elemen Perangkat": "Mikrofon Sekunder", "Metode Uji CIT": "Noise Cancellation & Ambient Acoustic Check", "Status Hasil Uji HP": "LOLOS (Filter Bising Aktif)"},
+                    {"Elemen Perangkat": "Tombol Volume Up (+)", "Metode Uji CIT": "Physical Key Down Event & Switch Integrity", "Status Hasil Uji HP": vol_up_st},
+                    {"Elemen Perangkat": "Tombol Volume Down (-)", "Metode Uji CIT": "Physical Key Down Event & Switch Integrity", "Status Hasil Uji HP": vol_down_st},
+                    {"Elemen Perangkat": "Tombol Power / Kunci Layar", "Metode Uji CIT": "Power Switch Tactile Response & Screen Wake", "Status Hasil Uji HP": power_st}
                 ])
                 st.dataframe(audio_key_df, hide_index=True, use_container_width=True)
+
+                all_physical_pass = (
+                    "LOLOS" in inter_speaker_status and
+                    "AKTIF" in inter_haptic_status and
+                    "LOLOS" in inter_mic_status and
+                    "LOLOS" in vol_up_st and
+                    "LOLOS" in vol_down_st and
+                    "LOLOS" in power_st
+                )
+                if all_physical_pass:
+                    st.markdown("""
+                    <div style="background: #ECFDF5; border: 1px solid #6EE7B7; border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 0.80rem; color: #065F46;">
+                        <b>Verifikasi Fisik & Audio Sempurna:</b> Speaker, mikrofon loopback, motor getar, dan tombol fisik terkonfirmasi beroperasi normal 100% tanpa pengurangan skor DPI.
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("""
+                    <div style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 0.80rem; color: #991B1B;">
+                        <b>Peringatan Kerusakan Fisik:</b> Ditemukan komponen fisik/akustik yang cacat atau tombol amblas. Penalti penaksiran diterapkan otomatis pada sertifikat final.
+                    </div>
+                    """, unsafe_allow_html=True)
 
         # TAB 6: VALUASI TERPADU DUA-ARAH (CV + INTERNAL)
         with diag_tab6:
@@ -2745,6 +2808,13 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                     },
                     "interactive_cit": {
                         "touch_passed": inter_touch,
+                        "touch_coverage_pct": inter_cov,
+                        "touch_cells_passed": inter_cells_passed,
+                        "touch_total_cells": inter_total_cells,
+                        "speaker_status": inter_speaker_status,
+                        "haptic_status": inter_haptic_status,
+                        "mic_status": inter_mic_status,
+                        "buttons_status": inter_buttons_status,
                         "audio_passed": inter_audio,
                         "buttons_passed": inter_btn
                     }

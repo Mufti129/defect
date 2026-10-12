@@ -24,6 +24,13 @@ class InteractiveTestResult:
     all_passed: bool
     penalty_points: float
     notes: List[str]
+    touch_cells_passed: int = 84
+    touch_total_cells: int = 84
+    speaker_status: str = "LOLOS (Jernih)"
+    haptic_status: str = "AKTIF (Kuat & Stabil)"
+    mic_loopback_passed: bool = True
+    mic_status: str = "LOLOS (Audio Loopback Jernih)"
+    buttons_status: Optional[Dict[str, str]] = None
 
 
 class InteractiveTestRunner:
@@ -78,5 +85,16 @@ class InteractiveTestRunner:
             buttons_tested=tested_buttons,
             all_passed=all_passed,
             penalty_points=penalty,
-            notes=notes
+            notes=notes,
+            touch_cells_passed=84 if touch_pass else int(84 * (touch_cov / 100.0)),
+            touch_total_cells=84,
+            speaker_status="LOLOS (Jernih)" if audio_pass else "CACAT / TIDAK LOLOS",
+            haptic_status="AKTIF (Kuat & Stabil)" if buttons_ok else "TIDAK BERGETAR",
+            mic_loopback_passed=audio_pass,
+            mic_status="LOLOS (Audio Loopback Jernih)" if audio_pass else "TIDAK MERESPONS",
+            buttons_status={
+                "vol_up": "LOLOS (Responsif)" if buttons_ok else "CACAT / AMBLAS",
+                "vol_down": "LOLOS (Responsif)" if buttons_ok else "CACAT / AMBLAS",
+                "power": "LOLOS (Responsif)" if buttons_ok else "CACAT / AMBLAS"
+            }
         )

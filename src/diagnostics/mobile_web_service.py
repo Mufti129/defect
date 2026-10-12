@@ -355,51 +355,159 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         </button>
     </div>
 
-    <!-- 5. Uji Speaker & Getar Bertahap -->
+    <!-- 5. Uji Audio Loopback & Respons Fisik (CIT) -->
     <div class="card">
         <div class="card-title">
-            <span>5. Speaker Audio & Motor Getar (Uji 3 Nada & 3x Getar)</span>
+            <span>5. Uji Audio Loopback & Respons Fisik (CIT)</span>
             <span class="badge badge-wait" id="audio-badge">MENUNGGU UJI</span>
         </div>
-        <button class="btn-action" id="btn-audio" onclick="runSequentialAudioHapticTest()">
-            Mulai Uji Suara 3 Nada & 3x Getar Fisik
-        </button>
-        <p style="font-size: 0.72rem; color: #94A3B8; margin-top: 6px;" id="audio-status-label">
-            Tekan tombol di atas untuk membunyikan 3 nada bertingkat dan menggetarkan HP 3 kali berturut-turut.
-        </p>
 
-        <!-- Kotak Verifikasi Jawaban Fisik -->
-        <div id="audio-verify-section" style="display: none; margin-top: 10px;">
-            <div class="verify-box">
-                <div class="verify-title">Verifikasi Kualitas Suara Speaker:</div>
-                <label class="radio-opt">
-                    <input type="radio" name="rad-audio" value="clear" checked onchange="updateAudioVerdict()">
-                    <span>Ya, 3 nada terdengar jernih tanpa sember/kresek (Normal)</span>
-                </label>
-                <label class="radio-opt">
-                    <input type="radio" name="rad-audio" value="distorted" onchange="updateAudioVerdict()">
-                    <span>Suara sember / pecah / kresek-kresek (Peringatan Cacat Speaker)</span>
-                </label>
-                <label class="radio-opt">
-                    <input type="radio" name="rad-audio" value="silent" onchange="updateAudioVerdict()">
-                    <span>Tidak ada suara sama sekali (Speaker Rusak / Mati)</span>
-                </label>
+        <!-- Bagian A: Loudspeaker & Getar Haptic -->
+        <div style="background: #0A0F1D; border-radius: 10px; padding: 12px; border: 1px solid #1E293B; margin-bottom: 10px;">
+            <div style="font-size: 0.80rem; font-weight: 700; color: #38BDF8; margin-bottom: 6px;">
+                A. Loudspeaker Utama & Motor Getar (3 Nada & 3x Getar)
+            </div>
+            <button class="btn-action" id="btn-audio" onclick="runSequentialAudioHapticTest()">
+                Mulai Uji Suara 3 Nada & 3x Getar Fisik
+            </button>
+            <p style="font-size: 0.72rem; color: #94A3B8; margin-top: 6px;" id="audio-status-label">
+                Tekan tombol di atas untuk membunyikan 3 nada bertingkat dan menggetarkan HP 3 kali berturut-turut.
+            </p>
+
+            <!-- Kotak Verifikasi Speaker & Getar -->
+            <div id="audio-verify-section" style="display: none; margin-top: 10px;">
+                <div class="verify-box">
+                    <div class="verify-title">Verifikasi Kualitas Suara Speaker:</div>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-audio" value="clear" checked onchange="updateAudioVerdict()">
+                        <span>Ya, 3 nada terdengar jernih tanpa sember/kresek (Normal)</span>
+                    </label>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-audio" value="distorted" onchange="updateAudioVerdict()">
+                        <span>Suara sember / pecah / kresek-kresek (Peringatan Cacat Speaker)</span>
+                    </label>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-audio" value="silent" onchange="updateAudioVerdict()">
+                        <span>Tidak ada suara sama sekali (Speaker Rusak / Mati)</span>
+                    </label>
+                </div>
+
+                <div class="verify-box" style="margin-top: 8px;">
+                    <div class="verify-title">Verifikasi Motor Getar Fisik:</div>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-haptic" value="strong" checked onchange="updateAudioVerdict()">
+                        <span>Ya, HP bergetar 3 kali dengan kuat di tangan (Normal)</span>
+                    </label>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-haptic" value="weak" onchange="updateAudioVerdict()">
+                        <span>Getaran sangat lemah / hampir tidak terasa</span>
+                    </label>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-haptic" value="none" onchange="updateAudioVerdict()">
+                        <span>HP tidak bergetar sama sekali (Motor Getar Rusak / Mati)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bagian B: Uji Audio Loopback Mikrofon -->
+        <div style="background: #0A0F1D; border-radius: 10px; padding: 12px; border: 1px solid #1E293B; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.80rem; font-weight: 700; color: #38BDF8;">B. Uji Loopback Mikrofon (Rekam 2 Detik & Putar Balik)</span>
+                <span class="badge badge-wait" id="mic-badge">MENUNGGU UJI</span>
+            </div>
+            <button class="btn-action" id="btn-mic-test" onclick="startMicLoopbackTest()" style="background: #1E293B; border-color: #0284C7;">
+                Mulai Uji Loopback Mic (Bicara "Halo Cek" 2 Detik)
+            </button>
+            <div style="height: 6px; width: 100%; background: #1E293B; border-radius: 3px; overflow: hidden; margin-top: 8px;">
+                <div id="mic-level-bar" style="height: 100%; width: 0%; background: #10B981; transition: width 0.08s;"></div>
+            </div>
+            <p style="font-size: 0.72rem; color: #94A3B8; margin-top: 6px;" id="mic-status-label">
+                Sistem akan merekam suara Anda selama 2 detik lalu langsung memutarnya kembali melalui speaker HP.
+            </p>
+
+            <!-- Kotak Verifikasi Mikrofon -->
+            <div id="mic-verify-section" style="display: none; margin-top: 10px;">
+                <div class="verify-box">
+                    <div class="verify-title">Verifikasi Hasil Rekaman Suara Mic:</div>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-mic" value="clear" checked onchange="updateAudioVerdict()">
+                        <span>Ya, rekaman suara saya terdengar jelas dari speaker (Normal)</span>
+                    </label>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-mic" value="noisy" onchange="updateAudioVerdict()">
+                        <span>Suara rekaman kecil / sember / bising kresek (Peringatan Cacat Mic)</span>
+                    </label>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-mic" value="silent" onchange="updateAudioVerdict()">
+                        <span>Tidak ada suara rekaman / mic mati sama sekali (Mic Rusak)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bagian C: Uji Respons Tombol Fisik (Volume +, Volume -, Power) -->
+        <div style="background: #0A0F1D; border-radius: 10px; padding: 12px; border: 1px solid #1E293B;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.80rem; font-weight: 700; color: #38BDF8;">C. Uji Respons Tombol Fisik (Key Switch Integrity)</span>
+                <span class="badge badge-wait" id="btn-suite-badge">MENUNGGU UJI</span>
+            </div>
+            <p style="font-size: 0.72rem; color: #94A3B8; margin-bottom: 8px;">
+                Tekan tombol fisik di bodi HP Anda atau klik verifikasi respons klik di bawah:
+            </p>
+
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <!-- Tombol Vol Up -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #131B2E; padding: 8px 10px; border-radius: 6px; border: 1px solid #243352;">
+                    <div>
+                        <div style="font-size: 0.76rem; font-weight: 700; color: #F1F5F9;">Tombol Volume Up (+)</div>
+                        <div style="font-size: 0.68rem; color: #94A3B8;">Tekan tombol fisik Vol (+) di samping HP</div>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span class="badge badge-wait" id="badge-vol-up">BELUM DIUJI</span>
+                        <button onclick="toggleSingleButton('vol_up')" style="background: #1E293B; border: 1px solid #334155; color: #38BDF8; font-size: 0.70rem; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                            Ubah
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tombol Vol Down -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #131B2E; padding: 8px 10px; border-radius: 6px; border: 1px solid #243352;">
+                    <div>
+                        <div style="font-size: 0.76rem; font-weight: 700; color: #F1F5F9;">Tombol Volume Down (-)</div>
+                        <div style="font-size: 0.68rem; color: #94A3B8;">Tekan tombol fisik Vol (-) di samping HP</div>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span class="badge badge-wait" id="badge-vol-down">BELUM DIUJI</span>
+                        <button onclick="toggleSingleButton('vol_down')" style="background: #1E293B; border: 1px solid #334155; color: #38BDF8; font-size: 0.70rem; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                            Ubah
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tombol Power / Kunci Layar -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #131B2E; padding: 8px 10px; border-radius: 6px; border: 1px solid #243352;">
+                    <div>
+                        <div style="font-size: 0.76rem; font-weight: 700; color: #F1F5F9;">Tombol Power / Kunci Layar</div>
+                        <div style="font-size: 0.68rem; color: #94A3B8;">Konfirmasi klik tombol daya tidak amblas</div>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <span class="badge badge-wait" id="badge-power">BELUM DIUJI</span>
+                        <button onclick="toggleSingleButton('power')" style="background: #1E293B; border: 1px solid #334155; color: #38BDF8; font-size: 0.70rem; padding: 4px 8px; border-radius: 4px; cursor: pointer;">
+                            Ubah
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div class="verify-box" style="margin-top: 8px;">
-                <div class="verify-title">Verifikasi Motor Getar Fisik:</div>
-                <label class="radio-opt">
-                    <input type="radio" name="rad-haptic" value="strong" checked onchange="updateAudioVerdict()">
-                    <span>Ya, HP bergetar 3 kali dengan kuat di tangan (Normal)</span>
-                </label>
-                <label class="radio-opt">
-                    <input type="radio" name="rad-haptic" value="weak" onchange="updateAudioVerdict()">
-                    <span>Getaran sangat lemah / hampir tidak terasa</span>
-                </label>
-                <label class="radio-opt">
-                    <input type="radio" name="rad-haptic" value="none" onchange="updateAudioVerdict()">
-                    <span>HP tidak bergetar sama sekali (Motor Getar Rusak / Mati)</span>
-                </label>
+            <!-- Tombol Konfirmasi Cepat -->
+            <div style="display: flex; gap: 6px; margin-top: 10px;">
+                <button onclick="confirmAllButtons(true)" style="flex: 2; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; cursor: pointer;">
+                    Konfirmasi Semua Tombol Fisik Normal
+                </button>
+                <button onclick="confirmAllButtons(false)" style="flex: 1; background: #1E293B; color: #F87171; border: 1px solid #EF4444; padding: 10px; border-radius: 6px; font-weight: 600; font-size: 0.74rem; cursor: pointer;">
+                    Ada Tombol Amblas
+                </button>
             </div>
         </div>
     </div>
@@ -479,6 +587,8 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         let customModelOverride = '';
         let motionData = { alpha: 0, beta: 0, gamma: 0 };
         let audioVerdict = { audio: 'not_tested', haptic: 'not_tested', passed: false };
+        let micVerdict = { tested: false, status: 'clear', passed: true };
+        let buttonStatus = { vol_up: 'PASS', vol_down: 'PASS', power: 'PASS', tested: false };
         let touchResult = { fullscreen_passed: false, coverage_pct: 0, cells_passed: 0, total_cells: 0 };
 
         const MODEL_DATABASE = {
@@ -1845,7 +1955,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
 
             setTimeout(() => {
                 btn.disabled = false;
-                btn.innerText = 'Pengujian Selesai. Silakan Verifikasi di Bawah:';
+                btn.innerText = 'Uji Speaker Selesai. Silakan Verifikasi di Bawah:';
                 btn.style.background = '#0284C7';
                 lbl.innerText = 'Dengarkan suara dan rasakan getaran di HP Anda, lalu pilih jawaban di bawah ini:';
                 document.getElementById('audio-verify-section').style.display = 'block';
@@ -1853,24 +1963,272 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             }, 1800);
         }
 
+        let micRecorder = null;
+        let micChunks = [];
+        let micAudioPlayer = null;
+
+        async function startMicLoopbackTest() {
+            const btn = document.getElementById('btn-mic-test');
+            const lbl = document.getElementById('mic-status-label');
+            const bar = document.getElementById('mic-level-bar');
+            const verifySec = document.getElementById('mic-verify-section');
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                lbl.innerHTML = '<span style="color:#F59E0B;">Akses mikrofon browser dibatasi. Silakan verifikasi status fisik pada opsi di bawah:</span>';
+                verifySec.style.display = 'block';
+                micVerdict.tested = true;
+                updateAudioVerdict();
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.innerText = 'Meminta Izin Mikrofon...';
+                btn.style.background = '#8B5CF6';
+
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                let audioCtx, analyser;
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioCtx.createAnalyser();
+                    const src = audioCtx.createMediaStreamSource(stream);
+                    src.connect(analyser);
+                    analyser.fftSize = 64;
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    const animInterval = setInterval(() => {
+                        if (!micRecorder || micRecorder.state !== 'recording') {
+                            clearInterval(animInterval);
+                            return;
+                        }
+                        analyser.getByteFrequencyData(dataArray);
+                        let sum = 0;
+                        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+                        let avg = sum / dataArray.length;
+                        let pct = Math.min(100, Math.round((avg / 128) * 100));
+                        if (bar) bar.style.width = Math.max(15, pct) + '%';
+                    }, 80);
+                } catch(e) {}
+
+                micChunks = [];
+                micRecorder = new MediaRecorder(stream);
+                micRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) micChunks.push(e.data);
+                };
+
+                micRecorder.onstop = () => {
+                    stream.getTracks().forEach(t => t.stop());
+                    if (audioCtx) { try { audioCtx.close(); } catch(e) {} }
+
+                    const blob = new Blob(micChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(blob);
+
+                    btn.innerText = 'Memutar Balik Suara Rekaman Loopback...';
+                    btn.style.background = '#10B981';
+                    lbl.innerHTML = '<b style="color: #10B981;">Memutar rekaman loopback melalui speaker HP... Dengarkan suara Anda!</b>';
+                    if (bar) bar.style.width = '100%';
+
+                    try {
+                        micAudioPlayer = new Audio(audioUrl);
+                        micAudioPlayer.onended = () => {
+                            btn.disabled = false;
+                            btn.innerText = 'Uji Loopback Mic Lagi (Bicara 2 Detik)';
+                            btn.style.background = '#0284C7';
+                            lbl.innerText = 'Uji loopback selesai diputar. Silakan verifikasi kualitas dengar rekaman di bawah:';
+                            verifySec.style.display = 'block';
+                            micVerdict.tested = true;
+                            updateAudioVerdict();
+                        };
+                        micAudioPlayer.onerror = () => {
+                            btn.disabled = false;
+                            btn.innerText = 'Uji Loopback Mic Selesai';
+                            btn.style.background = '#0284C7';
+                            lbl.innerText = 'Playback selesai. Silakan verifikasi hasil di bawah:';
+                            verifySec.style.display = 'block';
+                            micVerdict.tested = true;
+                            updateAudioVerdict();
+                        };
+                        micAudioPlayer.play().catch(e => {
+                            btn.disabled = false;
+                            btn.innerText = 'Uji Loopback Selesai';
+                            btn.style.background = '#0284C7';
+                            verifySec.style.display = 'block';
+                            micVerdict.tested = true;
+                            updateAudioVerdict();
+                        });
+                    } catch(e) {
+                        btn.disabled = false;
+                        verifySec.style.display = 'block';
+                        micVerdict.tested = true;
+                        updateAudioVerdict();
+                    }
+                };
+
+                micRecorder.start();
+                btn.innerText = 'Merekam... Silakan Bicara "Halo Cek"!';
+                lbl.innerHTML = '<span style="color: #38BDF8; font-weight:700;">Ucapkan "Halo Tes 1 2 3" ke lubang mic bawah HP Anda sekarang!</span>';
+
+                setTimeout(() => {
+                    if (micRecorder && micRecorder.state === 'recording') {
+                        micRecorder.stop();
+                    }
+                }, 2500);
+
+            } catch(err) {
+                btn.disabled = false;
+                btn.innerText = 'Izin Mic Dibatasi / Mode Manual';
+                btn.style.background = '#475569';
+                lbl.innerHTML = '<span style="color:#F59E0B;">Akses mikrofon dibatasi sistem. Silakan verifikasi status fisik mikrofon secara manual di bawah:</span>';
+                verifySec.style.display = 'block';
+                micVerdict.tested = true;
+                updateAudioVerdict();
+            }
+        }
+
+        function toggleSingleButton(btnName) {
+            buttonStatus.tested = true;
+            if (buttonStatus[btnName] === 'PASS') {
+                buttonStatus[btnName] = 'FAIL';
+            } else {
+                buttonStatus[btnName] = 'PASS';
+            }
+            updateButtonBadges();
+            updateAudioVerdict();
+        }
+
+        function confirmAllButtons(isPass) {
+            buttonStatus.tested = true;
+            const val = isPass ? 'PASS' : 'FAIL';
+            buttonStatus.vol_up = val;
+            buttonStatus.vol_down = val;
+            buttonStatus.power = val;
+            updateButtonBadges();
+            updateAudioVerdict();
+        }
+
+        function updateButtonBadges() {
+            const upBadge = document.getElementById('badge-vol-up');
+            const downBadge = document.getElementById('badge-vol-down');
+            const pwrBadge = document.getElementById('badge-power');
+            const suiteBadge = document.getElementById('btn-suite-badge');
+
+            if (upBadge) {
+                if (!buttonStatus.tested) {
+                    upBadge.innerText = 'BELUM DIUJI';
+                    upBadge.className = 'badge badge-wait';
+                } else if (buttonStatus.vol_up === 'PASS') {
+                    upBadge.innerText = 'LOLOS (RESPONSIF)';
+                    upBadge.className = 'badge badge-pass';
+                } else {
+                    upBadge.innerText = 'CACAT / AMBLAS';
+                    upBadge.className = 'badge badge-danger';
+                }
+            }
+
+            if (downBadge) {
+                if (!buttonStatus.tested) {
+                    downBadge.innerText = 'BELUM DIUJI';
+                    downBadge.className = 'badge badge-wait';
+                } else if (buttonStatus.vol_down === 'PASS') {
+                    downBadge.innerText = 'LOLOS (RESPONSIF)';
+                    downBadge.className = 'badge badge-pass';
+                } else {
+                    downBadge.innerText = 'CACAT / AMBLAS';
+                    downBadge.className = 'badge badge-danger';
+                }
+            }
+
+            if (pwrBadge) {
+                if (!buttonStatus.tested) {
+                    pwrBadge.innerText = 'BELUM DIUJI';
+                    pwrBadge.className = 'badge badge-wait';
+                } else if (buttonStatus.power === 'PASS') {
+                    pwrBadge.innerText = 'LOLOS (RESPONSIF)';
+                    pwrBadge.className = 'badge badge-pass';
+                } else {
+                    pwrBadge.innerText = 'CACAT / AMBLAS';
+                    pwrBadge.className = 'badge badge-danger';
+                }
+            }
+
+            if (suiteBadge) {
+                if (!buttonStatus.tested) {
+                    suiteBadge.innerText = 'MENUNGGU UJI';
+                    suiteBadge.className = 'badge badge-wait';
+                } else if (buttonStatus.vol_up === 'PASS' && buttonStatus.vol_down === 'PASS' && buttonStatus.power === 'PASS') {
+                    suiteBadge.innerText = 'SEMUA LOLOS';
+                    suiteBadge.className = 'badge badge-pass';
+                } else {
+                    suiteBadge.innerText = 'CACAT FISIK';
+                    suiteBadge.className = 'badge badge-danger';
+                }
+            }
+        }
+
+        // Global physical keydown listener for mobile devices
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'VolumeUp' || e.keyCode === 175 || e.keyCode === 24) {
+                buttonStatus.tested = true;
+                buttonStatus.vol_up = 'PASS';
+                updateButtonBadges();
+                updateAudioVerdict();
+            } else if (e.key === 'VolumeDown' || e.keyCode === 174 || e.keyCode === 25) {
+                buttonStatus.tested = true;
+                buttonStatus.vol_down = 'PASS';
+                updateButtonBadges();
+                updateAudioVerdict();
+            }
+        });
+
         function updateAudioVerdict() {
             const radAudio = document.querySelector('input[name="rad-audio"]:checked');
             const radHaptic = document.querySelector('input[name="rad-haptic"]:checked');
+            const radMic = document.querySelector('input[name="rad-mic"]:checked');
+
             const audioVal = radAudio ? radAudio.value : 'clear';
             const hapticVal = radHaptic ? radHaptic.value : 'strong';
+            const micVal = radMic ? radMic.value : 'clear';
 
-            const isPassed = (audioVal === 'clear' && hapticVal === 'strong');
+            const spkPassed = (audioVal === 'clear');
+            const hapticPassed = (hapticVal === 'strong');
+            const micPassed = (micVal === 'clear');
+            const btnPassed = (buttonStatus.vol_up === 'PASS' && buttonStatus.vol_down === 'PASS' && buttonStatus.power === 'PASS');
+
             audioVerdict = {
                 audio: audioVal,
                 haptic: hapticVal,
-                passed: isPassed
+                passed: spkPassed && hapticPassed
             };
 
+            micVerdict = {
+                tested: micVerdict.tested || (radMic !== null),
+                status: micVal,
+                passed: micPassed
+            };
+
+            // Update mic badge
+            const micBadge = document.getElementById('mic-badge');
+            if (micBadge) {
+                if (micVal === 'clear' && micVerdict.tested) {
+                    micBadge.innerText = 'LOLOS (JERNIH)';
+                    micBadge.className = 'badge badge-pass';
+                } else if (micVal === 'silent') {
+                    micBadge.innerText = 'MIC RUSAK';
+                    micBadge.className = 'badge badge-danger';
+                } else if (micVal === 'noisy') {
+                    micBadge.innerText = 'SUARA BISING';
+                    micBadge.className = 'badge badge-wait';
+                }
+            }
+
+            // Overall card 5 badge
             const badge = document.getElementById('audio-badge');
-            if (isPassed) {
+            const isAllPass = (spkPassed && hapticPassed && micPassed && btnPassed);
+            const isCriticalFail = (audioVal === 'silent' || hapticVal === 'none' || micVal === 'silent' || !btnPassed);
+
+            if (isAllPass) {
                 badge.innerText = 'LOLOS TERVERIFIKASI';
                 badge.className = 'badge badge-pass';
-            } else if (audioVal === 'silent' || hapticVal === 'none') {
+            } else if (isCriticalFail) {
                 badge.innerText = 'RUSAK FISIK';
                 badge.className = 'badge badge-danger';
             } else {
@@ -1886,6 +2244,8 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             const isShutdown = document.getElementById('chk-shutdown').checked;
             const isPanas = document.getElementById('chk-panas').checked;
             const isPort = document.getElementById('chk-port').checked;
+
+            const isAllAudioBtnPassed = (audioVerdict.audio === 'clear' && audioVerdict.haptic === 'strong' && micVerdict.passed && buttonStatus.vol_up === 'PASS' && buttonStatus.vol_down === 'PASS' && buttonStatus.power === 'PASS');
 
             const payload = {
                 record_id: recordId,
@@ -1922,8 +2282,8 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                 touchscreen: {
                     fullscreen_tested: touchResult.fullscreen_passed,
                     coverage_pct: touchResult.coverage_pct || (touchResult.fullscreen_passed ? 95 : 100),
-                    cells_passed: touchResult.cells_passed || 24,
-                    total_cells: touchResult.total_cells || 24,
+                    cells_passed: touchResult.cells_passed || 84,
+                    total_cells: touchResult.total_cells || 84,
                     zero_deadzone: touchResult.fullscreen_passed ? touchResult.zero_deadzone : true
                 },
                 sensors: {
@@ -1933,10 +2293,17 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                     sample_gamma: motionData.gamma
                 },
                 audio_haptic: {
-                    tested: audioVerdict.audio !== 'not_tested',
-                    audio_quality: audioVerdict.audio,
+                    tested: audioVerdict.audio !== 'not_tested' || micVerdict.tested || buttonStatus.tested,
+                    speaker_quality: audioVerdict.audio,
                     haptic_quality: audioVerdict.haptic,
-                    passed: audioVerdict.passed
+                    mic_quality: micVerdict.status,
+                    mic_passed: micVerdict.passed,
+                    buttons: {
+                        vol_up: buttonStatus.vol_up,
+                        vol_down: buttonStatus.vol_down,
+                        power: buttonStatus.power
+                    },
+                    passed: isAllAudioBtnPassed
                 }
             };
 
