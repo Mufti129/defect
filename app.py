@@ -246,6 +246,17 @@ def render_standalone_mobile_diagnostic(session_id: str):
             padding-right: 0.2rem !important;
             max-width: 100% !important;
         }
+        /* Hide Streamlit Floating Badges & Manage App Crown on Mobile */
+        [data-testid="manage-app-button"],
+        button[title="Manage app"],
+        .viewerBadge_container__1QSob,
+        [class*="viewerBadge"],
+        .stDeployButton {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
     </style>
     """, unsafe_allow_html=True)
 

@@ -110,20 +110,34 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
 
         /* Full Screen Touch Digitizer Overlay */
         #fs-touch-modal {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            width: 100vw; height: 100vh;
-            background: #070B14; z-index: 2147483647 !important; display: none; flex-direction: column;
-            user-select: none; -webkit-user-select: none; touch-action: none; overflow: hidden;
+            position: fixed !important;
+            top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            background: #070B14 !important;
+            z-index: 2147483647 !important;
+            display: none;
+            user-select: none; -webkit-user-select: none;
+            touch-action: none;
+            overflow: hidden !important;
         }
         .fs-hud {
-            height: 56px; background: #0F172A; border-bottom: 1px solid #334155;
-            display: flex; align-items: center; justify-content: space-between; padding: 0 14px;
-            z-index: 10000;
+            position: fixed !important;
+            top: 0 !important; left: 0 !important; right: 0 !important;
+            height: 56px !important;
+            background: #0F172A !important;
+            border-bottom: 2px solid #38BDF8 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 0 12px !important;
+            z-index: 2147483647 !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.9) !important;
+            box-sizing: border-box !important;
         }
         .fs-btn-save-hud {
-            background: #1E293B; color: #64748B; border: 1px solid #334155;
+            background: #1E293B; color: #94A3B8; border: 1px solid #334155;
             padding: 8px 14px; border-radius: 8px; font-weight: 800; font-size: 0.78rem;
-            cursor: not-allowed; transition: all 0.2s;
+            cursor: pointer; transition: all 0.2s;
         }
         .fs-btn-save-hud.active {
             background: #10B981 !important; color: #FFFFFF !important;
@@ -131,29 +145,64 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             box-shadow: 0 0 14px rgba(16, 185, 129, 0.7) !important;
         }
         .fs-grid-container {
-            flex: 1; display: grid; gap: 2px; padding: 3px; background: #070B14;
-            overflow: hidden; touch-action: none;
+            position: fixed !important;
+            top: 56px !important;
+            bottom: 60px !important;
+            left: 0 !important; right: 0 !important;
+            display: grid !important;
+            gap: 3px !important;
+            padding: 4px !important;
+            background: #070B14 !important;
+            overflow: hidden !important;
+            touch-action: none !important;
+            box-sizing: border-box !important;
+            z-index: 2147483640 !important;
         }
         .fs-cell {
-            background: #1E293B; border-radius: 3px; transition: background 0.08s;
+            background: #1E293B; border-radius: 4px; transition: background 0.05s;
         }
         .fs-cell.touched {
-            background: #10B981 !important; box-shadow: 0 0 6px rgba(16, 185, 129, 0.8);
+            background: #10B981 !important; box-shadow: 0 0 8px rgba(16, 185, 129, 0.9);
         }
         .fs-bottom-bar {
-            height: auto; min-height: 56px; background: #0F172A; border-top: 1px solid #334155;
-            display: flex; align-items: center; justify-content: center; padding: 10px 14px;
-            padding-bottom: max(25px, env(safe-area-inset-bottom, 25px));
-            margin-bottom: 40px;
+            position: fixed !important;
+            bottom: 0 !important; left: 0 !important; right: 0 !important;
+            height: 60px !important;
+            background: #0F172A !important;
+            border-top: 2px solid #334155 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 8px 12px !important;
+            padding-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+            z-index: 2147483647 !important;
+            box-sizing: border-box !important;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.9) !important;
         }
         .fs-btn-save {
             background: #334155; color: #94A3B8; border: none; padding: 12px 20px;
             border-radius: 8px; font-weight: 700; font-size: 0.85rem; width: 100%;
-            cursor: not-allowed; transition: all 0.2s;
+            cursor: pointer; transition: all 0.2s;
         }
         .fs-btn-save.active {
-            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-            color: #FFFFFF; cursor: pointer; box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+            color: #FFFFFF !important; cursor: pointer !important;
+            box-shadow: 0 0 16px rgba(16, 185, 129, 0.6) !important;
+        }
+        #fs-prompt-complete {
+            position: fixed !important;
+            top: 50% !important; left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 88% !important; max-width: 340px !important;
+            background: rgba(15, 23, 42, 0.98) !important;
+            border: 3px solid #10B981 !important;
+            border-radius: 16px !important;
+            padding: 20px 16px !important;
+            text-align: center !important;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.95), 0 0 30px rgba(16, 185, 129, 0.6) !important;
+            z-index: 2147483647 !important;
+            display: none;
+            box-sizing: border-box !important;
         }
 
         /* Hide Streamlit Floating Badges & Manage App Logo */
@@ -376,23 +425,27 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
                 <button class="fs-btn-save-hud" id="fs-btn-save-hud" onclick="closeFullscreenTouch(true)">
-                    SELESAI & SIMPAN
+                    Simpan (0%)
                 </button>
-                <button onclick="closeFullscreenTouch(false)" style="background: #334155; color: #94A3B8; border: none; padding: 7px 12px; border-radius: 6px; font-size: 0.76rem; font-weight: 700; cursor: pointer;">
+                <button onclick="closeFullscreenTouch(false)" style="background: #334155; color: #94A3B8; border: none; padding: 8px 12px; border-radius: 6px; font-size: 0.76rem; font-weight: 700; cursor: pointer;">
                     Batal
                 </button>
             </div>
         </div>
 
-        <div id="fs-prompt-complete" style="position: absolute; top: 68px; left: 16px; right: 16px; background: rgba(15, 23, 42, 0.96); border: 2px solid #10B981; border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.85); z-index: 100000; display: none;">
-            <div style="color: #34D399; font-weight: 800; font-size: 0.95rem;">Layar Sentuh Lolos (Minimal 80% Terusap)</div>
-            <div style="color: #CBD5E1; font-size: 0.78rem; margin-top: 4px;">Cakupan sentuh saat ini: <b id="fs-prompt-pct" style="color: #10B981;">85%</b>. Seluruh area kaca teruji responsif.</div>
-            <div style="display: flex; gap: 8px; margin-top: 10px;">
-                <button onclick="closeFullscreenTouch(true)" style="flex: 1; background: #10B981; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">
-                    Selesai & Simpan Hasil
+        <div id="fs-prompt-complete">
+            <div id="fs-prompt-title" style="color: #34D399; font-weight: 800; font-size: 1.05rem;">
+                Layar Sentuh Lolos Uji!
+            </div>
+            <div id="fs-prompt-sub" style="color: #CBD5E1; font-size: 0.80rem; margin-top: 6px;">
+                Cakupan sentuh: <b id="fs-prompt-pct" style="color: #10B981; font-size: 1rem;">85%</b>. Seluruh area digitizer teruji responsif bebas dead-zone.
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
+                <button onclick="closeFullscreenTouch(true)" style="width: 100%; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; font-size: 0.90rem; cursor: pointer; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.5);">
+                    KONFIRMASI & SIMPAN HASIL
                 </button>
-                <button onclick="dismissFSPrompt()" style="background: #334155; color: #E2E8F0; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 0.80rem; cursor: pointer;">
-                    Lanjut Usap Layar
+                <button onclick="dismissFSPrompt()" style="width: 100%; background: #1E293B; color: #94A3B8; border: 1px solid #334155; padding: 10px; border-radius: 8px; font-weight: 600; font-size: 0.80rem; cursor: pointer;">
+                    Lanjut Usap Sisa Layar
                 </button>
             </div>
         </div>
@@ -403,7 +456,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
 
         <div class="fs-bottom-bar">
             <button class="fs-btn-save" id="fs-btn-save" onclick="closeFullscreenTouch(true)">
-                SELESAI & SIMPAN (MINIMAL 80% TERUSAP)
+                USAP SELURUH LAYAR (0%)
             </button>
         </div>
     </div>
@@ -1560,13 +1613,18 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             const modal = document.getElementById('fs-touch-modal');
             const grid = document.getElementById('fs-grid');
             grid.innerHTML = '';
-            modal.style.display = 'flex';
+            modal.style.display = 'block';
 
-            // Calculate grid columns and rows based on screen viewport
-            const cellPx = Math.max(34, Math.min(46, Math.round(window.innerWidth / 8)));
-            const cols = Math.floor(window.innerWidth / cellPx);
-            const availH = window.innerHeight - 110;
-            const rows = Math.floor(availH / cellPx);
+            // Scroll to top so HUD and controls align perfectly
+            window.scrollTo(0, 0);
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+            try { if (window.parent && window.parent !== window) window.parent.scrollTo(0, 0); } catch(e) {}
+
+            // Fixed comfortable grid layout: 7 cols x 12 rows = 84 cells
+            // Perfectly fills phone screen without tiny squares, without overflow, zero scroll
+            const cols = 7;
+            const rows = 12;
             fsTotal = cols * rows;
             fsTouched = 0;
 
@@ -1585,14 +1643,59 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             document.getElementById('fs-pct').innerText = '0%';
             
             const btnHud = document.getElementById('fs-btn-save-hud');
-            if (btnHud) { btnHud.style.display = 'none'; }
+            if (btnHud) { 
+                btnHud.className = 'fs-btn-save-hud';
+                btnHud.innerText = 'Simpan (0%)';
+            }
             
             const promptBox = document.getElementById('fs-prompt-complete');
             if (promptBox) { promptBox.style.display = 'none'; }
 
             const btnSave = document.getElementById('fs-btn-save');
             btnSave.classList.remove('active');
-            btnSave.innerText = 'SELESAI & SIMPAN (MINIMAL 80% TERUSAP)';
+            btnSave.innerText = 'USAP SELURUH LAYAR (0%)';
+
+            function updateTouchUI(pct) {
+                document.getElementById('fs-count').innerText = fsTouched;
+                document.getElementById('fs-pct').innerText = pct + '%';
+                
+                if (btnHud) {
+                    if (pct >= 80) {
+                        btnHud.classList.add('active');
+                        btnHud.innerText = 'SIMPAN (' + pct + '%)';
+                    } else {
+                        btnHud.classList.remove('active');
+                        btnHud.innerText = 'Simpan (' + pct + '%)';
+                    }
+                }
+
+                if (pct >= 80) {
+                    btnSave.classList.add('active');
+                    btnSave.innerText = 'SELESAI & SIMPAN (' + pct + '% TERUSAP)';
+                } else {
+                    btnSave.classList.remove('active');
+                    btnSave.innerText = 'USAP LAYAR: ' + pct + '% (MIN. 80%)';
+                }
+
+                if (pct >= 80 && promptBox && promptBox.style.display !== 'block') {
+                    promptBox.style.display = 'block';
+                    document.getElementById('fs-prompt-pct').innerText = pct + '%';
+                    if (pct === 100) {
+                        document.getElementById('fs-prompt-title').innerText = '100% LAYAR TERUSAP SEMPURNA!';
+                        document.getElementById('fs-prompt-sub').innerText = 'Seluruh area digitizer teruji responsif bebas dead-zone.';
+                    }
+                }
+
+                if (pct === 100) {
+                    if (navigator.vibrate) { navigator.vibrate([60, 80, 60]); }
+                    if (promptBox) {
+                        promptBox.style.display = 'block';
+                        document.getElementById('fs-prompt-pct').innerText = '100%';
+                        document.getElementById('fs-prompt-title').innerText = '100% LAYAR TERUSAP SEMPURNA!';
+                        document.getElementById('fs-prompt-sub').innerText = 'Seluruh area digitizer teruji responsif bebas dead-zone.';
+                    }
+                }
+            }
 
             function handleFSTouch(e) {
                 const touches = e.touches ? Array.from(e.touches) : [e];
@@ -1603,22 +1706,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                         fsTouched++;
                         if (navigator.vibrate) { navigator.vibrate(8); }
                         const pct = Math.round((fsTouched / fsTotal) * 100);
-                        document.getElementById('fs-count').innerText = fsTouched;
-                        document.getElementById('fs-pct').innerText = pct + '%';
-
-                        if (pct >= 80) {
-                            if (btnHud) {
-                                btnHud.style.display = 'block';
-                                btnHud.innerText = 'SELESAI & SIMPAN (' + pct + '%)';
-                            }
-                            btnSave.classList.add('active');
-                            btnSave.innerText = 'SELESAI & SIMPAN HASIL (' + pct + '% TERUSAP)';
-
-                            if (promptBox && promptBox.style.display !== 'block') {
-                                promptBox.style.display = 'block';
-                                document.getElementById('fs-prompt-pct').innerText = pct + '%';
-                            }
-                        }
+                        updateTouchUI(pct);
                     }
                 }
             }
@@ -1639,19 +1727,33 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             modal.style.display = 'none';
             dismissFSPrompt();
 
-            if (save && fsTouched >= Math.floor(fsTotal * 0.75)) {
-                const pct = Math.round((fsTouched / fsTotal) * 100);
+            if (save) {
+                const pct = fsTotal > 0 ? Math.round((fsTouched / fsTotal) * 100) : 0;
+                const isPassed = pct >= 80;
                 touchResult = {
-                    fullscreen_passed: true,
+                    fullscreen_passed: isPassed,
                     coverage_pct: pct,
                     cells_passed: fsTouched,
                     total_cells: fsTotal,
-                    zero_deadzone: pct >= 80
+                    zero_deadzone: isPassed
                 };
-                document.getElementById('touch-badge').innerText = `LOLOS (${pct}% PENUH)`;
-                document.getElementById('touch-badge').className = 'badge badge-pass';
-                document.getElementById('touch-summary-box').style.display = 'block';
-                document.getElementById('touch-cov-label').innerText = pct + '% (' + fsTouched + '/' + fsTotal + ' Sel)';
+                if (isPassed) {
+                    document.getElementById('touch-badge').innerText = `LOLOS (${pct}% PENUH)`;
+                    document.getElementById('touch-badge').className = 'badge badge-pass';
+                    document.getElementById('touch-summary-box').style.display = 'block';
+                    document.getElementById('touch-cov-label').innerText = pct + '% (' + fsTouched + '/' + fsTotal + ' Sel)';
+                } else {
+                    document.getElementById('touch-badge').innerText = `SEBAGIAN (${pct}%)`;
+                    document.getElementById('touch-badge').className = 'badge badge-warn';
+                    document.getElementById('touch-summary-box').style.display = 'block';
+                    document.getElementById('touch-cov-label').innerText = pct + '% (' + fsTouched + '/' + fsTotal + ' Sel - Belum Penuh)';
+                }
+
+                // Smooth scroll back to touch section on main page
+                const touchCard = document.getElementById('touch-res-label');
+                if (touchCard) {
+                    try { touchCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch(e) {}
+                }
             }
         }
 
