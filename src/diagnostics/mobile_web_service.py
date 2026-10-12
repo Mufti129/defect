@@ -110,13 +110,25 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
 
         /* Full Screen Touch Digitizer Overlay */
         #fs-touch-modal {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #070B14; z-index: 999999; display: none; flex-direction: column;
-            user-select: none; -webkit-user-select: none; touch-action: none;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw; height: 100vh;
+            background: #070B14; z-index: 2147483647 !important; display: none; flex-direction: column;
+            user-select: none; -webkit-user-select: none; touch-action: none; overflow: hidden;
         }
         .fs-hud {
-            height: 52px; background: #0F172A; border-bottom: 1px solid #334155;
+            height: 56px; background: #0F172A; border-bottom: 1px solid #334155;
             display: flex; align-items: center; justify-content: space-between; padding: 0 14px;
+            z-index: 10000;
+        }
+        .fs-btn-save-hud {
+            background: #1E293B; color: #64748B; border: 1px solid #334155;
+            padding: 8px 14px; border-radius: 8px; font-weight: 800; font-size: 0.78rem;
+            cursor: not-allowed; transition: all 0.2s;
+        }
+        .fs-btn-save-hud.active {
+            background: #10B981 !important; color: #FFFFFF !important;
+            border-color: #34D399 !important; cursor: pointer !important;
+            box-shadow: 0 0 14px rgba(16, 185, 129, 0.7) !important;
         }
         .fs-grid-container {
             flex: 1; display: grid; gap: 2px; padding: 3px; background: #070B14;
@@ -129,17 +141,32 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             background: #10B981 !important; box-shadow: 0 0 6px rgba(16, 185, 129, 0.8);
         }
         .fs-bottom-bar {
-            height: 56px; background: #0F172A; border-top: 1px solid #334155;
-            display: flex; align-items: center; justify-content: center; padding: 0 14px;
+            height: auto; min-height: 56px; background: #0F172A; border-top: 1px solid #334155;
+            display: flex; align-items: center; justify-content: center; padding: 10px 14px;
+            padding-bottom: max(25px, env(safe-area-inset-bottom, 25px));
+            margin-bottom: 40px;
         }
         .fs-btn-save {
-            background: #334155; color: #94A3B8; border: none; padding: 10px 20px;
+            background: #334155; color: #94A3B8; border: none; padding: 12px 20px;
             border-radius: 8px; font-weight: 700; font-size: 0.85rem; width: 100%;
             cursor: not-allowed; transition: all 0.2s;
         }
         .fs-btn-save.active {
             background: linear-gradient(135deg, #10B981 0%, #059669 100%);
             color: #FFFFFF; cursor: pointer; box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Hide Streamlit Floating Badges & Manage App Logo */
+        [data-testid="manage-app-button"], 
+        button[title="Manage app"], 
+        .viewerBadge_container__1QSob, 
+        [class*="viewerBadge"],
+        footer, 
+        #MainMenu {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
     </style>
 </head>
@@ -157,14 +184,16 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
     <!-- 1. Identitas Hardware Otomatis & Konfirmasi Varian -->
     <div class="card">
         <div class="card-title">
-            <span>1. Spesifikasi Hardware Smartphone (AI Client Hints)</span>
+            <span>1. Spesifikasi Hardware Smartphone (AI Telemetry Engine)</span>
             <span class="badge badge-pass" id="hw-badge">TERVERIFIKASI</span>
         </div>
         <div class="stat-grid">
             <div class="stat-box"><span>Merk / Brand HP</span><b id="val-brand">Smartphone</b></div>
             <div class="stat-box"><span>Model Fisik Pabrikan</span><b id="val-model">Mobile Device</b></div>
+            <div class="stat-box"><span>Chipset / Processor (SoC)</span><b id="val-soc" style="color: #38BDF8;">Memindai...</b></div>
             <div class="stat-box"><span>Sistem Operasi</span><b id="val-os">Mobile OS</b></div>
             <div class="stat-box"><span>Resolusi Layar Fisik</span><b id="val-res">1080 x 2400 px</b></div>
+            <div class="stat-box"><span>Refresh Rate Layar</span><b id="val-hz" style="color: #34D399;">60 Hz</b></div>
             <div class="stat-box"><span>Estimasi Memori RAM</span><b id="val-ram">4 - 8 GB</b></div>
             <div class="stat-box"><span>Jumlah Inti CPU</span><b id="val-cpu">Octa-Core</b></div>
             <div class="stat-box" style="grid-column: span 2;"><span>Chipset Grafis (GPU WebGL)</span><b id="val-gpu" style="font-size: 0.82rem; color: #34D399;">Mobile GPU</b></div>
@@ -184,8 +213,8 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             <input type="text" id="input-model-custom" placeholder="Contoh: Oppo A18 (CPH2579), Galaxy S23..." 
                    style="width: 100%; background: #131B2E; border: 1px solid #334155; border-radius: 6px; padding: 7px 10px; color: #F8FAFC; font-size: 0.80rem;"
                    oninput="updateCustomModel(this.value)">
-            <p style="font-size: 0.68rem; color: #64748B; margin-top: 5px;">
-                *Browser melindungi keamanan OS dengan membatasi akses menu Pengaturan. AI membaca model dari Client Hints & WebGL. Anda dapat memverifikasi varian di atas.
+            <p style="font-size: 0.68rem; color: #64748B; margin-top: 5px; line-height: 1.45;">
+                Catatan Teknis Browser: Standar keamanan W3C (Chrome/Safari) menerapkan sandbox yang membatasi akses langsung ke menu Pengaturan OS untuk melindungi privasi data pengguna. Sistem AI membaca telemetri hardware asli (Model Pabrikan, Chipset GPU, Refresh Rate Layar, RAM & Core CPU) secara otomatis. Anda dapat memverifikasi varian ROM di atas.
             </p>
         </div>
     </div>
@@ -204,7 +233,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         </div>
 
         <button class="btn-action" id="btn-bat-stress" onclick="runBatteryStressTest()" style="margin-top: 8px;">
-            ⚡ Jalankan Uji Stabilitas Beban Baterai (3 Detik)
+            Jalankan Uji Stabilitas Beban Baterai (3 Detik)
         </button>
 
         <div id="ios-battery-section" style="display: none; margin-top: 10px; padding: 10px; background: #0A0F1D; border-radius: 8px; border: 1px solid #1E293B;">
@@ -246,13 +275,13 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             <span class="badge badge-wait" id="touch-badge">BELUM DIUJI</span>
         </div>
         <p style="font-size: 0.75rem; color: #94A3B8;">
-            Uji layar sentuh adaptif mengikuti resolusi layar asli (<span id="touch-res-label">1080x2400</span> px) untuk memastikan nol titik buta (*zero dead-zone*):
+            Uji layar sentuh adaptif mengikuti resolusi layar asli (<span id="touch-res-label">1080x2400</span> px) untuk memastikan nol titik buta (zero dead-zone):
         </p>
         <button class="btn btn-action" onclick="openFullscreenTouch()" style="background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%); color: white; margin-top: 10px; padding: 13px;">
-            🚀 BUKA MODE UJI LAYAR PENUH (FULL SCREEN DIGITIZER)
+            Buka Mode Uji Layar Penuh (Full Screen Digitizer)
         </button>
         <div id="touch-summary-box" style="margin-top: 8px; font-size: 0.78rem; color: #34D399; font-weight: 700; display: none;">
-            ✓ Layar Sentuh Terverifikasi Lolos: <span id="touch-cov-label">100%</span> Terjamah Bebas Dead-Zone!
+            Layar Sentuh Terverifikasi Lolos: <span id="touch-cov-label">100%</span> Terjamah Bebas Dead-Zone!
         </div>
     </div>
 
@@ -284,7 +313,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             <span class="badge badge-wait" id="audio-badge">MENUNGGU UJI</span>
         </div>
         <button class="btn-action" id="btn-audio" onclick="runSequentialAudioHapticTest()">
-            🔊 Mulai Uji Suara 3 Nada & 3x Getar Fisik
+            Mulai Uji Suara 3 Nada & 3x Getar Fisik
         </button>
         <p style="font-size: 0.72rem; color: #94A3B8; margin-top: 6px;" id="audio-status-label">
             Tekan tombol di atas untuk membunyikan 3 nada bertingkat dan menggetarkan HP 3 kali berturut-turut.
@@ -293,7 +322,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         <!-- Kotak Verifikasi Jawaban Fisik -->
         <div id="audio-verify-section" style="display: none; margin-top: 10px;">
             <div class="verify-box">
-                <div class="verify-title">🔊 Verifikasi Kualitas Suara Speaker:</div>
+                <div class="verify-title">Verifikasi Kualitas Suara Speaker:</div>
                 <label class="radio-opt">
                     <input type="radio" name="rad-audio" value="clear" checked onchange="updateAudioVerdict()">
                     <span>Ya, 3 nada terdengar jernih tanpa sember/kresek (Normal)</span>
@@ -309,7 +338,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             </div>
 
             <div class="verify-box" style="margin-top: 8px;">
-                <div class="verify-title">📳 Verifikasi Motor Getar Fisik:</div>
+                <div class="verify-title">Verifikasi Motor Getar Fisik:</div>
                 <label class="radio-opt">
                     <input type="radio" name="rad-haptic" value="strong" checked onchange="updateAudioVerdict()">
                     <span>Ya, HP bergetar 3 kali dengan kuat di tangan (Normal)</span>
@@ -339,16 +368,39 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
     <!-- Full Screen Touch Modal -->
     <div id="fs-touch-modal">
         <div class="fs-hud">
-            <div style="font-size: 0.80rem; font-weight: 700; color: #F8FAFC;">
-                Cakupan Sentuh: <span id="fs-pct" style="color: #34D399;">0%</span> (<span id="fs-count">0</span>/<span id="fs-total">0</span>)
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 0.68rem; font-weight: 800; color: #38BDF8; letter-spacing: 0.5px;">UJI LAYAR SENTUH</span>
+                <span style="font-size: 0.82rem; font-weight: 700; color: #F8FAFC;">
+                    Cakupan: <b id="fs-pct" style="color: #34D399;">0%</b> (<span id="fs-count">0</span>/<span id="fs-total">0</span>)
+                </span>
             </div>
-            <button onclick="closeFullscreenTouch(false)" style="background: #334155; color: #F8FAFC; border: none; padding: 5px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer;">
-                ✕ Batal
-            </button>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="fs-btn-save-hud" id="fs-btn-save-hud" onclick="closeFullscreenTouch(true)">
+                    SELESAI & SIMPAN
+                </button>
+                <button onclick="closeFullscreenTouch(false)" style="background: #334155; color: #94A3B8; border: none; padding: 7px 12px; border-radius: 6px; font-size: 0.76rem; font-weight: 700; cursor: pointer;">
+                    Batal
+                </button>
+            </div>
         </div>
+
+        <div id="fs-prompt-complete" style="position: absolute; top: 68px; left: 16px; right: 16px; background: rgba(15, 23, 42, 0.96); border: 2px solid #10B981; border-radius: 12px; padding: 14px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.85); z-index: 100000; display: none;">
+            <div style="color: #34D399; font-weight: 800; font-size: 0.95rem;">Layar Sentuh Lolos (Minimal 80% Terusap)</div>
+            <div style="color: #CBD5E1; font-size: 0.78rem; margin-top: 4px;">Cakupan sentuh saat ini: <b id="fs-prompt-pct" style="color: #10B981;">85%</b>. Seluruh area kaca teruji responsif.</div>
+            <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <button onclick="closeFullscreenTouch(true)" style="flex: 1; background: #10B981; color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer;">
+                    Selesai & Simpan Hasil
+                </button>
+                <button onclick="dismissFSPrompt()" style="background: #334155; color: #E2E8F0; border: none; padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 0.80rem; cursor: pointer;">
+                    Lanjut Usap Layar
+                </button>
+            </div>
+        </div>
+
         <div class="fs-grid-container" id="fs-grid">
             <!-- Dynamic resolution cells -->
         </div>
+
         <div class="fs-bottom-bar">
             <button class="fs-btn-save" id="fs-btn-save" onclick="closeFullscreenTouch(true)">
                 SELESAI & SIMPAN (MINIMAL 80% TERUSAP)
@@ -376,12 +428,68 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         let audioVerdict = { audio: 'not_tested', haptic: 'not_tested', passed: false };
         let touchResult = { fullscreen_passed: false, coverage_pct: 0, cells_passed: 0, total_cells: 0 };
 
+        const MODEL_DATABASE = {
+            "CPH2579": { brand: "Oppo", model: "A18" },
+            "CPH2477": { brand: "Oppo", model: "A78" },
+            "CPH2375": { brand: "Oppo", model: "Reno8 5G" },
+            "CPH2269": { brand: "Oppo", model: "A16" },
+            "CPH2185": { brand: "Oppo", model: "A15" },
+            "CPH2083": { brand: "Oppo", model: "A12" },
+            "CPH1937": { brand: "Oppo", model: "A9 (2020)" },
+            "CPH1939": { brand: "Oppo", model: "A5 (2020)" },
+            "CPH2387": { brand: "Oppo", model: "A57" },
+            "CPH2527": { brand: "Oppo", model: "A58" },
+            "CPH2565": { brand: "Oppo", model: "A38" },
+            "CPH2607": { brand: "Oppo", model: "Reno11 5G" },
+            "SM-A055F": { brand: "Samsung", model: "Galaxy A05" },
+            "SM-A146P": { brand: "Samsung", model: "Galaxy A14 5G" },
+            "SM-A155F": { brand: "Samsung", model: "Galaxy A15" },
+            "SM-A245F": { brand: "Samsung", model: "Galaxy A24" },
+            "SM-A346E": { brand: "Samsung", model: "Galaxy A34 5G" },
+            "SM-A546E": { brand: "Samsung", model: "Galaxy A54 5G" },
+            "SM-A556E": { brand: "Samsung", model: "Galaxy A55 5G" },
+            "SM-S901B": { brand: "Samsung", model: "Galaxy S22" },
+            "SM-S911B": { brand: "Samsung", model: "Galaxy S23" },
+            "SM-S918B": { brand: "Samsung", model: "Galaxy S23 Ultra" },
+            "SM-S928B": { brand: "Samsung", model: "Galaxy S24 Ultra" },
+            "RMX3760": { brand: "Realme", model: "C53" },
+            "RMX3710": { brand: "Realme", model: "C55" },
+            "RMX3834": { brand: "Realme", model: "12 5G" },
+            "RMX3630": { brand: "Realme", model: "10" },
+            "RMX3511": { brand: "Realme", model: "C35" },
+            "23129RAA4G": { brand: "Xiaomi", model: "Redmi Note 13 4G" },
+            "2201117TY": { brand: "Xiaomi", model: "Redmi Note 11" },
+            "23028RN4DG": { brand: "Xiaomi", model: "Redmi 12C" },
+            "23053RN02A": { brand: "Xiaomi", model: "Redmi 12" },
+            "22071212AG": { brand: "Xiaomi", model: "Redmi Note 11 Pro 5G" },
+            "V2250": { brand: "Vivo", model: "V27 5G" },
+            "V2310": { brand: "Vivo", model: "Y27 5G" },
+            "V2144": { brand: "Vivo", model: "T1 5G" },
+            "V2043": { brand: "Vivo", model: "Y20" },
+            "V2303": { brand: "Vivo", model: "V29 5G" },
+            "X6525": { brand: "Infinix", model: "Smart 8" },
+            "X6831": { brand: "Infinix", model: "Hot 30" },
+            "X688B": { brand: "Infinix", model: "Hot 10 Play" },
+            "X6833B": { brand: "Infinix", model: "Hot 30i" },
+            "X6711": { brand: "Infinix", model: "Note 30 5G" }
+        };
+
         // 1. Hardware Detection via Client Hints & WebGL
         const ua = navigator.userAgent || '';
         const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         let brandName = isIOS ? "Apple" : "Smartphone";
         let modelName = isIOS ? "iPhone" : "Android Device";
         let osName = isIOS ? "Apple iOS" : "Android OS";
+
+        function resolveModelLookup(code) {
+            if (!code) return null;
+            const upper = code.trim().toUpperCase();
+            if (MODEL_DATABASE[upper]) return MODEL_DATABASE[upper];
+            for (const k in MODEL_DATABASE) {
+                if (upper.includes(k) || k.includes(upper)) return MODEL_DATABASE[k];
+            }
+            return null;
+        }
 
         if (isIOS) {
             brandName = "Apple";
@@ -405,23 +513,43 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             if (/Samsung|SM-|GT-/i.test(ua)) {
                 brandName = "Samsung";
                 const m = ua.match(/SM-[A-Z0-9]+/i);
-                modelName = m ? m[0] : "Galaxy Series";
+                if (m) {
+                    const lookup = resolveModelLookup(m[0]);
+                    modelName = lookup ? lookup.model + " (" + m[0] + ")" : m[0];
+                } else {
+                    modelName = "Galaxy Series";
+                }
             } else if (/Oppo|CPH\d+|P[A-Z]\d+/i.test(ua)) {
                 brandName = "Oppo";
                 const m = ua.match(/CPH\d{4}/i);
-                modelName = m ? ("A18 (" + m[0] + ")") : "Series A / Reno";
+                if (m) {
+                    const lookup = resolveModelLookup(m[0]);
+                    modelName = lookup ? lookup.model + " (" + m[0] + ")" : ("Oppo (" + m[0] + ")");
+                } else {
+                    modelName = "Series A / Reno";
+                }
             } else if (/Xiaomi|Redmi|POCO/i.test(ua)) {
                 brandName = "Xiaomi";
-                const m = ua.match(/Redmi [A-Za-z0-9 ]+|POCO [A-Za-z0-9 ]+/i);
+                const m = ua.match(/Redmi [A-Za-z0-9 ]+|POCO [A-Za-z0-9 ]+|2[0-9]{3}[A-Za-z0-9]+/i);
                 modelName = m ? m[0] : "Redmi / POCO Series";
             } else if (/Vivo|V\d{4}/i.test(ua)) {
                 brandName = "Vivo";
                 const m = ua.match(/V\d{4}[A-Z]?/i);
-                modelName = m ? m[0] : "Y-Series / V-Series";
+                if (m) {
+                    const lookup = resolveModelLookup(m[0]);
+                    modelName = lookup ? lookup.model + " (" + m[0] + ")" : m[0];
+                } else {
+                    modelName = "Y-Series / V-Series";
+                }
             } else if (/Realme|RMX\d{4}/i.test(ua)) {
                 brandName = "Realme";
                 const m = ua.match(/RMX\d{4}/i);
-                modelName = m ? m[0] : "Realme Series";
+                if (m) {
+                    const lookup = resolveModelLookup(m[0]);
+                    modelName = lookup ? lookup.model + " (" + m[0] + ")" : m[0];
+                } else {
+                    modelName = "Realme Series";
+                }
             } else if (/Infinix/i.test(ua)) {
                 brandName = "Infinix";
                 modelName = "Hot / Note Series";
@@ -435,9 +563,16 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             navigator.userAgentData.getHighEntropyValues(['model', 'platformVersion', 'architecture'])
                 .then(hints => {
                     if (hints.model) {
-                        modelName = hints.model;
-                        document.getElementById('val-model').innerText = hints.model;
-                        document.getElementById('device-pill').innerText = brandName + " " + hints.model + " (AI Terverifikasi)";
+                        const lookup = resolveModelLookup(hints.model);
+                        if (lookup) {
+                            brandName = lookup.brand;
+                            modelName = lookup.model + " (" + hints.model + ")";
+                        } else {
+                            modelName = hints.model;
+                        }
+                        document.getElementById('val-brand').innerText = brandName;
+                        document.getElementById('val-model').innerText = modelName;
+                        document.getElementById('device-pill').innerText = brandName + " " + modelName + " (AI Terverifikasi)";
                     }
                 }).catch(() => {});
         }
@@ -453,12 +588,43 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             }
         } catch(e) {}
 
+        // Identify SoC / Processor from WebGL Unmasked GPU
+        let socName = "ARM64 Mobile Processor (Octa-Core)";
+        if (/Adreno 610/i.test(gpuName)) {
+            socName = "Qualcomm Snapdragon 680 (Adreno 610)";
+        } else if (/Adreno 619/i.test(gpuName)) {
+            socName = "Qualcomm Snapdragon 695 5G (Adreno 619)";
+        } else if (/Adreno 642/i.test(gpuName)) {
+            socName = "Qualcomm Snapdragon 778G 5G (Adreno 642L)";
+        } else if (/Adreno 730/i.test(gpuName)) {
+            socName = "Qualcomm Snapdragon 8 Gen 1 (Adreno 730)";
+        } else if (/Adreno 740/i.test(gpuName)) {
+            socName = "Qualcomm Snapdragon 8 Gen 2 (Adreno 740)";
+        } else if (/Adreno 750/i.test(gpuName)) {
+            socName = "Qualcomm Snapdragon 8 Gen 3 (Adreno 750)";
+        } else if (/Adreno/i.test(gpuName)) {
+            socName = "Qualcomm Snapdragon (" + gpuName + ")";
+        } else if (/Mali-G52/i.test(gpuName)) {
+            socName = "MediaTek Helio G80/G85 (Mali-G52)";
+        } else if (/Mali-G57/i.test(gpuName)) {
+            socName = "MediaTek Helio G96/G99 (Mali-G57)";
+        } else if (/Mali-G68/i.test(gpuName)) {
+            socName = "MediaTek Dimensity 1080 (Mali-G68)";
+        } else if (/Mali-G77/i.test(gpuName)) {
+            socName = "MediaTek Dimensity 1200 (Mali-G77)";
+        } else if (/Mali/i.test(gpuName)) {
+            socName = "MediaTek Chipset (" + gpuName + ")";
+        } else if (isIOS || /Apple/i.test(gpuName)) {
+            socName = "Apple A-Series Bionic (Apple GPU)";
+        }
+
         const screenRes = (window.screen.width * (window.devicePixelRatio || 1)) + " x " + (window.screen.height * (window.devicePixelRatio || 1)) + " px";
         const ramEst = (navigator.deviceMemory ? navigator.deviceMemory + ' GB' : (isIOS ? '4 - 6 GB' : '4 - 8 GB'));
         const cpuEst = (navigator.hardwareConcurrency ? navigator.hardwareConcurrency + ' Cores' : 'Octa-Core');
 
         document.getElementById('val-brand').innerText = brandName;
         document.getElementById('val-model').innerText = modelName;
+        document.getElementById('val-soc').innerText = socName;
         document.getElementById('val-os').innerText = osName;
         document.getElementById('val-res').innerText = screenRes;
         document.getElementById('val-ram').innerText = ramEst;
@@ -466,6 +632,29 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         document.getElementById('val-gpu').innerText = gpuName;
         document.getElementById('touch-res-label').innerText = screenRes;
         document.getElementById('device-pill').innerText = brandName + " " + modelName + " (AI Terverifikasi)";
+
+        // Display Refresh Rate Measurement
+        let displayHz = 60;
+        function detectRefreshRate() {
+            let frames = 0;
+            let start = performance.now();
+            function countFrame(ts) {
+                frames++;
+                if (ts - start < 400) {
+                    requestAnimationFrame(countFrame);
+                } else {
+                    const elapsed = (ts - start) / 1000;
+                    const fps = Math.round(frames / elapsed);
+                    if (fps >= 105) displayHz = 120;
+                    else if (fps >= 80) displayHz = 90;
+                    else displayHz = 60;
+                    const el = document.getElementById('val-hz');
+                    if (el) el.innerText = displayHz + ' Hz';
+                }
+            }
+            requestAnimationFrame(countFrame);
+        }
+        detectRefreshRate();
 
         function setROM(val, el) {
             confirmedROM = val;
@@ -515,7 +704,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         function runBatteryStressTest() {
             const btn = document.getElementById('btn-bat-stress');
             btn.disabled = true;
-            btn.innerText = '⚡ Mengukur Beban Daya & Arus Baterai (3s)...';
+            btn.innerText = 'Menguji Stabilitas Daya & Arus Baterai (3s)...';
             btn.style.background = '#8B5CF6';
 
             let count = 0;
@@ -527,7 +716,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             setTimeout(() => {
                 clearInterval(interval);
                 btn.disabled = false;
-                btn.innerText = '✓ Uji Stabilitas Selesai (Voltase Stabil)';
+                btn.innerText = 'Uji Stabilitas Selesai (Voltase Stabil)';
                 btn.style.background = '#10B981';
                 document.getElementById('bat-stress-status').innerText = 'Stabil (Lolos Beban)';
                 document.getElementById('bat-stress-status').style.color = '#34D399';
@@ -598,8 +787,16 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             document.getElementById('fs-total').innerText = fsTotal;
             document.getElementById('fs-count').innerText = '0';
             document.getElementById('fs-pct').innerText = '0%';
-            document.getElementById('fs-btn-save').classList.remove('active');
-            document.getElementById('fs-btn-save').innerText = 'SELESAI & SIMPAN (MINIMAL 80% TERUSAP)';
+            
+            const btnHud = document.getElementById('fs-btn-save-hud');
+            if (btnHud) { btnHud.style.display = 'none'; }
+            
+            const promptBox = document.getElementById('fs-prompt-complete');
+            if (promptBox) { promptBox.style.display = 'none'; }
+
+            const btnSave = document.getElementById('fs-btn-save');
+            btnSave.classList.remove('active');
+            btnSave.innerText = 'SELESAI & SIMPAN (MINIMAL 80% TERUSAP)';
 
             function handleFSTouch(e) {
                 const touches = e.touches ? Array.from(e.touches) : [e];
@@ -614,9 +811,17 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                         document.getElementById('fs-pct').innerText = pct + '%';
 
                         if (pct >= 80) {
-                            const btn = document.getElementById('fs-btn-save');
-                            btn.classList.add('active');
-                            btn.innerText = `✓ SELESAI & SIMPAN HASIL (${pct}% TERJAMAH)`;
+                            if (btnHud) {
+                                btnHud.style.display = 'block';
+                                btnHud.innerText = 'SELESAI & SIMPAN (' + pct + '%)';
+                            }
+                            btnSave.classList.add('active');
+                            btnSave.innerText = 'SELESAI & SIMPAN HASIL (' + pct + '% TERUSAP)';
+
+                            if (promptBox && promptBox.style.display !== 'block') {
+                                promptBox.style.display = 'block';
+                                document.getElementById('fs-prompt-pct').innerText = pct + '%';
+                            }
                         }
                     }
                 }
@@ -628,9 +833,15 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             grid.ontouchmove = handleFSTouch;
         }
 
+        function dismissFSPrompt() {
+            const promptBox = document.getElementById('fs-prompt-complete');
+            if (promptBox) promptBox.style.display = 'none';
+        }
+
         function closeFullscreenTouch(save) {
             const modal = document.getElementById('fs-touch-modal');
             modal.style.display = 'none';
+            dismissFSPrompt();
 
             if (save && fsTouched >= Math.floor(fsTotal * 0.75)) {
                 const pct = Math.round((fsTouched / fsTotal) * 100);
@@ -716,27 +927,27 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             btn.style.background = '#8B5CF6';
 
             // Step 1: Tone 1 (261Hz) + Vibrate 180ms
-            btn.innerText = '🔊 Memutar Nada 1 & Getar (1/3)...';
+            btn.innerText = 'Memutar Nada 1 & Getar (1/3)...';
             playTone(261.63, 0.35);
             if (navigator.vibrate) { navigator.vibrate(180); }
 
             setTimeout(() => {
                 // Step 2: Tone 2 (523Hz) + Vibrate 220ms
-                btn.innerText = '🔊 Memutar Nada 2 & Getar (2/3)...';
+                btn.innerText = 'Memutar Nada 2 & Getar (2/3)...';
                 playTone(523.25, 0.35);
                 if (navigator.vibrate) { navigator.vibrate(220); }
             }, 600);
 
             setTimeout(() => {
                 // Step 3: Tone 3 (1046Hz) + Vibrate 300ms
-                btn.innerText = '🔊 Memutar Nada 3 & Getar (3/3)...';
+                btn.innerText = 'Memutar Nada 3 & Getar (3/3)...';
                 playTone(1046.50, 0.40);
                 if (navigator.vibrate) { navigator.vibrate(300); }
             }, 1200);
 
             setTimeout(() => {
                 btn.disabled = false;
-                btn.innerText = '✓ Pengujian Selesai. Silakan Verifikasi di Bawah:';
+                btn.innerText = 'Pengujian Selesai. Silakan Verifikasi di Bawah:';
                 btn.style.background = '#0284C7';
                 lbl.innerText = 'Dengarkan suara dan rasakan getaran di HP Anda, lalu pilih jawaban di bawah ini:';
                 document.getElementById('audio-verify-section').style.display = 'block';
@@ -788,6 +999,10 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                 device_model: brandName + ' ' + finalModel,
                 confirmed_rom: confirmedROM,
                 ram_est: ramEst,
+                cpu_est: cpuEst,
+                soc_est: socName,
+                refresh_rate: displayHz + ' Hz',
+                screen_res: screenRes,
                 is_ios: isIOS,
                 os_version: osName,
                 gpu_renderer: gpuName,

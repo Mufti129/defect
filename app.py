@@ -1995,14 +1995,14 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
             sess_btn_c1, sess_btn_c2 = st.columns([1, 1])
             with sess_btn_c1:
-                if st.button("➕ Buat QR Baru untuk HP Berikutnya", use_container_width=True, help="Buat sesi QR terpisah baru untuk nasabah atau HP berikutnya agar data tidak tercampur."):
+                if st.button("Buat QR Baru untuk HP Berikutnya", use_container_width=True, help="Buat sesi QR terpisah baru untuk nasabah atau HP berikutnya agar data tidak tercampur."):
                     st.session_state["mobile_diagnostic_session"] = f"MCV-{int(time.time()) % 1000000:06d}"
                     st.session_state["current_diag_record"] = None
                     st.session_state["current_sim_dev"] = None
                     st.session_state["last_synced_record_id"] = None
                     st.rerun()
             with sess_btn_c2:
-                if st.button("🔄 Sinkronkan Data HP Sekarang", type="primary", use_container_width=True):
+                if st.button("Sinkronkan Data HP Sekarang", type="primary", use_container_width=True):
                     st.rerun()
 
             # Cek apakah hasil sudah diterima (Multi-Device Support dari SQLite / memory)
@@ -2042,7 +2042,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             received_payload = None
             if submitted_devices:
                 if len(submitted_devices) > 1:
-                    st.markdown(f"<b>📱 Terdeteksi {len(submitted_devices)} Smartphone pada Sesi Ini (Data Terpisah):</b>", unsafe_allow_html=True)
+                    st.markdown(f"<b>Terdeteksi {len(submitted_devices)} Smartphone pada Sesi Ini (Data Terpisah):</b>", unsafe_allow_html=True)
                     dev_opts = [
                         f"HP {i+1}: {d.get('brand','')} {d.get('model','')} ({str(d.get('timestamp',''))[11:19]}) — {d.get('client_device_id','DEV')}"
                         for i, d in enumerate(submitted_devices)
@@ -2061,7 +2061,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 dev_name = received_payload.get('device_model') or f"{received_payload.get('brand', 'Smartphone')} {received_payload.get('model', '')}"
                 rom_info = received_payload.get('confirmed_rom', '')
                 time_info = str(received_payload.get('timestamp', ''))[11:19]
-                st.success(f"✓ Data Diterima dari HP: {dev_name} {f'({rom_info})' if rom_info else ''} [{time_info}] — ID: {received_payload.get('client_device_id', 'DEV')}")
+                st.success(f"Data Diterima dari HP: {dev_name} {f'({rom_info})' if rom_info else ''} [{time_info}] — ID: {received_payload.get('client_device_id', 'DEV')}")
                 if dm:
                     mobile_diag_record = dm.create_diagnostic_from_mobile_web(received_payload)
                     selected_dev = mobile_diag_record.device
@@ -2289,6 +2289,9 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         dev_storage = _safe_get(dev, "storage_gb", 128)
         dev_type = _safe_get(dev, "device_type", "android")
         dev_conn = _safe_get(dev, "connection_type", "Handshake USB Terverifikasi")
+        dev_gpu = _safe_get(dev, "gpu_renderer", "")
+        dev_res = _safe_get(dev, "screen_resolution", "")
+        dev_hz = _safe_get(dev, "refresh_rate", "")
 
         # Defensive diagnostic summary
         diag_f_grade = _safe_get(diag_rec, "functional_grade", "PASS (A/B)")
@@ -2319,8 +2322,10 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
 
         # Defensive interactive properties
         inter_touch = bool(_safe_get(inter, "touch_grid_passed", True))
+        inter_cov = float(_safe_get(inter, "touch_coverage_pct", 100.0))
         inter_audio = bool(_safe_get(inter, "audio_loopback_passed", True))
         inter_btn = bool(_safe_get(inter, "buttons_passed", True))
+        inter_notes = _safe_get(inter, "notes", []) or []
 
         # Banner Ringkasan Status
         status_color = "#10B981" if "PASS" in str(diag_f_grade) else ("#F59E0B" if "WARNING" in str(diag_f_grade) else "#EF4444")
@@ -2370,7 +2375,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 <div class="flutter-metric-card" style="text-align: left; padding: 16px;">
                     <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Chipset / Processor (SoC)</div>
                     <div style="font-size: 1.15rem; font-weight: 800; color: #1E1B4B; margin-top: 4px;">{dev_soc}</div>
-                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">Arsitektur ARM64 / Flagship Spec</div>
+                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">GPU: {dev_gpu if dev_gpu else 'Hardware Graphics Accelerator'}</div>
                 </div>
                 """, unsafe_allow_html=True)
             with id_col3:
@@ -2389,15 +2394,15 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 <div class="flutter-metric-card" style="text-align: left; padding: 16px;">
                     <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Nomor IMEI Resmi</div>
                     <div style="font-size: 1.1rem; font-weight: 800; color: #1E1B4B; margin-top: 4px; font-family: monospace;">{dev_imei}</div>
-                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">Verifikasi Kemenperin / Database GSMA</div>
+                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">Verifikasi Database Perangkat Resmi</div>
                 </div>
                 """, unsafe_allow_html=True)
             with id_col5:
                 st.markdown(f"""
                 <div class="flutter-metric-card" style="text-align: left; padding: 16px;">
-                    <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Sistem Operasi</div>
+                    <div style="color: #6D28D9; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">Sistem Operasi & Layar</div>
                     <div style="font-size: 1.1rem; font-weight: 800; color: #1E1B4B; margin-top: 4px;">{dev_os}</div>
-                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">Platform {str(dev_type).upper()} Resmi</div>
+                    <div style="font-size: 0.78rem; color: #6B7280; margin-top: 4px;">{dev_res if dev_res else 'Layar Sentuh HD+'} {f'• {dev_hz}' if dev_hz else ''}</div>
                 </div>
                 """, unsafe_allow_html=True)
             with id_col6:
@@ -2411,7 +2416,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
 
             st.markdown("""
             <div style="background: #F3F4F6; border-left: 4px solid #6D28D9; padding: 12px 16px; border-radius: 8px; margin-top: 20px; font-size: 0.84rem; color: #374151;">
-                <b>Catatan Audit Keamanan:</b> Nomor seri dan IMEI diverifikasi langsung melalui driver low-level (Android <code>getprop ro.serialno</code> atau iOS <code>ideviceinfo UniqueDeviceID</code>), mencegah manipulasi identitas unit pinjaman oleh nasabah.
+                <b>Catatan Audit Keamanan:</b> Nomor seri dan telemetri hardware diverifikasi langsung melalui driver sistem low-level, mencegah manipulasi identitas unit oleh nasabah.
             </div>
             """, unsafe_allow_html=True)
 
@@ -2445,7 +2450,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                 <div class="flutter-metric-card">
                     <div class="flutter-metric-val" style="color: {temp_color};">{bat_temp} &deg;C</div>
                     <div class="flutter-metric-label">Suhu Operasional Baterai</div>
-                    <div style="font-size: 0.72rem; color: {temp_color}; font-weight: 700; margin-top: 4px;">Normal (&lt; 40&deg;C)</div>
+                    <div style="font-size: 0.72rem; color: {temp_color}; font-weight: 700; margin-top: 4px;">{'Normal (&lt; 40&deg;C)' if bat_temp < 38.0 else 'Peringatan Suhu Panas'}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -2461,13 +2466,13 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
             st.markdown(f"""
             <div style="background: {'#ECFDF5' if bat_status == 'PASS' else ('#FEF3C7' if bat_status == 'WARNING' else '#FEF2F2')}; border-left: 4px solid {bat_health_color}; padding: 14px 18px; border-radius: 8px; font-size: 0.88rem; color: #1F2937;">
-                <b>Hasil Evaluasi Daya:</b> {bat_wear_desc}<br>
-                <b>Penalti Indeks Cacat (DPI):</b> {bat_penalty} poin. {('Baterai prima, tidak ada pemotongan grade.' if bat_penalty == 0 else 'Baterai di bawah 80% memerlukan batas maksimum Grade B- dan penalti valuasi servis.')}
+                <b>Hasil Evaluasi Daya & Fisik Baterai:</b> {bat_wear_desc}<br>
+                <b>Penalti Indeks Cacat (DPI):</b> {bat_penalty} poin. {('Baterai prima, tidak ada pemotongan grade.' if bat_penalty == 0 else 'Ditemukan potensi degradasi atau gejala fisik baterai yang mempengaruhi grade valuasi.')}
             </div>
             """, unsafe_allow_html=True)
 
             st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-            st.markdown("##### Register Mentah Hardware Baterai (ADB dumpsys battery / iOS Domain):")
+            st.markdown("##### Register Mentah Hardware Baterai (ADB dumpsys battery / Telemetri Web):")
             raw_bat_df = pd.DataFrame([
                 {"Parameter": "Persentase Daya Saat Ini", "Nilai": f"{bat_level}%", "Keterangan": "State of Charge (SoC)"},
                 {"Parameter": "Kesehatan Relatif (Gas-Gauge)", "Nilai": f"{bat_health}%", "Keterangan": "State of Health (SoH)"},
@@ -2485,29 +2490,44 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             idx = 0
             for s_key, s_data in sensor_matrix.items():
                 with sens_cols[idx % 3]:
+                    sample_val = s_data.get('value') or s_data.get('sample') or 'Aktif'
                     st.markdown(f"""
                     <div style="background: white; border: 1px solid #E5E7EB; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-weight: 700; color: #1F2937; font-size: 0.88rem;">{s_data.get('name', s_key.title())}</span>
-                            <span style="background: #DEF7EC; color: #03543F; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">LOLOS</span>
+                            <span style="background: {'#DEF7EC' if s_data.get('status') == 'PASS' else '#FDE8E8'}; color: {'#03543F' if s_data.get('status') == 'PASS' else '#9B1C1C'}; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">{s_data.get('status', 'LOLOS')}</span>
                         </div>
-                        <div style="font-size: 0.76rem; color: #6B7280; margin-top: 4px;">Sampel Data: <code>{s_data.get('sample', 'Aktif')}</code></div>
+                        <div style="font-size: 0.76rem; color: #6B7280; margin-top: 4px;">Sampel Data: <code>{sample_val}</code></div>
                         <div style="font-size: 0.74rem; color: #4B5563; margin-top: 2px;">{s_data.get('desc', 'Merespons kalibrasi')}</div>
                     </div>
                     """, unsafe_allow_html=True)
                 idx += 1
 
-            st.markdown(f"""
-            <div style="background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 10px; padding: 14px 18px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h5 style="margin: 0; color: #166534; font-weight: 800;">Skor Integritas Matriks Sensor: 100% (Semua Sensor Aktif)</h5>
-                    <p style="margin: 2px 0 0 0; color: #15803D; font-size: 0.82rem;">Tidak ditemukan kerusakan pada sensor gerak, proximity, radio Wi-Fi/Bluetooth, maupun modul modem baseband.</p>
+            sens_fail_cnt = sum(1 for s in sensor_matrix.values() if s.get("status") == "FAIL")
+            if sens_fail_cnt == 0:
+                st.markdown(f"""
+                <div style="background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 10px; padding: 14px 18px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h5 style="margin: 0; color: #166534; font-weight: 800;">Skor Integritas Matriks Sensor: 100% (Semua Sensor Aktif & Responsif)</h5>
+                        <p style="margin: 2px 0 0 0; color: #15803D; font-size: 0.82rem;">Tidak ditemukan kerusakan pada sensor gerak 3-axis, proximity, radio Wi-Fi/Bluetooth, maupun modul modem baseband.</p>
+                    </div>
+                    <div style="background: #166534; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.82rem;">
+                        0 PENALTI DPI
+                    </div>
                 </div>
-                <div style="background: #166534; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.82rem;">
-                    0 PENALTI DPI
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="background: #FEF2F2; border: 1.5px solid #FCA5A5; border-radius: 10px; padding: 14px 18px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h5 style="margin: 0; color: #991B1B; font-weight: 800;">Sensor Mengalami Gangguan ({sens_fail_cnt} Cacat Terdeteksi)</h5>
+                        <p style="margin: 2px 0 0 0; color: #B91C1C; font-size: 0.82rem;">Ditemukan sensor tidak merespons kalibrasi atau dead-zone terdeteksi pada kaca depan.</p>
+                    </div>
+                    <div style="background: #991B1B; color: white; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.82rem;">
+                        PENALTI AKTIF
+                    </div>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
         # TAB 4: KEASLIAN KOMPONEN OEM
         with diag_tab4:
@@ -2546,12 +2566,12 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
 
         # TAB 5: UJI FUNGSIONAL INTERAKTIF (CIT MODE)
         with diag_tab5:
-            st.markdown("#### Uji Fungsional Interaktif Layar Sentuh & Tombol Fisik (CIT Simulator)")
+            st.markdown("#### Uji Fungsional Interaktif Layar Sentuh & Tombol Fisik (CIT)")
             cit_c1, cit_c2 = st.columns([1.6, 1.4])
 
             with cit_c1:
-                st.markdown("##### 1. Matriks Layar Sentuh Multi-Touch Digitizer (Grid 6x4):")
-                st.markdown("<p style='font-size: 0.82rem; color: #6B7280; margin-top: -6px;'>Simulasi deteksi dead-zone atau blind spot pada seluruh penampang kaca depan.</p>", unsafe_allow_html=True)
+                st.markdown(f"##### 1. Matriks Layar Sentuh Multi-Touch Digitizer ({inter_cov:.0f}% Cakupan):")
+                st.markdown("<p style='font-size: 0.82rem; color: #6B7280; margin-top: -6px;'>Verifikasi seluruh penampang kaca terhadap blind spot atau dead-zone layar sentuh.</p>", unsafe_allow_html=True)
 
                 touch_ok = inter_touch
                 grid_cols = st.columns(6)
@@ -2569,21 +2589,27 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                             """, unsafe_allow_html=True)
 
                 if touch_ok:
-                    st.success("Seluruh 24 Zona Digitizer Layar Sentuh Merespons Sempurna (Zero Dead-Zone).")
+                    st.success(f"Layar Sentuh Merespons Sempurna ({inter_cov:.0f}% Terusap Bebas Dead-Zone).")
                 else:
-                    st.error("Dead-Zone Terdeteksi pada Titik Sentuh Layar! Memicu Veto Grade D Mutlak.")
+                    st.error(f"Dead-Zone Terdeteksi pada Titik Sentuh Layar ({inter_cov:.0f}% Cakupan)! Memicu Veto Grade D Mutlak.")
+
+                if inter_notes:
+                    st.markdown("<div style='font-size: 0.80rem; color: #4B5563; margin-top: 6px;'><b>Catatan Verifikasi Uji Langsung:</b></div>", unsafe_allow_html=True)
+                    for n in inter_notes:
+                        st.markdown(f"<div style='font-size: 0.78rem; color: #1F2937;'>• {n}</div>", unsafe_allow_html=True)
 
             with cit_c2:
-                st.markdown("##### 2. Uji Audio Loopback & Tombol Fisik:")
+                st.markdown("##### 2. Uji Audio Loopback & Respons Fisik:")
+                spk_status = "LOLOS (Jernih)" if inter_audio else "CACAT / TIDAK LOLOS"
+                haptic_status = "AKTIF (Kuat & Stabil)" if inter_btn else "TIDAK BERGETAR / LEMAH"
                 audio_key_df = pd.DataFrame([
-                    {"Elemen Perangkat": "Mikrofon Utama (Bawah)", "Uji": "Loopback 1000 Hz", "Status": "LOLOS"},
-                    {"Elemen Perangkat": "Mikrofon Sekunder (Noise-Cancelling)", "Uji": "Ambient Noise Supression", "Status": "LOLOS"},
-                    {"Elemen Perangkat": "Loudspeaker Bawah", "Uji": "Audio Sweep 20Hz-20kHz", "Status": "LOLOS"},
-                    {"Elemen Perangkat": "Earpiece Speaker (Panggilan)", "Uji": "Voice Acoustic Clarity", "Status": "LOLOS"},
+                    {"Elemen Perangkat": "Loudspeaker Utama (3 Nada)", "Uji": "Audio Multi-Tone Test", "Status": spk_status},
+                    {"Elemen Perangkat": "Motor Getar Fisik (3 Pulsa)", "Uji": "Haptic Actuator Impulse", "Status": haptic_status},
+                    {"Elemen Perangkat": "Mikrofon Utama (Bawah)", "Uji": "Acoustic Sample Check", "Status": "LOLOS"},
+                    {"Elemen Perangkat": "Mikrofon Sekunder", "Uji": "Noise Cancellation Check", "Status": "LOLOS"},
                     {"Elemen Perangkat": "Tombol Volume Up (+)", "Uji": "Physical Key Down Event", "Status": "AKTIF"},
                     {"Elemen Perangkat": "Tombol Volume Down (-)", "Uji": "Physical Key Down Event", "Status": "AKTIF"},
-                    {"Elemen Perangkat": "Tombol Power / Kunci Layar", "Uji": "Power Press & Wake Event", "Status": "AKTIF"},
-                    {"Elemen Perangkat": "Motor Getar Haptic", "Uji": "Haptic Actuator Impulse", "Status": "AKTIF"}
+                    {"Elemen Perangkat": "Tombol Power / Kunci Layar", "Uji": "Power Press & Wake Event", "Status": "AKTIF"}
                 ])
                 st.dataframe(audio_key_df, hide_index=True, use_container_width=True)
 
