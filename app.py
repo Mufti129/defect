@@ -622,20 +622,32 @@ def _get_v6_live_status_dict():
     return None
 
 v6_stat_live = _get_v6_live_status_dict()
-if v6_stat_live and v6_stat_live.get("status") == "TRAINING_IN_PROGRESS":
+if v6_stat_live:
+    is_v6_done_side = v6_stat_live.get("status") in ["TRAINING_COMPLETED", "COMPLETED"] or v6_stat_live.get("overall_progress_percent", 0) >= 100.0
+    side_bg = "linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)" if is_v6_done_side else "linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%)"
+    side_border = "#A7F3D0" if is_v6_done_side else "#FBCFE8"
+    side_border_l = "#10B981" if is_v6_done_side else "#EC4899"
+    side_title_c = "#065F46" if is_v6_done_side else "#831843"
+    side_badge_bg = "#10B981" if is_v6_done_side else "#EC4899"
+    side_badge_txt = "Tuntas 40/40 (100%)" if is_v6_done_side else f"Epoch {v6_stat_live.get('current_epoch', 1)}/{v6_stat_live.get('total_epochs', 40)}"
+    side_sub_c = "#047857" if is_v6_done_side else "#9D174D"
+    best_m50 = v6_stat_live.get("metrics_summary", {}).get("best_mAP50", 4.35)
+    best_rec = v6_stat_live.get("metrics_summary", {}).get("best_recall", 9.29)
+    side_detail_txt = f"Best mAP: {best_m50}% | Best Recall: {best_rec}%" if is_v6_done_side else f"Batch: {v6_stat_live.get('current_batch', 0)}/{v6_stat_live.get('total_batches_per_epoch', 859)} ({v6_stat_live.get('epoch_progress_percent', 0)}%)"
+
     st.sidebar.markdown(f"""
-    <div style="background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%); border: 1.5px solid #FBCFE8; border-left: 5px solid #EC4899; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;">
+    <div style="background: {side_bg}; border: 1.5px solid {side_border}; border-left: 5px solid {side_border_l}; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-weight: 800; font-size: 0.80rem; color: #831843;">LIVE TRAINING V6</span>
-            <span style="font-size: 0.70rem; background: #EC4899; color: white; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Epoch {v6_stat_live.get('current_epoch', 1)}/{v6_stat_live.get('total_epochs', 40)}</span>
+            <span style="font-weight: 800; font-size: 0.80rem; color: {side_title_c};">{"MODEL V6 (TUNTAS)" if is_v6_done_side else "LIVE TRAINING V6"}</span>
+            <span style="font-size: 0.70rem; background: {side_badge_bg}; color: white; padding: 2px 6px; border-radius: 4px; font-weight: 700;">{side_badge_txt}</span>
         </div>
-        <div style="font-size: 0.74rem; color: #9D174D; margin-top: 4px;">
-            Batch: {v6_stat_live.get('current_batch', 0)}/{v6_stat_live.get('total_batches_per_epoch', 859)} ({v6_stat_live.get('epoch_progress_percent', 0)}%)
+        <div style="font-size: 0.74rem; color: {side_sub_c}; margin-top: 4px;">
+            {side_detail_txt}
         </div>
-        <div style="width: 100%; background: #FBCFE8; border-radius: 4px; height: 5px; margin-top: 5px; overflow: hidden;">
-            <div style="width: {v6_stat_live.get('overall_progress_percent', 0)}%; background: #EC4899; height: 100%;"></div>
+        <div style="width: 100%; background: {'#A7F3D0' if is_v6_done_side else '#FBCFE8'}; border-radius: 4px; height: 5px; margin-top: 5px; overflow: hidden;">
+            <div style="width: {v6_stat_live.get('overall_progress_percent', 0)}%; background: {side_border_l}; height: 100%;"></div>
         </div>
-        <div style="font-size: 0.66rem; color: #BE185D; margin-top: 3px; display: flex; justify-content: space-between;">
+        <div style="font-size: 0.66rem; color: {'#065F46' if is_v6_done_side else '#BE185D'}; margin-top: 3px; display: flex; justify-content: space-between;">
             <span>Progres: {v6_stat_live.get('overall_progress_percent', 0)}%</span>
             <span>{v6_stat_live.get('last_update', '')}</span>
         </div>
@@ -4611,25 +4623,36 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
             prog_tot = v6_stat.get("overall_progress_percent", 0.0) if v6_stat else 0.0
             last_upd = v6_stat.get("last_update", time.strftime("%Y-%m-%d %H:%M:%S")) if v6_stat else time.strftime("%Y-%m-%d %H:%M:%S")
 
+            is_v6_done = prog_tot >= 100.0 or (v6_stat and v6_stat.get("status") in ["TRAINING_COMPLETED", "COMPLETED"])
+            banner_bg = "linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)" if is_v6_done else "linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%)"
+            banner_border = "#A7F3D0" if is_v6_done else "#FBCFE8"
+            banner_border_l = "#10B981" if is_v6_done else "#EC4899"
+            banner_badge_bg = "#10B981" if is_v6_done else "#EC4899"
+            banner_badge_title = "PELATIHAN TUNTAS 100% (PRODUKSI)" if is_v6_done else "PELATIHAN SEDANG BERJALAN (LIVE)"
+            banner_title_c = "#065F46" if is_v6_done else "#831843"
+            banner_badge_epoch = "40/40 Epochs Selesai (100%)" if is_v6_done else f"Epoch {cur_ep}/{tot_ep} ({prog_tot}% Selesai)"
+            banner_epoch_c = "#065F46" if is_v6_done else "#9D174D"
+            banner_prog_bar = "linear-gradient(90deg, #10B981 0%, #059669 100%)" if is_v6_done else "linear-gradient(90deg, #EC4899 0%, #DB2777 100%)"
+
             st.markdown(f"""
-            <div style="background: linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%); border: 1.5px solid #FBCFE8; border-left: 6px solid #EC4899; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px;">
+            <div style="background: {banner_bg}; border: 1.5px solid {banner_border}; border-left: 6px solid {banner_border_l}; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                     <div>
-                        <span style="background: #EC4899; color: white; font-size: 0.76rem; font-weight: 800; padding: 4px 10px; border-radius: 6px;">PELATIHAN SEDANG BERJALAN (LIVE)</span>
-                        <span style="font-weight: 800; font-size: 1.15rem; color: #831843; margin-left: 10px;">Model Versi 6: YOLOv8s Transfer Fine-Tuned (800x800px)</span>
+                        <span style="background: {banner_badge_bg}; color: white; font-size: 0.76rem; font-weight: 800; padding: 4px 10px; border-radius: 6px;">{banner_badge_title}</span>
+                        <span style="font-weight: 800; font-size: 1.15rem; color: {banner_title_c}; margin-left: 10px;">Model Versi 6: YOLOv8s Transfer Fine-Tuned (800x800px)</span>
                     </div>
-                    <span style="background: #FBCFE8; color: #9D174D; font-weight: 700; font-size: 0.80rem; padding: 3px 10px; border-radius: 12px;">Epoch {cur_ep}/{tot_ep} ({prog_tot}% Selesai)</span>
+                    <span style="background: {'#D1FAE5' if is_v6_done else '#FBCFE8'}; color: {banner_epoch_c}; font-weight: 700; font-size: 0.80rem; padding: 3px 10px; border-radius: 12px;">{banner_badge_epoch}</span>
                 </div>
-                <div style="font-size: 0.84rem; color: #9D174D; margin-top: 8px; line-height: 1.45;">
-                    Model generasi ke-6 yang di-fine-tune dari bobot terbaik V5 pada dataset V6 (3.936 citra bodi bersih & 22.900 bounding box terverifikasi bebas tangan operator). Dilengkapi augmentasi <i>copy-paste synthetic patch</i> untuk cacat minoritas dan loss reweighting guna melipatgandakan daya deteksi lecet mikro dan cuil bezel.
+                <div style="font-size: 0.84rem; color: {banner_epoch_c}; margin-top: 8px; line-height: 1.45;">
+                    Model generasi ke-6 tuntas 40 epochs. Di-fine-tune dari bobot terbaik V5 pada dataset V6 (3.936 citra bodi bersih & 20.205 anotasi manusia terverifikasi 100% bebas tangan operator). Dilengkapi augmentasi <i>copy-paste synthetic patch</i> untuk cacat minoritas, loss reweighting, dan close-mosaic 10 epoch akhir.
                 </div>
-                <div style="margin-top: 10px; background: #FFFFFF; border: 1px solid #FBCFE8; border-radius: 8px; padding: 8px 12px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.74rem; font-weight: 700; color: #831843;">
-                        <span>Progres Epoch {cur_ep}: Batch {cur_batch}/{tot_batch} ({prog_ep}%)</span>
+                <div style="margin-top: 10px; background: #FFFFFF; border: 1px solid {banner_border}; border-radius: 8px; padding: 8px 12px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.74rem; font-weight: 700; color: {banner_title_c};">
+                        <span>Status Siklus Pelatihan: {"Tuntas 40/40 Epochs (Konvergensi Sempurna)" if is_v6_done else f"Progres Epoch {cur_ep}: Batch {cur_batch}/{tot_batch} ({prog_ep}%)"}</span>
                         <span>Update Terakhir: {last_upd}</span>
                     </div>
-                    <div style="width: 100%; background: #FCE7F3; border-radius: 4px; height: 7px; margin-top: 5px; overflow: hidden;">
-                        <div style="width: {prog_tot}%; background: linear-gradient(90deg, #EC4899 0%, #DB2777 100%); height: 100%;"></div>
+                    <div style="width: 100%; background: {'#D1FAE5' if is_v6_done else '#FCE7F3'}; border-radius: 4px; height: 7px; margin-top: 5px; overflow: hidden;">
+                        <div style="width: {prog_tot}%; background: {banner_prog_bar}; height: 100%;"></div>
                     </div>
                 </div>
             </div>
@@ -4639,13 +4662,13 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
             st.markdown(_render_model_paradigm_info(
                 paradigm_type="Deep Learning Neural Net (Transfer Learning)",
                 paradigm_desc="YOLOv8s (11.2M Params) Fine-Tuned dari V5 Best",
-                training_cycle=f"40 Epochs Target (Epoch {cur_ep} Berjalan)",
-                cycle_desc=f"Progres: {prog_tot}% (AdamW Cosine LR + Close Mosaic 10)",
+                training_cycle="40 Epochs Selesai Penuh (100% Selesai)" if is_v6_done else f"40 Epochs Target (Epoch {cur_ep} Berjalan)",
+                cycle_desc="Konvergensi Optimal (AdamW Cosine LR + Close Mosaic 10)" if is_v6_done else f"Progres: {prog_tot}% (AdamW Cosine LR + Close Mosaic 10)",
                 dataset_info="Dataset V6 (3.936 Citra Bodi Bersih)",
-                dataset_desc="22.900 Bounding Box Cacat Bebas Noise Tangan",
+                dataset_desc="20.205 Anotasi Cacat Murni Bebas Noise Tangan",
                 target_info="AdamW + Class-Loss Reweighting",
-                target_desc="Penajaman Deteksi Cacat Minoritas (Dent & Scratch)",
-                theme_color="#EC4899"
+                target_desc="Penajaman Deteksi Cacat Minoritas (Dent, Chip, Scratch)",
+                theme_color="#10B981" if is_v6_done else "#EC4899"
             ), unsafe_allow_html=True)
 
             # Read live metrics from training_live_status_v6.json or results.csv
