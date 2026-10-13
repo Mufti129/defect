@@ -3,42 +3,9 @@
   "model_version": "V7",
   "current_epoch": 2,
   "total_epochs": 40,
-  "current_batch": 450,
+  "current_batch": 750,
   "total_batches_per_epoch": 1016,
-  "epoch_progress_percent": 44.3,
-  "overall_progress_percent": 3.61,
-  "last_update": "2026-10-12 13:20:00",
-  "latest_evaluation": {
-    "epoch": 1,
-    "precision": 80.06,
-    "recall": 8.54,
-    "mAP50": 11.19,
-    "mAP50_95": 4.36,
-    "train_box_loss": 2.622,
-    "val_box_loss": 2.9716,
-    "train_cls_loss": 7.906,
-    "val_cls_loss": 7.3482
-  },
-  "best_metrics": {
-    "best_map50": 11.19,
-    "best_epoch": 1
-  },
-  "history": [
-    {
-      "epoch": 1,
-      "metrics": {
-        "precision": 80.06,
-        "recall": 8.54,
-        "mAP50": 11.19,
-        "mAP50_95": 4.36,
-        "train_box_loss": 2.622,
-        "val_box_loss": 2.9716,
-        "train_cls_loss": 7.906,
-        "val_cls_loss": 7.3482
-      },
-      "best_mAP50": 11.19,
-      "best_epoch": 1,
-      "timestamp": "2026-10-12 12:20:00"
-    }
-  ]
+  "epoch_progress_percent": 73.8,
+  "overall_progress_percent": 4.35,
+  "last_update": "2026-10-13 07:56:21"
 }
