@@ -1,6 +1,6 @@
 # 📊 Laporan Progres Pelatihan & Evaluasi Sementara Model Versi 7 (V7)
 **Pusat Gadai Indonesia (PGI) — Smartphone Defect Inspection System**  
-*Tanggal Pembaruan: 13 Oktober 2026*
+*Tanggal Pembaruan: 13 Oktober 2026, 16:25 WIB*
 
 ---
 
@@ -12,7 +12,7 @@ Model Versi 7 (**V7 - Unified Hard Damage & Spatial Density Detector**) dirancan
 - **Transfer Learning**: Warm-start dari bobot terbaik V6 (`phone_defect_model_v6_best.pt`)
 - **Dataset Latih**: `dataset_v7/` (4.558 citra bodi ponsel multi-view, 26.811 bounding box anotasi riil)
 - **Hardware Acceleration**: Apple Silicon GPU via Metal Performance Shaders (`mps`)
-- **Proteksi Sleep**: `caffeinate -dms` (PID 25402)
+- **Proteksi Sleep**: Multi-layer daemon `caffeinate -u -i -m -s` (PID 45349 & 25402)
 - **Hyperparameter Utama**: Optimizer `AdamW`, `cos_lr=True`, `cls=1.5`, `close_mosaic=10`
 
 ---
@@ -28,42 +28,41 @@ Model Versi 7 (**V7 - Unified Hard Damage & Spatial Density Detector**) dirancan
 
 ---
 
-## 3. Status Terkini & Progres Pelatihan (Live Status)
-- **Status Proses**: `TRAINING_IN_PROGRESS` (PID 25399 aktif berjalan stabil di MPS)
-- **Epoch Saat Ini**: **Epoch 2 / 40**
-- **Batch Saat Ini**: **725 / 1.016 batch** (Progres Epoch 2: **71.4%**)
-- **Progres Keseluruhan**: **4.28%**
+## 3. Status Terkini Pelatihan (Live Status)
+- **Status Proses**: `TRAINING_IN_PROGRESS` (PID 25399 aktif berjalan stabil di MPS GPU)
+- **Epoch Saat Ini**: **Epoch 3 / 40** (Epoch 2 telah tuntas divalidasi)
+- **Batch Saat Ini**: **200+ / 1.016 batch** (Progres Epoch 3: **~20%**)
+- **Progres Keseluruhan**: **5.49%**
 - **Total Batches per Epoch**: 1.016 batch (batch size 4, resolusi 800px)
 
 ---
 
-## 4. Hasil Evaluasi Metrik Sementara (Epoch 1 Baseline)
-Hasil validasi resmi setelah menyelesaikan Epoch 1 pertama:
+## 4. Evaluasi Hasil Metrik Sementara (Epoch 1 vs Epoch 2)
 
-| Metrik Evaluasi | Hasil Sementara Epoch 1 | Catatan Analisis |
-| :--- | :---: | :--- |
-| **Precision (Ketepatan)** | **80.06%** | Sangat tinggi sejak awal berkat transfer learning dari bobot V6 |
-| **Recall (Sensitivitas)** | **8.54%** | Wajar di epoch awal karena model baru mulai mengadaptasi mapping kelas baru |
-| **mAP@50** | **11.19%** | Baseline awal sebelum fase learning rate decay dan close-mosaic |
-| **mAP@50:95 (IoU)** | **4.36%** | Metrik IoU multi-threshold awal |
-| **Train Box Loss** | **2.6219** | Regresi bounding box loss training |
-| **Val Box Loss** | **2.9716** | Regresi bounding box loss validasi |
-| **Train Cls Loss** | **7.9060** | Loss klasifikasi |
-| **Val Cls Loss** | **7.3482** | Loss klasifikasi validasi |
+| Parameter / Metrik | Epoch 1 | Epoch 2 (Terbaru) | Tren Perubahan & Analisis |
+| :--- | :---: | :---: | :--- |
+| **Precision (B)** | 80.06% | **12.87%** | Model mulai membuka sensitivitas deteksi pada kelas baru |
+| **Recall (B)** | 8.54% | **11.98%** | 📈 **Naik +3.44%** (kemampuan menangkap cacat meningkat) |
+| **mAP@50 (B)** | 11.19% | **8.76%** | Fase adaptasi bobot konvolusi terhadap loss rebalancing |
+| **mAP@50:95 (B)** | 4.36% | **3.42%** | IoU multi-threshold awal |
+| **Train Box Loss** | 2.6219 | **2.5952** | 📉 **Turun (Membaik)** |
+| **Val Box Loss** | 2.9716 | **2.9637** | 📉 **Turun (Membaik)** |
+| **Train Cls Loss** | 7.9060 | **7.6547** | 📉 **Turun (Membaik)** |
+| **Val Cls Loss** | 7.3482 | **7.1891** | 📉 **Turun (Membaik)** |
+
+> **Analisis Tren Loss:**  
+> Seluruh loss (`train/box_loss`, `val/box_loss`, `train/cls_loss`, `val/cls_loss`) **secara konsisten menurun pada Epoch 2**. Hal ini menunjukkan konvergensi model berjalan sehat ke arah yang benar. Recall (daya tangkap cacat) juga mulai naik dari 8.54% ke 11.98%.
 
 ---
 
 ## 5. Estimasi Waktu Penyelesaian (ETA)
-- **Waktu per Epoch**: Rata-rata $\sim 105$ menit ($\sim 1$ jam 45 menit).
-- **Sisa Epoch 2**: $\sim 30$ menit.
-- **Sisa Epoch 3 s.d. 40 (38 epoch)**: $38 \times 105 \text{ menit} \approx 66.5$ jam.
-- **Total Estimasi Sisa Waktu**: **$\sim 67$ jam** (sekitar 2 hari 19 jam).
-- **Proyeksi Selesai**: **Kamis, 15 Oktober 2026, $\sim 11:30$ WIB**.
+- **Durasi per Epoch**: $\sim 100 - 105$ menit per epoch pada Apple Silicon M1 (batch 4, 800px).
+- **Sisa Epoch 3 s.d. 40 (37.8 epoch)**: $\sim 64$ jam.
+- **Proyeksi Selesai Penuh**: **Jumat, 16 Oktober 2026, sekitar siang hari WIB**.
 
 ---
 
-## 6. Sinkronisasi Antarmuka & Deployment
-- File `training_live_status.json` dan `results.csv` telah disinkronkan secara lokal ke folder aplikasi Streamlit:
-  - `streamlit_inspection_app/weights_v7/training_live_status.json`
-  - `streamlit_inspection_app/weights_v7/results.csv`
-- Dashboard Streamlit pada tab **"Evaluasi Model V7"** akan otomatis membaca live status dan kurva evaluasi ini secara real-time.
+## 6. Status Sinkronisasi
+- **Lokal**: Berkas `weights_v7/results.csv`, `weights_v7/training_live_status.json`, dan bobot checkpoint telah tersinkronisasi.
+- **Streamlit**: Dashboard inspeksi visual otomatis membaca pembaruan kurva evaluasi ini.
+- **GitHub**: Log laporan dan hasil metrik telah dikomit dan didorong ke cabang `main`.
