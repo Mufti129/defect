@@ -2973,7 +2973,16 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
     # ---------------------------------------------------------
     st.markdown("---")
     st.markdown("#### Database & Riwayat Diagnostik Smartphone (Arsip SQLite)")
-    st.markdown("<p style='color: #64748B; font-size: 0.84rem; margin-top: -8px;'>Seluruh hasil inspeksi hardware dan software (QR Web, USB Plug & Play, ADB) tersimpan permanen di database lokal SQLite.</p>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: -6px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <span style="color: #64748B; font-size: 0.84rem;">
+            Seluruh hasil inspeksi hardware dan software (QR Web, USB Plug & Play, ADB) tersimpan permanen di database lokal SQLite dengan perlindungan auto-snapshot JSON/CSV ganda (anti-kehilangan).
+        </span>
+        <span style="background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; padding: 4px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
+            <span style="display: inline-block; width: 7px; height: 7px; background: #10B981; border-radius: 50%;"></span> SQLite & Snapshot JSON/CSV Aktif
+        </span>
+    </div>
+    """, unsafe_allow_html=True)
 
     if DiagnosticDatabase is not None:
         db = DiagnosticDatabase()
@@ -2993,11 +3002,17 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         # Tabel Riwayat
         df_history = db.get_all_diagnostics(limit=100)
         if not df_history.empty:
-            filter_c1, filter_c2 = st.columns([1.5, 1])
+            filter_c1, filter_c2, filter_c3 = st.columns([1.5, 1, 0.8])
             with filter_c1:
-                search_kw = st.text_input("Cari Sesi / Merk / Model:", placeholder="Ketik Oppo, Samsung, iPhone, atau ID Sesi...")
+                search_kw = st.text_input("Cari Sesi / Merk / Model:", placeholder="Ketik Oppo, Samsung, itel, iPhone, atau ID Sesi...")
             with filter_c2:
                 grade_filter = st.selectbox("Filter Grade:", ["Semua Grade", "Lolos (PASS)", "Gagal (FAIL)"])
+            with filter_c3:
+                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                if st.button("Sinkronkan DB", use_container_width=True, help="Sinkronkan database SQLite dengan snapshot cadangan JSON/CSV"):
+                    db.sync_snapshots()
+                    st.toast("Database SQLite berhasil disinkronkan ke file snapshot!")
+                    st.rerun()
 
             filtered_df = df_history.copy()
             if search_kw:
@@ -3029,18 +3044,27 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             show_df = filtered_df[display_cols].rename(columns=rename_map)
             st.dataframe(show_df, hide_index=True, use_container_width=True)
 
-            # Aksi Arsip
-            down_c1, down_c2 = st.columns([1, 1])
+            # Aksi Arsip & Pratinjau Muat
+            down_c1, down_c2, down_c3 = st.columns([1, 1, 1.5])
             with down_c1:
                 csv_bytes = filtered_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label="Unduh Riwayat Diagnostik (CSV)",
+                    label="Unduh Riwayat (CSV)",
                     data=csv_bytes,
                     file_name=f"riwayat_diagnostik_mcv_{int(time.time())}.csv",
                     mime="text/csv",
                     use_container_width=True
                 )
             with down_c2:
+                json_bytes = filtered_df.to_json(orient="records", indent=2).encode('utf-8')
+                st.download_button(
+                    label="Unduh Snapshot (JSON)",
+                    data=json_bytes,
+                    file_name=f"diagnostic_history_snapshot_{int(time.time())}.json",
+                    mime="application/json",
+                    use_container_width=True
+                )
+            with down_c3:
                 sess_list = filtered_df["record_id"].tolist() if "record_id" in filtered_df.columns else filtered_df["session_id"].tolist()
                 if sess_list:
                     selected_sess = st.selectbox(
@@ -3048,7 +3072,7 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                         sess_list,
                         key="sel_past_session"
                     )
-                    if st.button("Muat Sesi Ini ke Tab Inspeksi", use_container_width=True):
+                    if st.button("Muat Sesi Ini ke Tab Inspeksi", use_container_width=True, type="secondary"):
                         past_row = db.get_diagnostic(selected_sess)
                         if past_row and past_row.get("raw_json"):
                             try:
