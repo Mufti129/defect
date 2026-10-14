@@ -1670,5 +1670,24 @@
     "storage_folder": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/data/collected_data/20261012/1-00863e-13__apple__iphone-16-pro-256gb_1791771349",
     "views_count": 5,
     "views_list": "top, bottom, left, right, front"
+  },
+  {
+    "id": 91,
+    "timestamp": "2026-10-14 11:07:46",
+    "unit_id": "1-00013e-13__oppo__oppo-a5i-4-128",
+    "model_version": "v5",
+    "model_name": "Model Versi 5 (Housing-Only YOLOv8s 800px - Bobot Terbaik Final)",
+    "is_valid_phone": 1,
+    "rejection_reason": null,
+    "detected_objects_json": "{}",
+    "final_grade": "D",
+    "grade_confidence": 1.0,
+    "total_dpi": 50.33,
+    "defects_count": 8,
+    "defect_breakdown_json": "{\"scratch\": 5, \"dent\": 0, \"chip\": 1, \"crack\": 0, \"broken\": 2}",
+    "elapsed_sec": 0.0,
+    "storage_folder": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/data/collected_data/20261014/1-00013e-13__oppo__oppo-a5i-4-128_1791950866",
+    "views_count": 4,
+    "views_list": "top, bottom, left, right"
   }
 ]
