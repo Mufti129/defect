@@ -1,6 +1,6 @@
 # 📊 Laporan Progres Pelatihan & Evaluasi Sementara Model Versi 7 (V7)
 **Pusat Gadai Indonesia (PGI) — Smartphone Defect Inspection System**  
-*Tanggal Pembaruan: 13 Oktober 2026, 16:25 WIB*
+*Tanggal Pembaruan: 14 Oktober 2026, 07:38 WIB*
 
 ---
 
@@ -29,40 +29,39 @@ Model Versi 7 (**V7 - Unified Hard Damage & Spatial Density Detector**) dirancan
 ---
 
 ## 3. Status Terkini Pelatihan (Live Status)
-- **Status Proses**: `TRAINING_IN_PROGRESS` (PID 25399 aktif berjalan stabil di MPS GPU)
-- **Epoch Saat Ini**: **Epoch 3 / 40** (Epoch 2 telah tuntas divalidasi)
-- **Batch Saat Ini**: **200+ / 1.016 batch** (Progres Epoch 3: **~20%**)
-- **Progres Keseluruhan**: **5.49%**
+- **Status Proses**: `TRAINING_IN_PROGRESS` (PID 25399 berjalan aktif dan stabil di MPS GPU)
+- **Epoch Saat Ini**: **Epoch 5 / 40** (Epoch 1 s.d. 4 telah selesai 100% dan divalidasi)
+- **Batch Saat Ini**: **225 / 1.016 batch** (Progres Epoch 5: **22.1%**)
+- **Progres Keseluruhan**: **10.55%** (Telah menembus milestone 10% pertama!)
 - **Total Batches per Epoch**: 1.016 batch (batch size 4, resolusi 800px)
 
 ---
 
-## 4. Evaluasi Hasil Metrik Sementara (Epoch 1 vs Epoch 2)
+## 4. Evaluasi Hasil Metrik Lengkap (Epoch 1 s.d. Epoch 4)
 
-| Parameter / Metrik | Epoch 1 | Epoch 2 (Terbaru) | Tren Perubahan & Analisis |
-| :--- | :---: | :---: | :--- |
-| **Precision (B)** | 80.06% | **12.87%** | Model mulai membuka sensitivitas deteksi pada kelas baru |
-| **Recall (B)** | 8.54% | **11.98%** | 📈 **Naik +3.44%** (kemampuan menangkap cacat meningkat) |
-| **mAP@50 (B)** | 11.19% | **8.76%** | Fase adaptasi bobot konvolusi terhadap loss rebalancing |
-| **mAP@50:95 (B)** | 4.36% | **3.42%** | IoU multi-threshold awal |
-| **Train Box Loss** | 2.6219 | **2.5952** | 📉 **Turun (Membaik)** |
-| **Val Box Loss** | 2.9716 | **2.9637** | 📉 **Turun (Membaik)** |
-| **Train Cls Loss** | 7.9060 | **7.6547** | 📉 **Turun (Membaik)** |
-| **Val Cls Loss** | 7.3482 | **7.1891** | 📉 **Turun (Membaik)** |
+| Epoch | Precision (B) | Recall (B) | mAP@50 (B) | mAP@50:95 (B) | Train Box Loss | Val Box Loss | Train Cls Loss | Val Cls Loss |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **1** | 80.06% | 8.54% | 11.19% | 4.36% | 2.6220 | 2.9716 | 7.9060 | 7.3483 |
+| **2** | 12.87% | 11.98% | 8.76% | 3.42% | 2.5952 | 2.9637 | 7.6547 | 7.1891 |
+| **3** | 49.27% | 8.54% | 9.65% | 4.47% | 2.5976 | 3.0927 | 7.6599 | 7.3165 |
+| **4 (Terbaru)** | 12.64% | **13.93%** 📈 | 5.91% | 2.08% | **2.5902** 📉 | 2.9870 | **7.5911** 📉 | 7.2783 |
 
-> **Analisis Tren Loss:**  
-> Seluruh loss (`train/box_loss`, `val/box_loss`, `train/cls_loss`, `val/cls_loss`) **secara konsisten menurun pada Epoch 2**. Hal ini menunjukkan konvergensi model berjalan sehat ke arah yang benar. Recall (daya tangkap cacat) juga mulai naik dari 8.54% ke 11.98%.
+> **Analisis Tren Kunci (Key Insights):**  
+> 1. **Lonjakan Recall (Sensitivitas Deteksi)**: Pada Epoch 4, Recall mencapai rekor tertinggi baru yaitu **13.93%** (naik dari 8.54% di Epoch 1 dan 11.98% di Epoch 2). Artinya model semakin mampu mengenali dan menangkap lebih banyak titik cacat fisik pada unit.  
+> 2. **Loss Training Terus Menurun**: `train/box_loss` turun ke **2.5902** dan `train/cls_loss` turun ke **7.5911** (rekor terendah sejak awal pelatihan).  
+> 3. **Fase Warm-Up Selesai**: Learning rate sekarang berada di fase plateau ($0.000986$) dan siap memasuki fase decay bertahap untuk mempertajam Precision dan mAP@50.
 
 ---
 
 ## 5. Estimasi Waktu Penyelesaian (ETA)
-- **Durasi per Epoch**: $\sim 100 - 105$ menit per epoch pada Apple Silicon M1 (batch 4, 800px).
-- **Sisa Epoch 3 s.d. 40 (37.8 epoch)**: $\sim 64$ jam.
-- **Proyeksi Selesai Penuh**: **Jumat, 16 Oktober 2026, sekitar siang hari WIB**.
+- **Laju Rata-rata**: $\sim 100 - 105$ menit per epoch pada Apple Silicon M1 (batch 4, resolusi 800px).
+- **Sisa Pelatihan**: $\sim 35$ epoch lagi (dari total 40 epoch).
+- **Sisa Waktu**: $\approx 58 - 60$ jam.
+- **Proyeksi Selesai Penuh**: **Jumat sore / malam, 16 Oktober 2026**.
 
 ---
 
 ## 6. Status Sinkronisasi
-- **Lokal**: Berkas `weights_v7/results.csv`, `weights_v7/training_live_status.json`, dan bobot checkpoint telah tersinkronisasi.
-- **Streamlit**: Dashboard inspeksi visual otomatis membaca pembaruan kurva evaluasi ini.
+- **Lokal**: Berkas `weights_v7/results.csv`, `weights_v7/training_live_status.json`, dan checkpoint `last.pt` (89.5 MB) telah disinkronkan.
+- **Streamlit**: Dashboard inspeksi visual otomatis membaca pembaruan kurva evaluasi Epoch 1–4 ini secara langsung.
 - **GitHub**: Log laporan dan hasil metrik telah dikomit dan didorong ke cabang `main`.
