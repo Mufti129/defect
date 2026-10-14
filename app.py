@@ -2196,25 +2196,45 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                             "level_pct": 92,
                             "is_charging": False,
                             "health_pct": 94,
-                            "stress_test_passed": True,
-                            "damage_flags": []
+                            "stress_passed": True,
+                            "symptoms": {}
                         },
                         "touchscreen": {
-                            "cells_passed": 180,
-                            "total_cells": 180,
+                            "cells_passed": 49,
+                            "total_cells": 49,
                             "zero_deadzone": True,
                             "coverage_pct": 100
+                        },
+                        "display_visual": {
+                            "tested": True,
+                            "color_purity": "clear"
                         },
                         "sensors": {
                             "gyro_responsive": True,
                             "sample_alpha": 12.4,
-                            "sample_beta": 4.8
+                            "sample_beta": 4.8,
+                            "sample_gamma": 1.2,
+                            "proximity_responsive": True
+                        },
+                        "camera_hardware": {
+                            "tested": True,
+                            "rear_cam": "PASS",
+                            "front_cam": "PASS",
+                            "flash": "PASS",
+                            "notes": "Lensa & sensor kamera jernih, autofokus tajam"
                         },
                         "audio_haptic": {
                             "tested": True,
-                            "passed": True,
-                            "speaker_status": "Normal / Jernih",
-                            "haptic_status": "Kuat & Stabil"
+                            "speaker_quality": "clear",
+                            "haptic_quality": "strong",
+                            "mic_quality": "clear",
+                            "mic_passed": True,
+                            "buttons": {"vol_up": "PASS", "vol_down": "PASS", "power": "PASS"}
+                        },
+                        "security_audit": {
+                            "cloud_unlocked": True,
+                            "no_emi_lock": True,
+                            "pin_removed": True
                         },
                         "brand": "Oppo",
                         "model": "A18",
@@ -2527,15 +2547,25 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
 
         # TAB 2: BATERAI & DAYA
         with diag_tab2:
-            st.markdown("#### Analisis Kesehatan Baterai (Gas-Gauge & Coulomb Counter)")
-            bat_c1, bat_c2, bat_c3, bat_c4 = st.columns(4)
+            st.markdown("#### Analisis Kesehatan Baterai & Daya (Gas-Gauge & Coulomb Counter)")
+            bat_c0, bat_c1, bat_c2, bat_c3, bat_c4 = st.columns(5)
+
+            soc_color = "#10B981" if bat_level >= 50 else ("#F59E0B" if bat_level >= 20 else "#EF4444")
+            with bat_c0:
+                st.markdown(f"""
+                <div class="flutter-metric-card">
+                    <div class="flutter-metric-val" style="color: {soc_color};">{bat_level}%</div>
+                    <div class="flutter-metric-label">Persentase Daya (SoC)</div>
+                    <div style="font-size: 0.72rem; color: {soc_color}; font-weight: 700; margin-top: 4px;">{'⚡ Mengisi Daya' if bat_charging else '🔋 Lepas Charger'}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             bat_health_color = "#10B981" if bat_health >= 85 else ("#F59E0B" if bat_health >= 80 else "#EF4444")
             with bat_c1:
                 st.markdown(f"""
                 <div class="flutter-metric-card">
                     <div class="flutter-metric-val" style="color: {bat_health_color};">{bat_health}%</div>
-                    <div class="flutter-metric-label">Kesehatan Baterai (Health)</div>
+                    <div class="flutter-metric-label">Kesehatan Baterai (SoH)</div>
                     <div style="font-size: 0.72rem; color: {bat_health_color}; font-weight: 700; margin-top: 4px;">Status: {bat_status}</div>
                 </div>
                 """, unsafe_allow_html=True)

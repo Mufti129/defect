@@ -22,14 +22,11 @@ class BatteryReport:
     wear_level: float       # 0.0 (New) to 1.0 (Completely Depleted)
     recommendation: str
     penalty_points: float   # DPI contribution for grading engine
+    level_pct: int = 100    # State of Charge (0-100%)
 
     @property
     def health_pct(self) -> int:
         return self.health_percentage
-
-    @property
-    def level_pct(self) -> int:
-        return int(self.health_percentage)
 
     @property
     def wear_level_desc(self) -> str:
@@ -105,5 +102,6 @@ class BatteryAnalyzer:
             is_charging=is_charging,
             wear_level=wear_level,
             recommendation=recommendation,
-            penalty_points=penalty_points
+            penalty_points=penalty_points,
+            level_pct=int(level)
         )

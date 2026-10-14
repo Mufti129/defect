@@ -420,7 +420,8 @@ class DeviceManager:
             is_charging=is_charging,
             wear_level=round(max(0.0, (100 - bat_health) / 100.0), 2),
             recommendation=" ".join(rec_notes),
-            penalty_points=round(bat_penalty, 1)
+            penalty_points=round(bat_penalty, 1),
+            level_pct=bat_level
         )
 
         # Parse sensors

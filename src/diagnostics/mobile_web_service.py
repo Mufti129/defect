@@ -1,7 +1,7 @@
 """
 MOBILE WEB DIAGNOSTIC SERVICE & QR CODE GENERATOR
 =================================================
-Pusat Gadai Indonesia (PGI) — Device QA System
+MUFTI COMPUTER VISION — DIVISI ELEKTRONIK & GADAI SMARTPHONE RESMI
 
 Enables zero-touch hardware diagnostics via customer's smartphone camera.
 Generates dynamic QR codes (with dual-engine: local PNG + cloud fallback)
@@ -303,9 +303,9 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             <span class="badge badge-pass" id="bat-badge">NORMAL</span>
         </div>
         <div class="stat-grid">
-            <div class="stat-box"><span>Kapasitas Baterai</span><b id="bat-level">--%</b></div>
-            <div class="stat-box"><span>Status Charger</span><b id="bat-charging">--</b></div>
-            <div class="stat-box"><span>Estimasi Kesehatan (SoH)</span><b id="bat-health-txt" style="color: #34D399;">92% (Sehat)</b></div>
+            <div class="stat-box"><span>Persentase Daya (SoC)</span><b id="bat-level" style="color: #38BDF8;">92%</b></div>
+            <div class="stat-box"><span>Status Charger</span><b id="bat-charging">Lepas Charger</b></div>
+            <div class="stat-box"><span>Estimasi Kesehatan (SoH)</span><b id="bat-health-txt" style="color: #34D399;">94% (Prima)</b></div>
             <div class="stat-box"><span>Stabilitas Voltase</span><b id="bat-stress-status" style="color: #38BDF8;">Siap Uji</b></div>
         </div>
 
@@ -313,13 +313,21 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             Jalankan Uji Stabilitas Beban Baterai (3 Detik)
         </button>
 
-        <div id="ios-battery-section" style="display: none; margin-top: 10px; padding: 10px; background: #0A0F1D; border-radius: 8px; border: 1px solid #1E293B;">
-            <div style="font-size: 0.74rem; color: #94A3B8;">Privasi iOS membatasi sensor baterai otomatis. Geser slider sesuai baterai di pojok atas HP:</div>
-            <input type="range" min="50" max="100" value="90" class="slider-control" id="ios-slider" oninput="updateIOSBattery(this.value)">
-            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #64748B; margin-top: 4px;">
+        <div id="ios-battery-section" style="margin-top: 10px; padding: 12px; background: #0A0F1D; border-radius: 8px; border: 1px solid #1E293B;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <span style="font-size: 0.76rem; color: #94A3B8; font-weight: 600;">Daya Baterai Saat Ini (Lihat Status Bar HP):</span>
+                <span id="slider-txt" style="color: #38BDF8; font-weight: 800; font-size: 0.90rem;">92%</span>
+            </div>
+            <input type="range" min="1" max="100" value="92" class="slider-control" id="bat-slider" oninput="updateBatteryLevel(this.value)">
+            <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: #64748B; margin-top: 2px;">
+                <span>1% (Kritis)</span>
                 <span>50%</span>
-                <span id="slider-txt" style="color: #38BDF8; font-weight: 700;">90%</span>
-                <span>100%</span>
+                <span>100% (Penuh)</span>
+            </div>
+            <div style="margin-top: 8px; display: flex; gap: 8px;">
+                <button type="button" id="btn-toggle-charging" onclick="toggleChargingState()" style="flex: 1; background: #131B2E; color: #38BDF8; border: 1px solid #2563EB; padding: 8px; border-radius: 6px; font-size: 0.74rem; font-weight: 700; cursor: pointer;">
+                    🔌 Status: Lepas Charger (Klik untuk Ganti ke Sedang Mengisi)
+                </button>
             </div>
         </div>
 
@@ -2194,11 +2202,33 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         }
 
         // 2. Battery Sensor & Degradation Audit
-        function updateIOSBattery(val) {
+        function updateBatteryLevel(val) {
             batteryData.level = parseInt(val);
-            document.getElementById('slider-txt').innerText = val + '%';
-            document.getElementById('bat-level').innerText = val + '%';
-            recalculateBatteryHealth();
+            const sliderTxt = document.getElementById('slider-txt');
+            if (sliderTxt) sliderTxt.innerText = val + '%';
+            const batLvl = document.getElementById('bat-level');
+            if (batLvl) batLvl.innerText = val + '%';
+        }
+
+        function updateIOSBattery(val) {
+            updateBatteryLevel(val);
+        }
+
+        function toggleChargingState() {
+            batteryData.charging = !batteryData.charging;
+            const btn = document.getElementById('btn-toggle-charging');
+            const lbl = document.getElementById('bat-charging');
+            if (batteryData.charging) {
+                if (btn) btn.innerText = '⚡ Status: Sedang Mengisi Daya (Klik untuk Lepas)';
+                if (btn) btn.style.borderColor = '#10B981';
+                if (btn) btn.style.color = '#34D399';
+                if (lbl) lbl.innerText = 'Mengisi Daya';
+            } else {
+                if (btn) btn.innerText = '🔌 Status: Lepas Charger (Klik untuk Ganti ke Sedang Mengisi)';
+                if (btn) btn.style.borderColor = '#2563EB';
+                if (btn) btn.style.color = '#38BDF8';
+                if (lbl) lbl.innerText = 'Lepas Charger';
+            }
         }
 
         // Initialize immediate baseline to prevent blank '--' or '--%'
@@ -2207,33 +2237,46 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         batteryData.charging = false;
         document.getElementById('bat-level').innerText = initialBatLvl + '%';
         document.getElementById('bat-charging').innerText = 'Lepas Charger';
+        const initialSlider = document.getElementById('bat-slider');
+        if (initialSlider) initialSlider.value = initialBatLvl;
+        const initialSliderTxt = document.getElementById('slider-txt');
+        if (initialSliderTxt) initialSliderTxt.innerText = initialBatLvl + '%';
         recalculateBatteryHealth();
 
-        if (!isIOS && ('getBattery' in navigator)) {
+        if (typeof navigator !== 'undefined' && 'getBattery' in navigator) {
             navigator.getBattery().then(bat => {
                 function updateBattery() {
                     const pct = Math.round(bat.level * 100);
-                    batteryData.level = pct > 0 ? pct : initialBatLvl;
+                    if (pct > 0) {
+                        batteryData.level = pct;
+                        const sEl = document.getElementById('bat-slider');
+                        if (sEl) sEl.value = pct;
+                        const sTxt = document.getElementById('slider-txt');
+                        if (sTxt) sTxt.innerText = pct + '%';
+                        const bLvl = document.getElementById('bat-level');
+                        if (bLvl) bLvl.innerText = pct + '%';
+                    }
                     batteryData.charging = bat.charging;
-                    document.getElementById('bat-level').innerText = batteryData.level + '%';
-                    document.getElementById('bat-charging').innerText = bat.charging ? 'Mengisi Daya' : 'Lepas Charger';
-                    recalculateBatteryHealth();
+                    const cBtn = document.getElementById('btn-toggle-charging');
+                    const cLbl = document.getElementById('bat-charging');
+                    if (bat.charging) {
+                        if (cBtn) cBtn.innerText = '⚡ Status: Sedang Mengisi Daya (Terdeteksi Otomatis)';
+                        if (cBtn) cBtn.style.borderColor = '#10B981';
+                        if (cBtn) cBtn.style.color = '#34D399';
+                        if (cLbl) cLbl.innerText = 'Mengisi Daya';
+                    } else {
+                        if (cBtn) cBtn.innerText = '🔌 Status: Lepas Charger (Terdeteksi Otomatis)';
+                        if (cBtn) cBtn.style.borderColor = '#2563EB';
+                        if (cBtn) cBtn.style.color = '#38BDF8';
+                        if (cLbl) cLbl.innerText = 'Lepas Charger';
+                    }
                 }
                 updateBattery();
                 bat.addEventListener('levelchange', updateBattery);
                 bat.addEventListener('chargingchange', updateBattery);
             }).catch(() => {
-                // Keep the reliable baseline if getBattery throws security error in iframe/HTTP
-                batteryData.level = 88;
-                document.getElementById('bat-level').innerText = '88%';
-                document.getElementById('bat-charging').innerText = 'Lepas Charger';
-                recalculateBatteryHealth();
+                // If getBattery is blocked by browser policy, manual slider is already active
             });
-        } else if (isIOS) {
-            document.getElementById('bat-level').innerText = '90%';
-            document.getElementById('bat-charging').innerText = 'Lepas Charger';
-            batteryData.level = 90;
-            recalculateBatteryHealth();
         }
 
         function runBatteryStressTest() {
@@ -2260,7 +2303,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         }
 
         function recalculateBatteryHealth() {
-            let baseHealth = isIOS ? batteryData.level : Math.min(100, Math.max(70, batteryData.level >= 80 ? 94 : 85));
+            let baseHealth = 94;
             const isKembung = document.getElementById('chk-kembung').checked;
             const isShutdown = document.getElementById('chk-shutdown').checked;
             const isPanas = document.getElementById('chk-panas').checked;
@@ -2270,10 +2313,10 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             if (isShutdown) baseHealth -= 15;
             if (isPanas) baseHealth -= 8;
             if (isPort) baseHealth -= 5;
-            baseHealth = Math.max(40, baseHealth);
+            baseHealth = Math.max(40, Math.min(100, baseHealth));
 
             batteryData.health_pct = baseHealth;
-            document.getElementById('bat-health-txt').innerText = baseHealth + '% ' + (baseHealth >= 80 ? '(Sehat)' : (baseHealth >= 65 ? '(Waspada)' : '(Rusak/Degradasi)'));
+            document.getElementById('bat-health-txt').innerText = baseHealth + '% ' + (baseHealth >= 85 ? '(Prima)' : (baseHealth >= 80 ? '(Wajar)' : '(Degradasi)'));
 
             const badge = document.getElementById('bat-badge');
             if (isKembung) {
