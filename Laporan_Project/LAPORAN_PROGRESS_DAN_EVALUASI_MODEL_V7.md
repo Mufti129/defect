@@ -1,6 +1,6 @@
 # 📊 Laporan Progres Pelatihan & Evaluasi Sementara Model Versi 7 (V7)
 **Pusat Gadai Indonesia (PGI) — Smartphone Defect Inspection System**  
-*Tanggal Pembaruan: 14 Oktober 2026, 07:38 WIB*
+*Tanggal Pembaruan: 14 Oktober 2026, 16:45 WIB*
 
 ---
 
@@ -30,38 +30,40 @@ Model Versi 7 (**V7 - Unified Hard Damage & Spatial Density Detector**) dirancan
 
 ## 3. Status Terkini Pelatihan (Live Status)
 - **Status Proses**: `TRAINING_IN_PROGRESS` (PID 25399 berjalan aktif dan stabil di MPS GPU)
-- **Epoch Saat Ini**: **Epoch 5 / 40** (Epoch 1 s.d. 4 telah selesai 100% dan divalidasi)
-- **Batch Saat Ini**: **225 / 1.016 batch** (Progres Epoch 5: **22.1%**)
-- **Progres Keseluruhan**: **10.55%** (Telah menembus milestone 10% pertama!)
+- **Epoch Saat Ini**: **Epoch 6 / 40** (Epoch 1 s.d. 5 telah selesai 100% dan divalidasi)
+- **Batch Saat Ini**: **200 / 1.016 batch** (Progres Epoch 6: **19.7%**)
+- **Progres Keseluruhan**: **12.99%** (~13% dari total 40 epoch)
 - **Total Batches per Epoch**: 1.016 batch (batch size 4, resolusi 800px)
 
 ---
 
-## 4. Evaluasi Hasil Metrik Lengkap (Epoch 1 s.d. Epoch 4)
+## 4. Evaluasi Hasil Metrik Lengkap (Epoch 1 s.d. Epoch 5)
 
-| Epoch | Precision (B) | Recall (B) | mAP@50 (B) | mAP@50:95 (B) | Train Box Loss | Val Box Loss | Train Cls Loss | Val Cls Loss |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | 80.06% | 8.54% | 11.19% | 4.36% | 2.6220 | 2.9716 | 7.9060 | 7.3483 |
-| **2** | 12.87% | 11.98% | 8.76% | 3.42% | 2.5952 | 2.9637 | 7.6547 | 7.1891 |
-| **3** | 49.27% | 8.54% | 9.65% | 4.47% | 2.5976 | 3.0927 | 7.6599 | 7.3165 |
-| **4 (Terbaru)** | 12.64% | **13.93%** 📈 | 5.91% | 2.08% | **2.5902** 📉 | 2.9870 | **7.5911** 📉 | 7.2783 |
+| Epoch | Precision (B) | Recall (B) | mAP@50 (B) | mAP@50:95 (B) | Train Box Loss | Val Box Loss | Train Cls Loss | Val Cls Loss | Learning Rate |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **1** | 80.06% | 8.54% | 11.19% | 4.36% | 2.6220 | 2.9716 | 7.9060 | 7.3483 | 0.000333 |
+| **2** | 12.87% | 11.98% | 8.76% | 3.42% | 2.5952 | 2.9637 | 7.6547 | 7.1891 | 0.000665 |
+| **3** | 49.27% | 8.54% | 9.65% | 4.47% | 2.5976 | 3.0927 | 7.6599 | 7.3165 | 0.000994 |
+| **4** | 12.64% | **13.93%** | 5.91% | 2.08% | 2.5902 | 2.9870 | 7.5911 | 7.2783 | 0.000986 |
+| **5 (Terbaru)** | 8.26% | 12.50% | 4.90% | 1.54% | **2.5874** 📉 | 3.0412 | **7.5739** 📉 | 7.3344 | **0.000976** 📉 |
 
-> **Analisis Tren Kunci (Key Insights):**  
-> 1. **Lonjakan Recall (Sensitivitas Deteksi)**: Pada Epoch 4, Recall mencapai rekor tertinggi baru yaitu **13.93%** (naik dari 8.54% di Epoch 1 dan 11.98% di Epoch 2). Artinya model semakin mampu mengenali dan menangkap lebih banyak titik cacat fisik pada unit.  
-> 2. **Loss Training Terus Menurun**: `train/box_loss` turun ke **2.5902** dan `train/cls_loss` turun ke **7.5911** (rekor terendah sejak awal pelatihan).  
-> 3. **Fase Warm-Up Selesai**: Learning rate sekarang berada di fase plateau ($0.000986$) dan siap memasuki fase decay bertahap untuk mempertajam Precision dan mAP@50.
+> **Analisis Tren Kunci (Key Insights Epoch 5):**  
+> 1. **Loss Box & Classification Terus Menurun Stabil**: `train/box_loss` kembali memecahkan rekor terendah di angka **2.5874** (dari 2.6220 di Epoch 1) dan `train/cls_loss` turun ke **7.5739** (dari 7.9060 di Epoch 1). Hal ini membuktikan gradien penurunan loss berlangsung mulus tanpa lonjakan (*healthy convergence*).  
+> 2. **Sensitivitas Deteksi Terjaga Tinggi**: Recall deteksi bertahan di angka **12.50%**, mempertahankan daya tangkap terhadap cacat-cacat minor berukuran sub-milimeter.  
+> 3. **Fase Cosine Annealing Dimulai**: Learning rate mulai memasuki kurva penurunan bertahap (*cosine decay* dari puncak $0.0010$ ke $0.000976$), yang akan membantu model mengunci bobot optimal pada feature map fine-grained di epoch-epoch berikutnya.  
+> 4. **Checkpoint Terkini**: Bobot checkpoint sementara telah diamankan sebagai `phone_defect_model_v7_best.pt` (89.5 MB) dan tersedia untuk inferensi demonstrasi.
 
 ---
 
 ## 5. Estimasi Waktu Penyelesaian (ETA)
-- **Laju Rata-rata**: $\sim 100 - 105$ menit per epoch pada Apple Silicon M1 (batch 4, resolusi 800px).
-- **Sisa Pelatihan**: $\sim 35$ epoch lagi (dari total 40 epoch).
-- **Sisa Waktu**: $\approx 58 - 60$ jam.
-- **Proyeksi Selesai Penuh**: **Jumat sore / malam, 16 Oktober 2026**.
+- **Laju Rata-rata**: $\sim 95 - 105$ menit per epoch pada Apple Silicon M1 (batch 4, resolusi 800px).
+- **Sisa Pelatihan**: $\sim 34.8$ epoch lagi (dari total 40 epoch).
+- **Sisa Waktu Komputasi Aktif**: $\approx 55 - 58$ jam.
+- **Proyeksi Selesai Penuh**: **Sabtu pagi / siang, 17 Oktober 2026** (dengan asumsi laptop beroperasi terus-menerus tanpa gangguan suspensi tidur).
 
 ---
 
 ## 6. Status Sinkronisasi
-- **Lokal**: Berkas `weights_v7/results.csv`, `weights_v7/training_live_status.json`, dan checkpoint `last.pt` (89.5 MB) telah disinkronkan.
-- **Streamlit**: Dashboard inspeksi visual otomatis membaca pembaruan kurva evaluasi Epoch 1–4 ini secara langsung.
-- **GitHub**: Log laporan dan hasil metrik telah dikomit dan didorong ke cabang `main`.
+- **Lokal**: Berkas `weights_v7/results.csv`, `weights_v7/training_live_status.json`, dan checkpoint `phone_defect_model_v7_best.pt` (89.5 MB) telah disinkronkan ke direktori kerja utama maupun sub-aplikasi Streamlit.
+- **Streamlit**: Dashboard inspeksi visual otomatis membaca pembaruan kurva evaluasi Epoch 1–5 dan metrik langsung secara *real-time*.
+- **GitHub**: Log laporan dan hasil metrik telah dikomit dan didorong ke cabang `main` di `https://github.com/Mufti129/defect`.

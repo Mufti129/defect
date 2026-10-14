@@ -1,11 +1,11 @@
 {
   "status": "TRAINING_IN_PROGRESS",
   "model_version": "V7",
-  "current_epoch": 5,
+  "current_epoch": 6,
   "total_epochs": 40,
-  "current_batch": 625,
+  "current_batch": 200,
   "total_batches_per_epoch": 1016,
-  "epoch_progress_percent": 61.5,
-  "overall_progress_percent": 11.54,
-  "last_update": "2026-10-14 11:32:34"
+  "epoch_progress_percent": 19.7,
+  "overall_progress_percent": 12.99,
+  "last_update": "2026-10-14 16:16:38"
 }
