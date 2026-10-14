@@ -432,9 +432,19 @@ class DeviceManager:
 
         touch_data = payload.get("touchscreen", {})
         coverage_pct = float(touch_data.get("coverage_pct", 100))
-        cells_passed = int(touch_data.get("cells_passed", 84))
-        total_cells = int(touch_data.get("total_cells", 84))
+        total_cells = int(touch_data.get("total_cells", 49))
         zero_deadzone = bool(touch_data.get("zero_deadzone", True))
+        cells_passed = int(touch_data.get("cells_passed", total_cells if zero_deadzone else int(total_cells * (coverage_pct / 100.0))))
+
+        # Parse Camera Hardware from Mobile CIT
+        cam_data = payload.get("camera_hardware", {})
+        cam_rear = cam_data.get("rear_cam", "PASS")
+        cam_front = cam_data.get("front_cam", "PASS")
+        cam_is_ok = (cam_rear != "FAIL" and cam_front != "FAIL")
+        cam_notes = cam_data.get("notes", "Optik sensor kamera jernih & autofokus responsif")
+
+        # Parse Proximity
+        prox_responsive = bool(payload.get("sensors", {}).get("proximity_responsive", True))
 
         sensor_details = {
             "accelerometer": {
@@ -457,9 +467,15 @@ class DeviceManager:
             },
             "proximity_light": {
                 "name": "Sensor Proximity & Lingkungan",
-                "status": "PASS",
-                "value": "Terkalibrasi (Ambient Sensor Active)",
-                "desc": "Merespons perubahan intensitas cahaya"
+                "status": "PASS" if prox_responsive else "FAIL",
+                "value": "Terkalibrasi (Near/Far Responsif)",
+                "desc": "Merespons sensor jarak telinga dan cahaya sekitar"
+            },
+            "camera_hardware": {
+                "name": "Modul Kamera & Sensor Optik",
+                "status": "PASS" if cam_is_ok else "FAIL",
+                "value": f"Belakang: {cam_rear} | Depan: {cam_front}",
+                "desc": cam_notes
             },
             "radio_connectivity": {
                 "name": "Modem Radio & Konektivitas",
@@ -478,8 +494,13 @@ class DeviceManager:
         sens_failed = 0
         if not gyro_responsive: sens_failed += 1
         if not zero_deadzone: sens_failed += 1
+        if not cam_is_ok: sens_failed += 1
+        if not prox_responsive: sens_failed += 1
 
-        sens_penalty = 15.0 if not zero_deadzone else (8.0 if not gyro_responsive else 0.0)
+        sens_penalty = 15.0 if not zero_deadzone else 0.0
+        if not gyro_responsive: sens_penalty += 8.0
+        if not cam_is_ok: sens_penalty += 10.0
+        if not prox_responsive: sens_penalty += 4.0
 
         sensor_report = SensorReport(
             total_sensors_tested=len(sensor_details),
@@ -495,7 +516,7 @@ class DeviceManager:
             penalty_points=sens_penalty
         )
 
-        # Parse interactive tests (CIT: Touch, Speaker, Mic Loopback, Haptic, Buttons)
+        # Parse interactive tests (CIT: Touch, Speaker, Mic Loopback, Haptic, Buttons, Display Visual)
         audio_data = payload.get("audio_haptic", {})
         audio_tested = bool(audio_data.get("tested", False))
         audio_quality = audio_data.get("speaker_quality") or audio_data.get("audio_quality", "clear")
@@ -523,6 +544,21 @@ class DeviceManager:
             inter_notes.append(f"Layar sentuh memiliki dead-zone (cakupan {coverage_pct:.0f}%, {cells_passed}/{total_cells} sel).")
         else:
             inter_notes.append(f"Layar sentuh lolos penuh (cakupan {coverage_pct:.0f}% bebas dead-zone, {cells_passed}/{total_cells} sel).")
+
+        # Parse Display Visual Clarity (Color Purity RGBW+Black)
+        disp_data = payload.get("display_visual", {})
+        color_purity = disp_data.get("color_purity", "clear")
+        if color_purity == "burn_in":
+            inter_penalty += 8.0
+            inter_notes.append("Layar terdeteksi mengalami burn-in / bayangan aplikasi (shadow icon).")
+        elif color_purity == "line_defect":
+            inter_penalty += 15.0
+            inter_notes.append("Layar terdeteksi cacat garis vertikal/horizontal (line defect).")
+        elif color_purity == "dead_pixel":
+            inter_penalty += 6.0
+            inter_notes.append("Layar terdeteksi titik mati subpixel (dead pixel / white spot).")
+        elif disp_data.get("tested"):
+            inter_notes.append("Layar lolos uji kejernihan 5 warna (RGBW + Black), nol dead-pixel & bebas garis.")
 
         if audio_tested:
             # Speaker verification
@@ -577,8 +613,8 @@ class DeviceManager:
             audio_loopback_passed=(audio_quality == "clear" and mic_passed),
             speaker_spl_db=84.5 if audio_quality == "clear" else (65.0 if audio_quality == "distorted" else 0.0),
             buttons_passed=buttons_all_ok,
-            buttons_tested=["Volume Up", "Volume Down", "Power / Lock", "Motor Getar Haptic", "Mikrofon Loopback"],
-            all_passed=(zero_deadzone and audio_quality == "clear" and mic_passed and buttons_all_ok),
+            buttons_tested=["Volume Up", "Volume Down", "Power / Lock", "Motor Getar Haptic", "Mikrofon Loopback", "Color Purity (RGBW)"],
+            all_passed=(zero_deadzone and audio_quality == "clear" and mic_passed and buttons_all_ok and color_purity == "clear"),
             penalty_points=round(inter_penalty, 1),
             notes=inter_notes,
             touch_cells_passed=cells_passed,
@@ -590,12 +626,25 @@ class DeviceManager:
             buttons_status=buttons_status_map
         )
 
+        # Parse Security Audit (Cloud Lock & Fintech EMI)
+        sec_audit = payload.get("security_audit", {})
+        cloud_unlocked = sec_audit.get("cloud_unlocked", True)
+        no_emi_lock = sec_audit.get("no_emi_lock", True)
+        pin_removed = sec_audit.get("pin_removed", True)
+
+        if not cloud_unlocked:
+            cloud_lock_status = "ICLOUD_LOCKED" if is_ios else "GOOGLE_FRP_LOCKED"
+        elif not no_emi_lock:
+            cloud_lock_status = "FINTECH_EMI_LOCKED"
+        else:
+            cloud_lock_status = "UNLOCKED"
+
         # OEM Authenticity
         oem_report = self.oem_checker.check_authenticity({
-            "screen_replaced": not zero_deadzone,
+            "screen_replaced": not zero_deadzone or color_purity in ["line_defect", "burn_in"],
             "battery_replaced": symptoms.get("kembung", False) or bat_health < 70,
-            "camera_replaced": False,
-            "cloud_lock": "UNLOCKED"
+            "camera_replaced": not cam_is_ok,
+            "cloud_lock": cloud_lock_status
         }, dev_type)
 
         total_penalty = round(
@@ -607,7 +656,7 @@ class DeviceManager:
         )
         functional_score_pct = max(0.0, min(100.0, round(100.0 - (total_penalty * 2.2), 1)))
 
-        if not zero_deadzone or symptoms.get("kembung"):
+        if not zero_deadzone or symptoms.get("kembung") or cloud_lock_status != "UNLOCKED":
             functional_grade = "FAIL (D)"
         elif battery_report.status == "SERVICE_REQUIRED" or total_penalty > 10.0:
             functional_grade = "SERVICE_WARNING (B-)"

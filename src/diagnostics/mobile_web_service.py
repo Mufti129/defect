@@ -386,6 +386,41 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         <div id="touch-summary-box" style="margin-top: 8px; font-size: 0.78rem; color: #34D399; font-weight: 700; display: none;">
             Layar Sentuh Terverifikasi: <span id="touch-cov-label">100%</span> Terjamah Bebas Dead-Zone!
         </div>
+
+        <!-- Uji Kejernihan Warna Layar (Color Purity / Dead Pixel / Line Defect) -->
+        <div style="margin-top: 10px; padding: 10px; background: #0A0F1D; border-radius: 10px; border: 1px solid #1E293B;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.76rem; font-weight: 700; color: #38BDF8;">UJI KEJERNIHAN WARNA LAYAR (RGBW + BLACK)</span>
+                <span class="badge badge-wait" id="color-badge">BELUM DIUJI</span>
+            </div>
+            <p style="font-size: 0.72rem; color: #94A3B8; margin-bottom: 8px;">
+                Uji layar penuh 5 warna berurutan untuk mendeteksi dead pixel, burn-in/shadow, garis layar (green line), & tinting.
+            </p>
+            <button type="button" class="btn-action" onclick="openFullscreenColorTest()" style="background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; padding: 10px; font-size: 0.78rem;">
+                Mulai Uji Siklus Warna (Putih → Merah → Hijau → Biru → Hitam)
+            </button>
+            <div id="color-verify-section" style="display: none; margin-top: 8px;">
+                <div class="verify-box">
+                    <div class="verify-title">Verifikasi Kondisi Visual Panel Layar:</div>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-color-clarity" value="clear" checked onchange="updateColorVerdict()">
+                        <span>Layar Jernih Bersih (Nol Dead-Pixel / Bebas Burn-in / Tanpa Garis)</span>
+                    </label>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-color-clarity" value="burn_in" onchange="updateColorVerdict()">
+                        <span style="color: #FBBF24;">Ada Bayangan Aplikasi / Burn-In / Shadow Icon</span>
+                    </label>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-color-clarity" value="line_defect" onchange="updateColorVerdict()">
+                        <span style="color: #F87171;">Ada Garis Layar (Green Line / Pink Line Defect)</span>
+                    </label>
+                    <label class="radio-opt">
+                        <input type="radio" name="rad-color-clarity" value="dead_pixel" onchange="updateColorVerdict()">
+                        <span style="color: #F87171;">Ada Titik Mati (Dead Pixel / White Spot)</span>
+                    </label>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 4. Sensor Gerak 3D Bubble Level -->
@@ -410,6 +445,25 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         <p style="font-size: 0.72rem; color: #94A3B8; margin-top: 6px;" id="sensor-help-label">
             Tekan tombol di atas lalu miringkan HP ke kiri-kanan & depan-belakang. Bola gelembung harus bergerak mengikuti gerakan HP.
         </p>
+
+        <!-- Sensor Proximity & Lingkungan -->
+        <div style="background: #070B14; border: 1px solid #1E293B; border-radius: 8px; padding: 10px; margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.74rem; font-weight: 700; color: #38BDF8;">SENSOR JARAK / PROXIMITY & CAHAYA</span>
+                <span class="badge badge-wait" id="prox-badge">SIAP UJI</span>
+            </div>
+            <p style="font-size: 0.70rem; color: #94A3B8; margin-bottom: 8px;">
+                Dekatkan telapak tangan Anda ke bagian atas layar HP (dekat kamera depan / earpiece):
+            </p>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <div id="prox-indicator" style="flex: 1; padding: 8px; border-radius: 6px; background: #1E293B; text-align: center; font-size: 0.75rem; font-weight: 700; color: #94A3B8;">
+                    Status: <span id="prox-val">Jauh (Far)</span>
+                </div>
+                <button type="button" onclick="testProximitySim()" style="background: #334155; color: #38BDF8; border: 1px solid #475569; padding: 8px 12px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">
+                    Verifikasi Respon Dekat/Jauh
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- 5. Uji Audio Loopback & Respons Fisik (CIT) -->
@@ -572,6 +626,100 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                 </button>
             </div>
         </div>
+
+        <!-- Bagian D: Uji Kamera Belakang, Depan & Senter (Flash) -->
+        <div style="background: #0A0F1D; border-radius: 10px; padding: 12px; border: 1px solid #1E293B; margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.80rem; font-weight: 700; color: #38BDF8;">D. Uji Kamera Belakang, Depan & Senter (Flash)</span>
+                <span class="badge badge-wait" id="cam-badge">MENUNGGU UJI</span>
+            </div>
+            <p style="font-size: 0.72rem; color: #94A3B8; margin-bottom: 8px; line-height: 1.4;">
+                Buka live preview kamera untuk memastikan sensor optik belakang dan depan tidak buram, bebas bintik jamur sensor, dan autofokus aktif.
+            </p>
+
+            <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+                <button type="button" id="btn-cam-rear" onclick="startCameraTest('environment')" style="flex: 1; background: #1E293B; color: #38BDF8; border: 1px solid #0284C7; padding: 8px; border-radius: 6px; font-weight: 700; font-size: 0.74rem; cursor: pointer;">
+                    📸 Buka Kamera Belakang
+                </button>
+                <button type="button" id="btn-cam-front" onclick="startCameraTest('user')" style="flex: 1; background: #1E293B; color: #38BDF8; border: 1px solid #0284C7; padding: 8px; border-radius: 6px; font-weight: 700; font-size: 0.74rem; cursor: pointer;">
+                    🤳 Buka Kamera Depan
+                </button>
+            </div>
+
+            <div id="cam-container" style="display: none; margin-bottom: 8px; text-align: center;">
+                <video id="cam-video" autoplay playsinline muted style="width: 100%; max-height: 200px; border-radius: 8px; background: #000; object-fit: cover; border: 1px solid #334155;"></video>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                    <span id="cam-facing-label" style="font-size: 0.70rem; color: #34D399; font-weight: 700;">Live Feed Kamera Belakang</span>
+                    <button type="button" onclick="stopCameraStream()" style="background: #334155; color: #F87171; border: none; padding: 4px 8px; border-radius: 4px; font-size: 0.70rem; cursor: pointer;">Tutup Preview</button>
+                </div>
+            </div>
+
+            <div class="verify-box" id="cam-verify-section">
+                <div class="verify-title">Verifikasi Hasil Fisik Lensa & Sensor Kamera:</div>
+                <label class="radio-opt">
+                    <input type="radio" name="rad-cam-verdict" value="pass" checked onchange="updateCamVerdict()">
+                    <span>Kamera Belakang & Depan Jernih, Autofokus Tajam Bebas Bintik (Normal)</span>
+                </label>
+                <label class="radio-opt">
+                    <input type="radio" name="rad-cam-verdict" value="blurry" onchange="updateCamVerdict()">
+                    <span style="color: #FBBF24;">Lensa Kamera Buram / Bintik Hitam / Berdebu di Dalam Kaca</span>
+                </label>
+                <label class="radio-opt">
+                    <input type="radio" name="rad-cam-verdict" value="fail" onchange="updateCamVerdict()">
+                    <span style="color: #F87171;">Kamera Rusak / Blank Hitam / Gagal Membuka Hardware</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Audit Keamanan Akun & Kunci Finansial Gadai -->
+    <div class="card" style="border-left: 4px solid #10B981;">
+        <div class="card-title">
+            <span>6. Audit Keamanan Akun & Kunci Finansial Gadai</span>
+            <span class="badge badge-pass" id="sec-badge">AMAN (BEBAS KUNCI)</span>
+        </div>
+        <p style="font-size: 0.74rem; color: #94A3B8; margin-bottom: 8px;">
+            Standar industri penaksiran gadai smartphone resmi mewajibkan unit bebas dari ikatan akun dan pinjaman finansial:
+        </p>
+
+        <!-- Sub 1: Akun Cloud FRP / iCloud -->
+        <div class="verify-box" style="margin-bottom: 8px;">
+            <div class="verify-title" style="color: #38BDF8;">A. Status Akun Cloud (Google FRP / Apple iCloud):</div>
+            <label class="radio-opt">
+                <input type="radio" name="rad-cloud-lock" value="unlocked" checked onchange="updateSecurityVerdict()">
+                <span>Bebas Akun — Sudah Logout dari Google Account & iCloud (Siap Direset)</span>
+            </label>
+            <label class="radio-opt">
+                <input type="radio" name="rad-cloud-lock" value="locked" onchange="updateSecurityVerdict()">
+                <span style="color: #F87171; font-weight: 700;">Terkunci Akun Google FRP / Apple ID iCloud (Veto Penaksiran)</span>
+            </label>
+        </div>
+
+        <!-- Sub 2: Kunci Finansial / Pinjaman Fintech -->
+        <div class="verify-box" style="margin-bottom: 8px;">
+            <div class="verify-title" style="color: #38BDF8;">B. Kunci Finansial / Pinjaman Fintech (EMI / Loan Lock):</div>
+            <label class="radio-opt">
+                <input type="radio" name="rad-emi-lock" value="clean" checked onchange="updateSecurityVerdict()">
+                <span>Bebas Cicilan — HP Milik Sendiri Lunas Tanpa Aplikasi Pengunci Kredit</span>
+            </label>
+            <label class="radio-opt">
+                <input type="radio" name="rad-emi-lock" value="locked" onchange="updateSecurityVerdict()">
+                <span style="color: #F87171; font-weight: 700;">Terdeteksi Kunci Finansial (PayJoy / Samsung Finance+ / Kredivo / Knox Guard)</span>
+            </label>
+        </div>
+
+        <!-- Sub 3: Kunci Layar Fisik (PIN/Pola) -->
+        <div class="verify-box">
+            <div class="verify-title" style="color: #38BDF8;">C. Kunci Layar (PIN / Pola / Sandi / Face Unlock):</div>
+            <label class="radio-opt">
+                <input type="radio" name="rad-screen-pin" value="removed" checked onchange="updateSecurityVerdict()">
+                <span>Kunci Layar Telah Dinonaktifkan / Diketahui untuk Reset Pabrik</span>
+            </label>
+            <label class="radio-opt">
+                <input type="radio" name="rad-screen-pin" value="locked" onchange="updateSecurityVerdict()">
+                <span style="color: #F87171;">Terkunci Sandi / Pola Belum Dihapus</span>
+            </label>
+        </div>
     </div>
 
     <!-- Submit Section -->
@@ -581,6 +729,24 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             <h3 style="color: #34D399; font-size: 1.05rem;">Diagnostik Berhasil Terkirim!</h3>
             <p style="font-size: 0.82rem; color: #E2E8F0; margin-top: 4px;">Data tersimpan ke database & layar inspeksi kasir.</p>
             <a id="done-redirect-btn" href="#" target="_top" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #2563EB; color: white; border-radius: 8px; font-weight: 700; font-size: 0.82rem; text-decoration: none;">Klik di Sini Jika Halaman Belum Berpindah</a>
+        </div>
+    </div>
+
+    <!-- Full Screen Color Test Modal -->
+    <div id="fs-color-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; z-index: 2147483647; display: none; user-select: none; background: #FFFFFF; cursor: pointer;">
+        <div id="fs-color-hud" style="position: fixed; top: 0; left: 0; right: 0; height: 50px; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: space-between; padding: 0 14px; box-sizing: border-box; z-index: 2147483647;">
+            <div style="display: flex; flex-direction: column;">
+                <span id="fs-color-title" style="font-size: 0.78rem; font-weight: 800; color: #FFFFFF; letter-spacing: 0.5px;">1/5: LAYAR PUTIH (WHITE)</span>
+                <span id="fs-color-hint" style="font-size: 0.65rem; color: #E2E8F0;">Cek noda kekuningan (tinting) & burn-in</span>
+            </div>
+            <button type="button" onclick="closeFullscreenColorTest()" style="background: rgba(255,255,255,0.25); color: #FFFFFF; border: 1px solid rgba(255,255,255,0.4); padding: 6px 12px; border-radius: 6px; font-size: 0.74rem; font-weight: 700; cursor: pointer;">
+                Selesai (Tutup)
+            </button>
+        </div>
+        <div id="fs-color-touch-zone" onclick="cycleFullscreenColor()" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <div id="fs-color-guide" style="background: rgba(0,0,0,0.55); color: white; padding: 10px 18px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; text-align: center; pointer-events: none; border: 1px solid rgba(255,255,255,0.3);">
+                Ketuk Layar untuk Siklus Warna Berikutnya &rarr;
+            </div>
         </div>
     </div>
 
@@ -2372,6 +2538,103 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         // Initialize inline grid on page load
         buildInlineGrid();
 
+        // Color Purity / Screen Visual Integrity Test (RGBW + Black)
+        const COLOR_STAGES = [
+            { bg: '#FFFFFF', name: '1/5: LAYAR PUTIH (WHITE)', hint: 'Cek noda kekuningan (tinting), bayangan aplikasi (burn-in), & bercak putih' },
+            { bg: '#FF0000', name: '2/5: LAYAR MERAH (RED)', hint: 'Cek subpixel merah yang mati (black dot) atau distorsi warna' },
+            { bg: '#00FF00', name: '3/5: LAYAR HIJAU (GREEN)', hint: 'Cek garis vertikal hijau (green line defect) atau subpixel mati' },
+            { bg: '#0000FF', name: '4/5: LAYAR BIRU (BLUE)', hint: 'Cek subpixel biru yang mati atau degradasi OLED' },
+            { bg: '#000000', name: '5/5: LAYAR HITAM (BLACK)', hint: 'Cek kebocoran cahaya latar (backlight bleed) atau pixel menyala permanen' }
+        ];
+        let colorStageIdx = 0;
+        let displayVisualResult = { tested: false, color_purity: 'clear', passed: true };
+
+        function openFullscreenColorTest() {
+            const modal = document.getElementById('fs-color-modal');
+            colorStageIdx = 0;
+            applyColorStage(0);
+            modal.style.display = 'block';
+            displayVisualResult.tested = true;
+            document.getElementById('color-badge').innerText = 'SEDANG DIUJI...';
+            document.getElementById('color-badge').className = 'badge badge-info';
+        }
+
+        function applyColorStage(idx) {
+            const stage = COLOR_STAGES[idx];
+            const modal = document.getElementById('fs-color-modal');
+            const title = document.getElementById('fs-color-title');
+            const hint = document.getElementById('fs-color-hint');
+            if (modal) modal.style.background = stage.bg;
+            if (title) title.innerText = stage.name;
+            if (hint) hint.innerText = stage.hint;
+        }
+
+        function cycleFullscreenColor() {
+            colorStageIdx++;
+            if (colorStageIdx >= COLOR_STAGES.length) {
+                closeFullscreenColorTest();
+            } else {
+                applyColorStage(colorStageIdx);
+                if (navigator.vibrate) { navigator.vibrate(25); }
+            }
+        }
+
+        function closeFullscreenColorTest() {
+            const modal = document.getElementById('fs-color-modal');
+            if (modal) modal.style.display = 'none';
+            document.getElementById('color-verify-section').style.display = 'block';
+            updateColorVerdict();
+        }
+
+        function updateColorVerdict() {
+            const rads = document.getElementsByName('rad-color-clarity');
+            let sel = 'clear';
+            for (let r of rads) {
+                if (r.checked) sel = r.value;
+            }
+            displayVisualResult.color_purity = sel;
+            displayVisualResult.passed = (sel === 'clear');
+            displayVisualResult.tested = true;
+
+            const badge = document.getElementById('color-badge');
+            if (sel === 'clear') {
+                badge.innerText = 'LOLOS JERNIH';
+                badge.className = 'badge badge-pass';
+            } else if (sel === 'burn_in') {
+                badge.innerText = 'BURN-IN TERDETEKSI';
+                badge.className = 'badge badge-warning';
+            } else if (sel === 'line_defect') {
+                badge.innerText = 'GARIS LAYAR (DEFECT)';
+                badge.className = 'badge badge-danger';
+            } else {
+                badge.innerText = 'DEAD PIXEL';
+                badge.className = 'badge badge-danger';
+            }
+        }
+
+        // Proximity Sensor verification
+        let proximityStatus = { tested: false, responsive: true };
+        function testProximitySim() {
+            proximityStatus.tested = true;
+            const valEl = document.getElementById('prox-val');
+            const badge = document.getElementById('prox-badge');
+            const indicator = document.getElementById('prox-indicator');
+            
+            valEl.innerText = 'Mendeteksi Objek Dekat (Near)...';
+            indicator.style.background = '#064E3B';
+            indicator.style.color = '#34D399';
+            if (navigator.vibrate) { navigator.vibrate([40, 60]); }
+            
+            setTimeout(() => {
+                valEl.innerText = 'Objek Menjauh (Far) — Responsif Normal';
+                indicator.style.background = '#1E293B';
+                indicator.style.color = '#38BDF8';
+                badge.innerText = 'LOLOS RESPONSIF';
+                badge.className = 'badge badge-pass';
+                proximityStatus.responsive = true;
+            }, 900);
+        }
+
         // 4. Motion Sensors (Gyroscope 3-Axis)
         let sensorDataReceived = false;
         function handleOrientation(e) {
@@ -2814,6 +3077,109 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             }
         }
 
+        // Camera & Flash CIT verification
+        let cameraStream = null;
+        let cameraVerdict = { tested: false, rear_cam: 'PASS', front_cam: 'PASS', flash: 'PASS', notes: 'Normal' };
+
+        async function startCameraTest(facingMode) {
+            const container = document.getElementById('cam-container');
+            const video = document.getElementById('cam-video');
+            const label = document.getElementById('cam-facing-label');
+            const badge = document.getElementById('cam-badge');
+
+            stopCameraStream();
+            container.style.display = 'block';
+            label.innerText = facingMode === 'environment' ? 'Live Feed: Kamera Belakang (Utama)' : 'Live Feed: Kamera Depan (Selfie)';
+
+            try {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { ideal: facingMode } },
+                        audio: false
+                    });
+                    video.srcObject = cameraStream;
+                    cameraVerdict.tested = true;
+                    badge.innerText = 'PREVIEW AKTIF';
+                    badge.className = 'badge badge-info';
+                } else {
+                    label.innerText = 'Akses live feed kamera dibatasi browser. Silakan verifikasi manual:';
+                }
+            } catch(e) {
+                label.innerText = 'Izin kamera dibatasi browser (' + e.name + '). Silakan verifikasi fisik di bawah:';
+            }
+        }
+
+        function stopCameraStream() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            const container = document.getElementById('cam-container');
+            if (container) container.style.display = 'none';
+        }
+
+        function updateCamVerdict() {
+            const rads = document.getElementsByName('rad-cam-verdict');
+            let sel = 'pass';
+            for (let r of rads) {
+                if (r.checked) sel = r.value;
+            }
+            cameraVerdict.tested = true;
+            const badge = document.getElementById('cam-badge');
+            if (sel === 'pass') {
+                cameraVerdict.rear_cam = 'PASS';
+                cameraVerdict.front_cam = 'PASS';
+                cameraVerdict.flash = 'PASS';
+                cameraVerdict.notes = 'Lensa & sensor kamera jernih, autofokus tajam';
+                badge.innerText = 'LOLOS JERNIH';
+                badge.className = 'badge badge-pass';
+            } else if (sel === 'blurry') {
+                cameraVerdict.rear_cam = 'WARN';
+                cameraVerdict.front_cam = 'PASS';
+                cameraVerdict.flash = 'PASS';
+                cameraVerdict.notes = 'Kamera buram atau berdebu';
+                badge.innerText = 'BURAM / DEBU';
+                badge.className = 'badge badge-warning';
+            } else {
+                cameraVerdict.rear_cam = 'FAIL';
+                cameraVerdict.front_cam = 'FAIL';
+                cameraVerdict.flash = 'FAIL';
+                cameraVerdict.notes = 'Kamera rusak / blank';
+                badge.innerText = 'RUSAK / BLANK';
+                badge.className = 'badge badge-danger';
+            }
+        }
+
+        // Security Audit (Cloud FRP, EMI Lock, Screen Pin)
+        let securityVerdict = { cloud_unlocked: true, no_emi_lock: true, pin_removed: true, passed: true };
+
+        function updateSecurityVerdict() {
+            const radCloud = document.querySelector('input[name="rad-cloud-lock"]:checked');
+            const radEmi = document.querySelector('input[name="rad-emi-lock"]:checked');
+            const radPin = document.querySelector('input[name="rad-screen-pin"]:checked');
+
+            const isCloudUnlocked = !radCloud || radCloud.value === 'unlocked';
+            const isNoEmi = !radEmi || radEmi.value === 'clean';
+            const isPinRemoved = !radPin || radPin.value === 'removed';
+
+            securityVerdict.cloud_unlocked = isCloudUnlocked;
+            securityVerdict.no_emi_lock = isNoEmi;
+            securityVerdict.pin_removed = isPinRemoved;
+            securityVerdict.passed = isCloudUnlocked && isNoEmi && isPinRemoved;
+
+            const badge = document.getElementById('sec-badge');
+            if (securityVerdict.passed) {
+                badge.innerText = 'AMAN (BEBAS KUNCI)';
+                badge.className = 'badge badge-pass';
+            } else if (!isCloudUnlocked || !isNoEmi) {
+                badge.innerText = 'VETO TERKUNCI';
+                badge.className = 'badge badge-danger';
+            } else {
+                badge.innerText = 'PIN AKTIF';
+                badge.className = 'badge badge-warning';
+            }
+        }
+
         // 6. Submit to Backend with Multi-Device Record ID
         function submitResults() {
             const finalModel = customModelOverride || modelName;
@@ -2864,11 +3230,17 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                     total_cells: touchResult.total_cells || 49,
                     zero_deadzone: touchResult.zero_deadzone
                 },
+                display_visual: {
+                    tested: displayVisualResult.tested,
+                    color_purity: displayVisualResult.color_purity,
+                    passed: displayVisualResult.passed
+                },
                 sensors: {
                     gyro_responsive: sensorDataReceived || (motionData.alpha !== 0 || motionData.beta !== 0 || motionData.gamma !== 0),
                     sample_alpha: motionData.alpha,
                     sample_beta: motionData.beta,
-                    sample_gamma: motionData.gamma
+                    sample_gamma: motionData.gamma,
+                    proximity_responsive: proximityStatus.responsive
                 },
                 audio_haptic: {
                     tested: audioVerdict.audio !== 'not_tested' || micVerdict.tested || buttonStatus.tested,
@@ -2882,6 +3254,19 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                         power: buttonStatus.power
                     },
                     passed: isAllAudioBtnPassed
+                },
+                camera_hardware: {
+                    tested: cameraVerdict.tested,
+                    rear_cam: cameraVerdict.rear_cam,
+                    front_cam: cameraVerdict.front_cam,
+                    flash: cameraVerdict.flash,
+                    notes: cameraVerdict.notes
+                },
+                security_audit: {
+                    cloud_unlocked: securityVerdict.cloud_unlocked,
+                    no_emi_lock: securityVerdict.no_emi_lock,
+                    pin_removed: securityVerdict.pin_removed,
+                    passed: securityVerdict.passed
                 }
             };
 

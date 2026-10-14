@@ -2425,8 +2425,8 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
         inter_audio = bool(_safe_get(inter, "audio_loopback_passed", True))
         inter_btn = bool(_safe_get(inter, "buttons_passed", True))
         inter_notes = _safe_get(inter, "notes", []) or []
-        inter_cells_passed = int(_safe_get(inter, "touch_cells_passed", 84 if inter_touch else int(84 * (inter_cov / 100.0))))
-        inter_total_cells = int(_safe_get(inter, "touch_total_cells", 84))
+        inter_cells_passed = int(_safe_get(inter, "touch_cells_passed", 49 if inter_touch else int(49 * (inter_cov / 100.0))))
+        inter_total_cells = int(_safe_get(inter, "touch_total_cells", 49))
         inter_speaker_status = str(_safe_get(inter, "speaker_status", "LOLOS (Jernih)" if inter_audio else "CACAT / TIDAK LOLOS"))
         inter_haptic_status = str(_safe_get(inter, "haptic_status", "AKTIF (Kuat & Stabil)" if inter_btn else "TIDAK BERGETAR"))
         inter_mic_status = str(_safe_get(inter, "mic_status", "LOLOS (Audio Loopback Jernih)" if inter_audio else "TIDAK MERESPONS"))
@@ -2652,16 +2652,29 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
             with oem_col2:
                 st.markdown("##### Status Kunci Akun & Keamanan Finansial:")
                 is_unlocked = oem_lock == "UNLOCKED"
+                if is_unlocked:
+                    lock_header = "BEBAS KUNCI (UNLOCKED)"
+                    lock_detail = "Unit bersih dari akun nasabah dan pinjaman finansial. Sah dan aman untuk ditaksir."
+                elif "FINTECH" in str(oem_lock) or "EMI" in str(oem_lock):
+                    lock_header = "TERKUNCI PINJAMAN FINTECH (EMI LOCK)"
+                    lock_detail = "PERINGATAN VETO: Terdeteksi kunci cicilan (PayJoy / Samsung Finance+ / Knox Guard / Kredivo)! Veto Grade D Mutlak."
+                elif "ICLOUD" in str(oem_lock):
+                    lock_header = "TERKUNCI APPLE ID (ICLOUD)"
+                    lock_detail = "PERINGATAN VETO: Unit masih terikat iCloud Activation Lock! Wajib logout sebelum gadai disetujui (Veto Grade D)."
+                else:
+                    lock_header = "TERKUNCI GOOGLE FRP"
+                    lock_detail = "PERINGATAN VETO: Akun Google Factory Reset Protection masih aktif! Wajib logout sebelum gadai disetujui (Veto Grade D)."
+
                 st.markdown(f"""
                 <div style="background: {'#ECFDF5' if is_unlocked else '#FEF2F2'}; border: 1.5px solid {'#6EE7B7' if is_unlocked else '#FCA5A5'}; border-radius: 14px; padding: 18px; text-align: center;">
                     <div style="font-size: 0.8rem; font-weight: 700; color: {'#065F46' if is_unlocked else '#991B1B'}; text-transform: uppercase;">
-                        Status Kunci Perangkat (iCloud / Google FRP)
+                        Status Kunci Perangkat (iCloud / Google FRP / Pinjaman Fintech)
                     </div>
-                    <div style="font-size: 1.8rem; font-weight: 800; color: {'#047857' if is_unlocked else '#B91C1C'}; margin: 6px 0;">
-                        {'BEBAS KUNCI (UNLOCKED)' if is_unlocked else 'TERKUNCI (LOCKED)'}
+                    <div style="font-size: 1.45rem; font-weight: 800; color: {'#047857' if is_unlocked else '#B91C1C'}; margin: 6px 0;">
+                        {lock_header}
                     </div>
                     <div style="font-size: 0.82rem; color: {'#065F46' if is_unlocked else '#991B1B'};">
-                        {'Unit bersih dan siap ditaksir secara sah.' if is_unlocked else 'PERINGATAN: Perangkat terkunci akun nasabah! Wajib di-unlock sebelum gadai disetujui atau langsung Veto Grade D.'}
+                        {lock_detail}
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -2704,22 +2717,22 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                     </div>
                     """, unsafe_allow_html=True)
 
-                # Visual Proportional Digitizer Grid (84 Quadrants: 7 cols x 12 rows)
+                # Visual Proportional Digitizer Grid (49 Quadrants: 7 cols x 7 rows)
                 grid_cells_html = []
-                dead_indices = set() if inter_touch else {14, 15, 22, 23, 42}
+                dead_indices = set() if inter_touch else {14, 15, 22, 23}
                 for i in range(inter_total_cells):
                     is_dead = i in dead_indices or (not inter_touch and i >= inter_cells_passed)
                     bg_col = "#EF4444" if is_dead else "#10B981"
                     txt_label = "X" if is_dead else "✓"
-                    grid_cells_html.append(f'<div style="background: {bg_col}; color: white; text-align: center; font-size: 0.60rem; font-weight: 800; border-radius: 3px; padding: 4px 0; line-height: 1;">{txt_label}</div>')
+                    grid_cells_html.append(f'<div style="background: {bg_col}; color: white; text-align: center; font-size: 0.65rem; font-weight: 800; border-radius: 4px; padding: 6px 0; line-height: 1;">{txt_label}</div>')
 
                 st.markdown(f"""
                 <div style="margin: 10px 0 12px 0;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <span style="font-size: 0.72rem; color: #4B5563; font-weight: 600;">Matriks Sampling Panel Kaca HP ({inter_total_cells} Kuadran Digitizer):</span>
-                        <span style="font-size: 0.70rem; color: {'#059669' if inter_touch else '#DC2626'}; font-weight: 700;">{'Semua Kuadran Lolos Uji' if inter_touch else 'Ditemukan Blind Spot'}</span>
+                        <span style="font-size: 0.72rem; color: #4B5563; font-weight: 600;">Matriks Sampling Panel Kaca HP ({inter_total_cells} Kuadran Digitizer 7x7):</span>
+                        <span style="font-size: 0.70rem; color: {'#059669' if inter_touch else '#DC2626'}; font-weight: 700;">{'Semua Kuadran Lolos Uji (1:1)' if inter_touch else 'Ditemukan Blind Spot'}</span>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; background: #0F172A; padding: 6px; border-radius: 10px; border: 1px solid #334155; max-height: 230px; overflow-y: auto;">
+                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; background: #0F172A; padding: 8px; border-radius: 10px; border: 1px solid #334155;">
                         {''.join(grid_cells_html)}
                     </div>
                 </div>
