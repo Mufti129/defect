@@ -23,6 +23,10 @@ class BatteryReport:
     recommendation: str
     penalty_points: float   # DPI contribution for grading engine
     level_pct: int = 100    # State of Charge (0-100%)
+    current_capacity_mah: int = 0
+    design_capacity_mah: int = 0
+    vendor: str = ""
+    serial: str = ""
 
     @property
     def health_pct(self) -> int:

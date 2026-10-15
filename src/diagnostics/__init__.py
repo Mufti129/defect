@@ -26,6 +26,8 @@ from .mobile_web_service import (
 )
 from .diagnostic_db import DiagnosticDatabase
 from .model_lookup import lookup_commercial_model, COMMERCIAL_DEVICE_DATABASE
+from .apple_sysdiagnose_parser import AppleSysdiagnoseParser, AppleDiagnosticReport
+from .pdf_certificate import generate_unified_inspection_pdf, generate_apple_diagnostic_certificate_pdf
 
 __all__ = [
     "DeviceManager",
@@ -52,4 +54,8 @@ __all__ = [
     "DiagnosticDatabase",
     "lookup_commercial_model",
     "COMMERCIAL_DEVICE_DATABASE",
+    "AppleSysdiagnoseParser",
+    "AppleDiagnosticReport",
+    "generate_unified_inspection_pdf",
+    "generate_apple_diagnostic_certificate_pdf",
 ]

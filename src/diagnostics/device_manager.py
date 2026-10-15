@@ -50,6 +50,8 @@ class FullDiagnosticRecord:
     total_penalty_dpi: float
     functional_grade: str    # "PASS (A/B)", "SERVICE_WARNING (B-)", "FAIL (D)"
     timestamp: str
+    apple_telemetry: Optional[Dict[str, Any]] = None
+    raw_payload: Optional[Dict[str, Any]] = None
 
 
 class DeviceManager:
@@ -273,11 +275,16 @@ class DeviceManager:
         commercial = lookup_commercial_model(lookup_target) or lookup_commercial_model(model)
         if commercial:
             brand = commercial["brand"]
-            code_suffix = f" ({commercial['code']})" if commercial["code"] not in commercial["model"] else ""
+            code_suffix = f" ({commercial['code']})" if (commercial["code"] not in commercial["model"] and not is_ios) else ""
             model = f"{commercial['model']}{code_suffix}"
             market_name = commercial["market_name"]
         else:
             market_name = payload.get("device_model", f"{brand} {model}")
+
+        if (is_ios or brand == "Apple") and "iPhone" in model:
+            import re
+            model = re.sub(r"\s*\([^\)]*IPHONE[^\)]*\)", "", model, flags=re.IGNORECASE).strip()
+            market_name = f"Apple {model}" if not model.startswith("Apple") else model
 
         # Determine RAM and ROM
         confirmed_rom_str = str(payload.get("confirmed_rom", "128 GB"))
@@ -411,9 +418,15 @@ class DeviceManager:
         else:
             bat_status = "PASS"
 
+        real_cycles = bat_data.get("cycle_count")
+        if real_cycles is not None and int(real_cycles) > 0:
+            final_cycles = int(real_cycles)
+        else:
+            final_cycles = int((100 - bat_health) * 18 + 80)
+
         battery_report = BatteryReport(
             health_percentage=bat_health,
-            cycle_count=int((100 - bat_health) * 18 + 80),
+            cycle_count=final_cycles,
             status=bat_status,
             temperature_c=38.5 if symptoms.get("overheating") else 31.0,
             voltage_mv=4180 if bat_health >= 85 else (3980 if bat_health >= 75 else 3780),
@@ -421,7 +434,11 @@ class DeviceManager:
             wear_level=round(max(0.0, (100 - bat_health) / 100.0), 2),
             recommendation=" ".join(rec_notes),
             penalty_points=round(bat_penalty, 1),
-            level_pct=bat_level
+            level_pct=bat_level,
+            current_capacity_mah=int(bat_data.get("current_capacity_mah", 0)),
+            design_capacity_mah=int(bat_data.get("design_capacity_mah", 0)),
+            vendor=str(bat_data.get("vendor", "")),
+            serial=str(bat_data.get("serial", ""))
         )
 
         # Parse sensors
@@ -666,6 +683,20 @@ class DeviceManager:
         else:
             functional_grade = "PASS (A/B)"
 
+        apple_telemetry = None
+        if is_ios or payload.get("components") or payload.get("stability_audit"):
+            apple_telemetry = {
+                "components": payload.get("components", {}),
+                "storage_details": payload.get("storage_details", {}),
+                "benchmarks": payload.get("benchmarks", {}),
+                "stability_audit": payload.get("stability_audit", {}),
+                "oem_authenticity": payload.get("oem_authenticity", {}),
+                "product_type": payload.get("product_type", ""),
+                "udid": payload.get("udid", ""),
+                "serial_masked": payload.get("serial", ""),
+                "imei_masked": payload.get("imei", "")
+            }
+
         return FullDiagnosticRecord(
             device=device,
             battery=battery_report,
@@ -675,5 +706,7 @@ class DeviceManager:
             functional_score_pct=functional_score_pct,
             total_penalty_dpi=total_penalty,
             functional_grade=functional_grade,
-            timestamp=payload.get("timestamp", time.strftime("%Y-%m-%d %H:%M:%S"))
+            timestamp=payload.get("timestamp", time.strftime("%Y-%m-%d %H:%M:%S")),
+            apple_telemetry=apple_telemetry,
+            raw_payload=payload
         )

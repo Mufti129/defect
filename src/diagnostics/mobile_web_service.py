@@ -353,6 +353,70 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         </div>
     </div>
 
+    <!-- 2B. Diagnostik Mendalam Khusus Apple iPhone (Sysdiagnose & Hardware Deep Audit) -->
+    <div class="card" id="card-apple-sysdiagnose" style="border: 1px solid #38BDF8; background: linear-gradient(135deg, #0B132B 0%, #172554 100%);">
+        <div class="card-title">
+            <span style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.1rem; color: #38BDF8;"></span>
+                <span style="color: #F8FAFC;">Uji Khusus Apple iPhone (Sysdiagnose &amp; Deep Hardware)</span>
+            </span>
+            <span class="badge badge-info" id="apple-badge">APPLE IOS</span>
+        </div>
+        <p style="font-size: 0.74rem; color: #94A3B8; margin-bottom: 10px; line-height: 1.45;">
+            Khusus pengguna iPhone: Anda dapat langsung mengunggah berkas <b style="color: #F1F5F9;">sysdiagnose (.tar.gz)</b> atau berkas diagnostik <b style="color: #F1F5F9;">JSON</b> dari aplikasi <b>File (Files)</b> di iPhone ini. Sistem secara otomatis mengekstrak serial pabrikan EEPROM (Layar LG/Samsung, Baterai BMS ATL, Kamera, FaceID), siklus &amp; kesehatan baterai riil, jam hidup NAND Flash, dan log crash sistem.
+        </p>
+
+        <!-- Panduan Pembuatan Sysdiagnose di iPhone -->
+        <div style="background: #0A0F1D; border-radius: 8px; padding: 10px; border: 1px solid #1E293B; margin-bottom: 10px; font-size: 0.72rem; color: #CBD5E1; line-height: 1.5;">
+            <b style="color: #38BDF8;">Panduan Mengambil Berkas di iPhone:</b><br>
+            1. Tekan tombol <b style="color: #F8FAFC;">Volume Up + Volume Down + Power</b> bersamaan 1-1.5 detik (iPhone bergetar singkat, perekaman sysdiagnose dimulai).<br>
+            2. Buka aplikasi bawaan <b style="color: #F8FAFC;">File (Files) &gt; Di iPhone Saya / iCloud Drive</b>.<br>
+            3. Pilih berkas <b style="color: #38BDF8;">sysdiagnose_*.tar.gz</b> atau berkas JSON diagnostik yang sudah ada.<br>
+            4. Ketuk tombol di bawah untuk unggah dan analisa instan.
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <input type="file" id="apple-file-input" accept=".tar.gz,.zip,.json,.tgz,.gz" style="display: none;" onchange="handleAppleFileSelected(this)">
+            <button type="button" class="btn-action" onclick="document.getElementById('apple-file-input').click()" style="background: linear-gradient(135deg, #0284C7 0%, #2563EB 100%); color: white; border: none; padding: 11px; font-weight: 700; font-size: 0.82rem; border-radius: 8px;">
+                Pilih Berkas Sysdiagnose / JSON dari iPhone
+            </button>
+            <div id="apple-file-name-label" style="font-size: 0.72rem; color: #94A3B8; text-align: center; word-break: break-all;">
+                Belum ada berkas dipilih
+            </div>
+            <button type="button" id="btn-upload-apple" onclick="uploadAppleSysdiagnose()" style="display: none; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 0.80rem; cursor: pointer;">
+                Unggah &amp; Analisa Otomatis Sekarang
+            </button>
+            <div id="apple-progress-box" style="display: none; font-size: 0.74rem; color: #38BDF8; text-align: center; margin-top: 4px;">
+                <div style="height: 6px; width: 100%; background: #1E293B; border-radius: 3px; overflow: hidden; margin-bottom: 6px;">
+                    <div id="apple-progress-bar" style="height: 100%; width: 0%; background: #38BDF8; transition: width 0.2s;"></div>
+                </div>
+                <span id="apple-progress-text">Membaca berkas dan mengekstrak telemetri...</span>
+            </div>
+        </div>
+
+        <!-- Kartu Hasil Analisis Apple Instan -->
+        <div id="apple-result-card" style="display: none; margin-top: 12px; background: #0A0F1D; border: 1px solid #10B981; border-radius: 10px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <b style="color: #34D399; font-size: 0.82rem;">Telemetri Mendalam Apple Berhasil Dianalisa:</b>
+                <span class="badge badge-pass" id="apple-res-badge">100% ORIGINAL</span>
+            </div>
+            <div class="stat-grid" style="font-size: 0.76rem;">
+                <div class="stat-box"><span>Model iPhone</span><b id="app-val-model">-</b></div>
+                <div class="stat-box"><span>Kesehatan Baterai (BMS)</span><b id="app-val-bat" style="color: #34D399;">-</b></div>
+                <div class="stat-box"><span>Siklus Baterai Asli</span><b id="app-val-cycle">-</b></div>
+                <div class="stat-box"><span>Vendor Layar Display</span><b id="app-val-display">-</b></div>
+                <div class="stat-box"><span>Penyimpanan NAND</span><b id="app-val-storage">-</b></div>
+                <div class="stat-box"><span>Jam Hidup Storage</span><b id="app-val-hours">-</b></div>
+            </div>
+            <div style="margin-top: 8px; font-size: 0.72rem; color: #94A3B8;" id="app-val-stability">
+                Stabilitas: Memproses...
+            </div>
+            <div style="margin-top: 8px; padding: 6px 10px; background: rgba(16, 185, 129, 0.15); border-radius: 6px; font-size: 0.72rem; color: #34D399; text-align: center; font-weight: 700;">
+                Data telah tersinkronisasi otomatis ke layar inspeksi kasir!
+            </div>
+        </div>
+    </div>
+
     <!-- 3. Layar Sentuh Full Layar Sesuai Resolusi (Full Screen Digitizer) -->
     <div class="card">
         <div class="card-title">
@@ -1927,6 +1991,17 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             document.getElementById('ios-battery-section').style.display = 'block';
             document.getElementById('bat-level').innerText = '90%';
             document.getElementById('bat-charging').innerText = 'Standar';
+            try {
+                const aBadge = document.getElementById('apple-badge');
+                if (aBadge) {
+                    aBadge.className = 'badge badge-pass';
+                    aBadge.innerText = 'TERDETEKSI PERANGKAT APPLE';
+                }
+                const aCard = document.getElementById('card-apple-sysdiagnose');
+                if (aCard) {
+                    aCard.style.border = '2px solid #38BDF8';
+                }
+            } catch(e) {}
         } else {
             let activeLookup = null;
             if (/Samsung|SM-|GT-/i.test(ua)) {
@@ -3361,6 +3436,132 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                 }
             }, 400);
         }
+
+        // ==========================================
+        // APPLE SYSDIAGNOSE / JSON UPLOAD ENGINE
+        // ==========================================
+        let selectedAppleFile = null;
+
+        function handleAppleFileSelected(input) {
+            if (input.files && input.files.length > 0) {
+                selectedAppleFile = input.files[0];
+                const lbl = document.getElementById('apple-file-name-label');
+                const btn = document.getElementById('btn-upload-apple');
+                lbl.innerText = selectedAppleFile.name + " (" + (selectedAppleFile.size / (1024 * 1024)).toFixed(2) + " MB)";
+                lbl.style.color = "#38BDF8";
+                btn.style.display = "block";
+            }
+        }
+
+        async function uploadAppleSysdiagnose() {
+            if (!selectedAppleFile) return;
+
+            const pBox = document.getElementById('apple-progress-box');
+            const pBar = document.getElementById('apple-progress-bar');
+            const pTxt = document.getElementById('apple-progress-text');
+            const btn = document.getElementById('btn-upload-apple');
+
+            btn.disabled = true;
+            btn.innerText = "Mengunggah & Menganalisa...";
+            btn.style.background = "#6B7280";
+            pBox.style.display = "block";
+            pBar.style.width = "25%";
+            pTxt.innerText = "Membaca berkas dari penyimpanan iPhone...";
+
+            try {
+                if (selectedAppleFile.name.endsWith('.json')) {
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        try {
+                            pBar.style.width = "65%";
+                            pTxt.innerText = "Mengurai struktur EEPROM & BMS Apple...";
+                            const jsonText = e.target.result;
+                            const res = await fetch('/api/upload_sysdiagnose?session=' + encodeURIComponent(sessionId) + '&filename=' + encodeURIComponent(selectedAppleFile.name), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: jsonText
+                            });
+                            const result = await res.json();
+                            renderAppleResult(result);
+                        } catch(err) {
+                            pTxt.innerText = "Gagal memproses berkas JSON: " + err.message;
+                            btn.disabled = false;
+                            btn.style.background = "#10B981";
+                        }
+                    };
+                    reader.readAsText(selectedAppleFile);
+                } else {
+                    pBar.style.width = "40%";
+                    pTxt.innerText = "Mengunggah arsip sysdiagnose ke server...";
+                    const formData = new FormData();
+                    formData.append('file', selectedAppleFile);
+                    
+                    const res = await fetch('/api/upload_sysdiagnose?session=' + encodeURIComponent(sessionId) + '&filename=' + encodeURIComponent(selectedAppleFile.name), {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await res.json();
+                    renderAppleResult(result);
+                }
+            } catch(e) {
+                pTxt.innerText = "Terjadi gangguan koneksi: " + e.message;
+                btn.disabled = false;
+                btn.style.background = "#10B981";
+            }
+        }
+
+        function renderAppleResult(res) {
+            const pBox = document.getElementById('apple-progress-box');
+            const pBar = document.getElementById('apple-progress-bar');
+            const pTxt = document.getElementById('apple-progress-text');
+            const card = document.getElementById('apple-result-card');
+            const btn = document.getElementById('btn-upload-apple');
+
+            pBar.style.width = "100%";
+            pTxt.innerText = "Analisis selesai & data berhasil disinkronkan ke kasir!";
+            btn.style.display = "none";
+
+            if (res && res.status === 'success' && res.data) {
+                const d = res.data;
+                card.style.display = 'block';
+                document.getElementById('app-val-model').innerText = d.model || 'Apple iPhone';
+                document.getElementById('app-val-bat').innerText = (d.battery ? d.battery.health_pct + '% (' + d.battery.status + ')' : '-');
+                document.getElementById('app-val-cycle').innerText = (d.battery ? d.battery.cycle_count + ' Siklus' : '-');
+                
+                const disp = (d.components && d.components.display) ? d.components.display.vendor : 'Apple OEM';
+                document.getElementById('app-val-display').innerText = disp;
+                
+                const stor = d.storage_details ? (d.storage_details.vendor + ' ' + d.storage_details.capacity) : '-';
+                document.getElementById('app-val-storage').innerText = stor;
+
+                const hrs = d.storage_details ? d.storage_details.power_on_hours_text : '-';
+                document.getElementById('app-val-hours').innerText = hrs;
+
+                if (d.stability_audit) {
+                    const crashTxt = d.stability_audit.crash_count + ' crash cluster';
+                    const panicTxt = d.stability_audit.panic_detected ? 'PERINGATAN KERNEL PANIC' : 'Nol Panic (Stabil)';
+                    document.getElementById('app-val-stability').innerText = 'Stabilitas: ' + crashTxt + ' | ' + panicTxt;
+                }
+
+                if (d.model) {
+                    updateCustomModel(d.model);
+                    document.getElementById('val-model').innerText = d.model;
+                }
+                if (d.battery && d.battery.health_pct) {
+                    updateBatteryLevel(d.battery.health_pct);
+                    document.getElementById('bat-level').innerText = d.battery.health_pct + '%';
+                }
+                
+                const badge = document.getElementById('apple-res-badge');
+                if (d.oem_authenticity && d.oem_authenticity.overall_authenticity === 'ALL_ORIGINAL') {
+                    badge.innerText = '100% ORIGINAL OEM';
+                    badge.className = 'badge badge-pass';
+                } else {
+                    badge.innerText = 'KOMPONEN GANTIAN';
+                    badge.className = 'badge badge-danger';
+                }
+            }
+        }
     </script>
 </body>
 </html>
@@ -3396,6 +3597,13 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
     def do_POST(self):
         url = urlparse(self.path)
         if url.path in ["/api/submit", "/api/submit_diagnostic"]:
@@ -3427,11 +3635,104 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+
+        elif url.path in ["/api/upload_sysdiagnose", "/api/upload_apple"]:
+            qs = parse_qs(url.query)
+            session_id = qs.get("session", ["SESSION-DEFAULT"])[0]
+            filename = qs.get("filename", ["sysdiagnose.tar.gz"])[0]
+
+            content_length = int(self.headers.get("Content-Length", 0))
+            content_type = self.headers.get("Content-Type", "")
+
+            # Read stream in buffered chunks to support large archives without socket exhaustion
+            import tempfile
+            tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix="_upload.bin")
+            remaining = content_length
+            chunk_size = 512 * 1024
+            while remaining > 0:
+                chunk = self.rfile.read(min(remaining, chunk_size))
+                if not chunk:
+                    break
+                tmp_file.write(chunk)
+                remaining -= len(chunk)
+            tmp_file.close()
+            tmp_path = tmp_file.name
+
+            try:
+                from .apple_sysdiagnose_parser import AppleSysdiagnoseParser
+                parser = AppleSysdiagnoseParser()
+
+                # If multipart, extract payload to a clean file or memory
+                actual_file_path = tmp_path
+                if "multipart/form-data" in content_type:
+                    boundary = content_type.split("boundary=")[-1].strip()
+                    if boundary.startswith('"') and boundary.endswith('"'):
+                        boundary = boundary[1:-1]
+                    b_bytes = boundary.encode("latin-1")
+                    with open(tmp_path, "rb") as f_in:
+                        all_data = f_in.read()
+                    parts = all_data.split(b"--" + b_bytes)
+                    for part in parts:
+                        if b"filename=" in part:
+                            crlf2 = bytes([13, 10, 13, 10])
+                            crlf1 = bytes([13, 10])
+                            _, _, body = part.partition(crlf2)
+                            if body.endswith(crlf1):
+                                body = body[:-2]
+                            with open(tmp_path + ".extracted", "wb") as f_out:
+                                f_out.write(body)
+                            actual_file_path = tmp_path + ".extracted"
+                            break
+
+                # Parse file
+                if filename.endswith(".json"):
+                    with open(actual_file_path, "r", encoding="utf-8", errors="ignore") as jf:
+                        try:
+                            json_obj = json.load(jf)
+                            report = parser.parse_diagnostic_json(json_obj)
+                        except Exception:
+                            report = parser.parse_file(actual_file_path, filename=filename)
+                else:
+                    report = parser.parse_file(actual_file_path, filename=filename)
+
+                unified_payload = report.to_unified_payload(session_id)
+                unified_payload["record_id"] = f"{session_id}_{unified_payload['client_device_id']}"
+                unified_payload["received_at"] = time.time()
+                unified_payload["is_ios"] = True
+
+                set_mobile_session_result(session_id, unified_payload)
+                try:
+                    from .diagnostic_db import DiagnosticDatabase
+                    db = DiagnosticDatabase()
+                    db.save_diagnostic(session_id, unified_payload, record_id=unified_payload["record_id"])
+                except Exception:
+                    pass
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                resp = {
+                    "status": "success",
+                    "session": session_id,
+                    "device": report.device_model,
+                    "health_score": report.health_score,
+                    "data": unified_payload
+                }
+                self.wfile.write(json.dumps(resp).encode("utf-8"))
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
         else:
             self.send_response(404)
             self.end_headers()
+
 
 
 def get_mobile_diagnostic_html(session_id: str, app_base_url: str = "") -> str:
