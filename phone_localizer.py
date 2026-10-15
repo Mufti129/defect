@@ -14,8 +14,25 @@ from typing import Tuple, Dict, Any, Optional
 
 
 class PhoneBodyLocalizer:
-    def __init__(self):
-        pass
+    def __init__(self, yolo_model_path: Optional[str] = None):
+        self.yolo_model = None
+        self.yolo_path = None
+
+        candidate_paths = [
+            yolo_model_path,
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights", "model_detect_body_hp.pt"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "model_detect_body_hp.pt"),
+            "/Users/macbookair/Documents/Project Defect Detections/model_detect_body_hp.pt"
+        ]
+        for p in candidate_paths:
+            if p and os.path.exists(p):
+                try:
+                    from ultralytics import YOLO
+                    self.yolo_model = YOLO(p)
+                    self.yolo_path = p
+                    break
+                except Exception:
+                    pass
 
     def detect_angle(self, img: np.ndarray, side: str) -> float:
         """
@@ -402,6 +419,47 @@ class PhoneBodyLocalizer:
 
         return np.vstack([banner, body])
 
+    def detect_body_with_yolo(self, img: np.ndarray, side: str) -> Optional[Tuple[int, int, int, int, float]]:
+        """
+        Uses model_detect_body_hp.pt exclusively for side views (left, right, top, bottom).
+        STRICT: NEVER runs on front or back views!
+        Returns: (bx, by, bw, bh, confidence) or None if no valid detection.
+        """
+        side_lower = side.lower()
+        # RULE: Never use this model for front, back, or rear views!
+        if side_lower in ["front", "back", "rear"]:
+            return None
+
+        if self.yolo_model is None:
+            return None
+
+        h, w = img.shape[:2]
+        try:
+            preds = self.yolo_model(img, conf=0.18, iou=0.45, verbose=False)
+            boxes = preds[0].boxes
+            if boxes is None or len(boxes) == 0:
+                return None
+
+            # Pick detection with highest confidence
+            best = max(boxes, key=lambda b: float(b.conf[0]))
+            conf = float(best.conf[0])
+            x1, y1, x2, y2 = [int(v) for v in best.xyxy[0].cpu().numpy()]
+
+            # Add 6% safety margin so buttons, camera bump, and rounded corners are preserved
+            bw = x2 - x1
+            bh = y2 - y1
+            pad_x = int(bw * 0.06)
+            pad_y = int(bh * 0.06)
+
+            x1 = max(0, x1 - pad_x)
+            y1 = max(0, y1 - pad_y)
+            x2 = min(w, x2 + pad_x)
+            y2 = min(h, y2 + pad_y)
+
+            return (x1, y1, x2 - x1, y2 - y1, conf)
+        except Exception:
+            return None
+
     def localize_and_crop(self, img: np.ndarray, side: str) -> Dict[str, Any]:
         """
         Executes complete Stage 1 localization and auto-cropping for a single view image.
@@ -418,18 +476,32 @@ class PhoneBodyLocalizer:
         side_lower = side.lower()
 
         if side_lower in ["front", "back", "rear"]:
+            # STRICT RULE: For front and back, DO NOT use model_detect_body_hp.pt!
+            # Use dedicated surface contouring / full panel isolation
             cropped, bbox = self.crop_focused_surface(img)
             if bbox is None:
                 bbox = (0, 0, img.shape[1], img.shape[0])
             ang = 0.0
-            conf = "SURFACE_CONTOUR"
+            conf = "SURFACE_CONTOUR (FRONT EXCLUSIVE)"
             rot = img
         else:
-            ang = self.detect_angle(img, side_lower)
-            rot = self.rotate_image(img, ang)
-            bbox, conf = self.crop_focused_phone(rot, side_lower)
-            bx, by, bw, bh = bbox
-            cropped = rot[by:by+bh, bx:bx+bw]
+            # Side views: left, right, top, bottom
+            # Priority 1: YOLO Body Detector (model_detect_body_hp.pt)
+            yolo_res = self.detect_body_with_yolo(img, side_lower)
+            if yolo_res is not None:
+                bx, by, bw, bh, yolo_conf = yolo_res
+                bbox = (bx, by, bw, bh)
+                ang = 0.0  # YOLO detects the bounding box directly in native orientation
+                conf = f"YOLO_BODY_AI (Conf: {yolo_conf:.1%})"
+                rot = img
+                cropped = img[by:by+bh, bx:bx+bw]
+            else:
+                # Priority 2: Algorithmic tilt alignment + edge scanning fallback
+                ang = self.detect_angle(img, side_lower)
+                rot = self.rotate_image(img, ang)
+                bbox, conf = self.crop_focused_phone(rot, side_lower)
+                bx, by, bw, bh = bbox
+                cropped = rot[by:by+bh, bx:bx+bw]
 
         preview = self.create_verification_preview(rot, cropped, ang, bbox, conf, side_lower)
 
