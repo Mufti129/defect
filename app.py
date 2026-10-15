@@ -2121,20 +2121,21 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                     if st.button("Proses Berkas Apple & Tampilkan Hasil", type="secondary", use_container_width=True, key=f"btn_proc_apple_{m_session}"):
                         try:
                             if AppleSysdiagnoseParser:
-                                a_parser = AppleSysdiagnoseParser()
-                                file_bytes = apple_manual_upload.read()
-                                a_rep = a_parser.parse_file(file_bytes, filename=apple_manual_upload.name)
-                                a_payload = a_rep.to_unified_payload(m_session)
-                                a_payload["record_id"] = f"{m_session}_{a_payload['client_device_id']}"
-                                if set_mobile_session_result:
-                                    set_mobile_session_result(m_session, a_payload)
-                                if DiagnosticDatabase:
-                                    try:
-                                        DiagnosticDatabase().save_diagnostic(m_session, a_payload, record_id=a_payload["record_id"])
-                                    except Exception:
-                                        pass
-                                st.success(f"Berhasil mengurai Apple: {a_rep.device_model} (Kesehatan {a_rep.battery.health_percent}%, Siklus {a_rep.battery.cycle_count})")
-                                st.rerun()
+                                with st.spinner("Mengekstrak telemetri hardware Apple dalam hitungan detik..."):
+                                    a_parser = AppleSysdiagnoseParser()
+                                    file_bytes = apple_manual_upload.read()
+                                    a_rep = a_parser.parse_file(file_bytes, filename=apple_manual_upload.name)
+                                    a_payload = a_rep.to_unified_payload(m_session)
+                                    a_payload["record_id"] = f"{m_session}_{a_payload['client_device_id']}"
+                                    if set_mobile_session_result:
+                                        set_mobile_session_result(m_session, a_payload)
+                                    if DiagnosticDatabase:
+                                        try:
+                                            DiagnosticDatabase().save_diagnostic(m_session, a_payload, record_id=a_payload["record_id"])
+                                        except Exception:
+                                            pass
+                                    st.success(f"Berhasil mengurai Apple: {a_rep.device_model} (Kesehatan {a_rep.battery.health_percent}%, Siklus {a_rep.battery.cycle_count})")
+                                    st.rerun()
                         except Exception as e_proc:
                             st.error(f"Gagal memproses berkas Apple: {e_proc}")
 

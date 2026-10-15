@@ -3465,8 +3465,18 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             btn.innerText = "Mengunggah & Menganalisa...";
             btn.style.background = "#6B7280";
             pBox.style.display = "block";
-            pBar.style.width = "25%";
-            pTxt.innerText = "Membaca berkas dari penyimpanan iPhone...";
+            pBar.style.width = "5%";
+            pBar.style.background = "#3B82F6";
+            pTxt.innerText = "Menyiapkan berkas Apple...";
+
+            function showUploadError(msg) {
+                pTxt.innerText = "Gagal: " + msg;
+                pBar.style.background = "#EF4444";
+                btn.disabled = false;
+                btn.style.display = "block";
+                btn.innerText = "Coba Unggah Ulang";
+                btn.style.background = "#10B981";
+            }
 
             try {
                 if (selectedAppleFile.name.endsWith('.json')) {
@@ -3482,31 +3492,71 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                                 body: jsonText
                             });
                             const result = await res.json();
-                            renderAppleResult(result);
+                            if (result.status === 'success') {
+                                renderAppleResult(result);
+                            } else {
+                                showUploadError(result.message || "Gagal mengurai JSON Apple.");
+                            }
                         } catch(err) {
-                            pTxt.innerText = "Gagal memproses berkas JSON: " + err.message;
-                            btn.disabled = false;
-                            btn.style.background = "#10B981";
+                            showUploadError(err.message);
                         }
                     };
                     reader.readAsText(selectedAppleFile);
                 } else {
-                    pBar.style.width = "40%";
-                    pTxt.innerText = "Mengunggah arsip sysdiagnose ke server...";
-                    const formData = new FormData();
-                    formData.append('file', selectedAppleFile);
-                    
-                    const res = await fetch('/api/upload_sysdiagnose?session=' + encodeURIComponent(sessionId) + '&filename=' + encodeURIComponent(selectedAppleFile.name), {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const result = await res.json();
-                    renderAppleResult(result);
+                    const xhr = new XMLHttpRequest();
+                    const uploadUrl = '/api/upload_sysdiagnose?session=' + encodeURIComponent(sessionId) + '&filename=' + encodeURIComponent(selectedAppleFile.name);
+                    xhr.open('POST', uploadUrl, true);
+                    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+                    xhr.timeout = 180000;
+
+                    xhr.upload.onprogress = function(evt) {
+                        if (evt.lengthComputable) {
+                            const pct = Math.round((evt.loaded / evt.total) * 100);
+                            pBar.style.width = Math.min(pct, 95) + '%';
+                            const mbLoaded = (evt.loaded / (1024 * 1024)).toFixed(1);
+                            const mbTotal = (evt.total / (1024 * 1024)).toFixed(1);
+                            if (pct < 100) {
+                                pTxt.innerText = "Mengunggah berkas: " + pct + "% (" + mbLoaded + " MB / " + mbTotal + " MB)...";
+                            } else {
+                                pTxt.innerText = "Mengurai telemetri hardware Apple (asptool, baterai, panic log)...";
+                            }
+                        }
+                    };
+
+                    xhr.onload = function() {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                const result = JSON.parse(xhr.responseText);
+                                if (result.status === 'success') {
+                                    renderAppleResult(result);
+                                } else {
+                                    showUploadError(result.message || 'Gagal memproses data Apple.');
+                                }
+                            } catch(err) {
+                                showUploadError('Format respon server tidak valid.');
+                            }
+                        } else {
+                            let msg = 'Gagal memproses berkas Apple (HTTP ' + xhr.status + ').';
+                            try {
+                                const errObj = JSON.parse(xhr.responseText);
+                                if (errObj.message) msg = errObj.message;
+                            } catch(_) {}
+                            showUploadError(msg);
+                        }
+                    };
+
+                    xhr.onerror = function() {
+                        showUploadError('Koneksi terputus saat pengunggahan berkas.');
+                    };
+
+                    xhr.ontimeout = function() {
+                        showUploadError('Batas waktu unggah habis (timeout). Silakan periksa koneksi Wi-Fi.');
+                    };
+
+                    xhr.send(selectedAppleFile);
                 }
             } catch(e) {
-                pTxt.innerText = "Terjadi gangguan koneksi: " + e.message;
-                btn.disabled = false;
-                btn.style.background = "#10B981";
+                showUploadError(e.message);
             }
         }
 
@@ -3665,27 +3715,45 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
                 from .apple_sysdiagnose_parser import AppleSysdiagnoseParser
                 parser = AppleSysdiagnoseParser()
 
-                # If multipart, extract payload to a clean file or memory
                 actual_file_path = tmp_path
+                extracted_path = None
                 if "multipart/form-data" in content_type:
-                    boundary = content_type.split("boundary=")[-1].strip()
-                    if boundary.startswith('"') and boundary.endswith('"'):
-                        boundary = boundary[1:-1]
-                    b_bytes = boundary.encode("latin-1")
-                    with open(tmp_path, "rb") as f_in:
-                        all_data = f_in.read()
-                    parts = all_data.split(b"--" + b_bytes)
-                    for part in parts:
-                        if b"filename=" in part:
-                            crlf2 = bytes([13, 10, 13, 10])
-                            crlf1 = bytes([13, 10])
-                            _, _, body = part.partition(crlf2)
-                            if body.endswith(crlf1):
-                                body = body[:-2]
-                            with open(tmp_path + ".extracted", "wb") as f_out:
-                                f_out.write(body)
-                            actual_file_path = tmp_path + ".extracted"
+                    boundary = ""
+                    for part_param in content_type.split(";"):
+                        part_param = part_param.strip()
+                        if part_param.startswith("boundary="):
+                            boundary = part_param.split("boundary=", 1)[1].strip()
+                            if boundary.startswith('"') and boundary.endswith('"'):
+                                boundary = boundary[1:-1]
                             break
+
+                    if boundary:
+                        b_boundary = boundary.encode("latin-1")
+                        extracted_path = tmp_path + ".extracted"
+                        with open(tmp_path, "rb") as fin:
+                            header_sample = fin.read(8192)
+                            crlf2 = b"\r\n\r\n"
+                            hdr_pos = header_sample.find(crlf2)
+                            if hdr_pos != -1:
+                                fin.seek(hdr_pos + 4)
+                                with open(extracted_path, "wb") as fout:
+                                    buffer = b""
+                                    trailing_marker = b"\r\n--" + b_boundary
+                                    while True:
+                                        chunk = fin.read(256 * 1024)
+                                        if not chunk:
+                                            break
+                                        buffer += chunk
+                                        if len(buffer) > len(trailing_marker) + (256 * 1024):
+                                            safe_write = buffer[:- (len(trailing_marker) + 128)]
+                                            fout.write(safe_write)
+                                            buffer = buffer[len(safe_write):]
+                                    idx = buffer.find(trailing_marker)
+                                    if idx != -1:
+                                        fout.write(buffer[:idx])
+                                    else:
+                                        fout.write(buffer)
+                                actual_file_path = extracted_path
 
                 # Parse file
                 if filename.endswith(".json"):
@@ -3724,11 +3792,26 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
                 }
                 self.wfile.write(json.dumps(resp).encode("utf-8"))
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode("utf-8"))
+            finally:
+                # Always clean up temporary upload files
+                try:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
+                except Exception:
+                    pass
+                if extracted_path:
+                    try:
+                        if os.path.exists(extracted_path):
+                            os.unlink(extracted_path)
+                    except Exception:
+                        pass
         else:
             self.send_response(404)
             self.end_headers()
