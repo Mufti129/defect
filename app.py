@@ -4464,12 +4464,16 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
     target_directory = None
 
     if source_option == "Preset Sampel Bawaan Sistem (Demo Samples)":
+        samples_root = APP_DIR / "demo_samples"
+        if not samples_root.exists() and (PROJECT_DIR / "demo_samples").exists():
+            samples_root = PROJECT_DIR / "demo_samples"
+
         preset_options = {
-            "Semua Sampel (Grade A, B, C, D)": PROJECT_DIR / "demo_samples",
-            "Sampel Grade A (Unit Kondisi Mulus)": PROJECT_DIR / "demo_samples" / "grade_A",
-            "Sampel Grade B (Unit Cacat Ringan)": PROJECT_DIR / "demo_samples" / "grade_B",
-            "Sampel Grade C (Unit Cacat Sedang)": PROJECT_DIR / "demo_samples" / "grade_C",
-            "Sampel Grade D (Unit Cacat Berat)": PROJECT_DIR / "demo_samples" / "grade_D",
+            "Semua Sampel (Grade A, B, C, D)": samples_root,
+            "Sampel Grade A (Unit Kondisi Mulus)": samples_root / "grade_A",
+            "Sampel Grade B (Unit Cacat Ringan)": samples_root / "grade_B",
+            "Sampel Grade C (Unit Cacat Sedang)": samples_root / "grade_C",
+            "Sampel Grade D (Unit Cacat Berat)": samples_root / "grade_D",
         }
         selected_preset_label = st.selectbox(
             "Pilih Kategori Sampel:",
@@ -4478,11 +4482,18 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
         chosen_preset_path = preset_options[selected_preset_label]
         if not chosen_preset_path.exists() or len(list(chosen_preset_path.glob("*"))) == 0:
             grade_key = chosen_preset_path.name
-            alt_path = PROJECT_DIR / "Hasil_Crop_Raw" / grade_key
-            if alt_path.exists():
-                chosen_preset_path = alt_path
-            elif (PROJECT_DIR / "Hasil_Crop_Raw").exists():
-                chosen_preset_path = PROJECT_DIR / "Hasil_Crop_Raw"
+            alt_candidates = [
+                APP_DIR / "demo_samples" / grade_key,
+                PROJECT_DIR / "demo_samples" / grade_key,
+                PROJECT_DIR / "Hasil_Crop_Raw" / grade_key,
+                APP_DIR / "demo_samples",
+                PROJECT_DIR / "demo_samples",
+                PROJECT_DIR / "Hasil_Crop_Raw",
+            ]
+            for cand in alt_candidates:
+                if cand.exists() and len(list(cand.glob("*"))) > 0:
+                    chosen_preset_path = cand
+                    break
         target_directory = chosen_preset_path
         st.caption(f"Direktori aktif: {target_directory}")
 
@@ -4549,8 +4560,11 @@ elif nav_choice == "Pengujian Massal (Batch Inspection)":
                 target_directory = None
 
     elif source_option == "Direktori Path Lokal / Server":
-        default_batch_path = str(PROJECT_DIR / "demo_samples")
-        if not (PROJECT_DIR / "demo_samples").exists():
+        if (APP_DIR / "demo_samples").exists():
+            default_batch_path = str(APP_DIR / "demo_samples")
+        elif (PROJECT_DIR / "demo_samples").exists():
+            default_batch_path = str(PROJECT_DIR / "demo_samples")
+        else:
             default_batch_path = str(PROJECT_DIR / "Hasil_Crop_Raw")
         batch_dir_str = st.text_input(
             "Path Direktori Target Pengujian:", 
