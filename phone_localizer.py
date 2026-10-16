@@ -34,6 +34,13 @@ class PhoneBodyLocalizer:
                 except Exception:
                     pass
 
+        self.hand_filter = None
+        try:
+            from hand_filter import HandFilter
+            self.hand_filter = HandFilter()
+        except Exception:
+            pass
+
     def detect_angle(self, img: np.ndarray, side: str) -> float:
         """
         Detects tilt angle (in degrees) of the phone edge using centrality-weighted Hough lines.
@@ -332,46 +339,67 @@ class PhoneBodyLocalizer:
     def crop_focused_surface(self, img: np.ndarray) -> Tuple[np.ndarray, Optional[Tuple[int, int, int, int]]]:
         """
         Detects smartphone body contour on front/back views and crops tightly.
+        Uses HandFilter skin segmentation to completely excise human fingers/hands holding the screen.
         """
         h, w = img.shape[:2]
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (25, 25), 0)
+        scale = 800.0 / max(h, w)
+        small = cv2.resize(img, (int(w * scale), int(h * scale)))
+        sh, sw = small.shape[:2]
 
-        ch, cw = max(10, int(h * 0.03)), max(10, int(w * 0.03))
+        skin_dilated = None
+        if self.hand_filter is not None:
+            try:
+                skin = self.hand_filter.detect_skin_mask(small)
+                skin_dilated = cv2.dilate(skin, np.ones((11, 11), np.uint8), iterations=2)
+            except Exception:
+                pass
+
+        gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray, (15, 15), 0)
+
+        ch, cw = max(10, int(sh * 0.04)), max(10, int(sw * 0.04))
         corners = [gray[0:ch, 0:cw], gray[0:ch, -cw:], gray[-ch:, 0:cw], gray[-ch:, -cw:]]
         bg_bright = float(np.median([np.median(c) for c in corners]))
 
-        if bg_bright > 130:
-            _, thresh = cv2.threshold(blur, int(bg_bright * 0.72), 255, cv2.THRESH_BINARY_INV)
+        # Front display glass is dark (typical 20-60). Table/environment is brighter (80-220).
+        thresh_val = max(50, min(140, int((bg_bright + 45) / 2)))
+        _, thresh = cv2.threshold(blur, thresh_val, 255, cv2.THRESH_BINARY_INV)
+
+        # Subtract operator fingers/hands
+        if skin_dilated is not None:
+            phone_only = cv2.bitwise_and(thresh, cv2.bitwise_not(skin_dilated))
         else:
-            _, thresh = cv2.threshold(blur, int(bg_bright * 1.28), 255, cv2.THRESH_BINARY)
+            phone_only = thresh
 
-        cnts, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not cnts:
-            return img, (0, 0, w, h)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (17, 17))
+        closed = cv2.morphologyEx(phone_only, cv2.MORPH_CLOSE, kernel)
 
+        cnts, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         valid_cnts = []
         for c in cnts:
             area = cv2.contourArea(c)
-            if area > (h * w * 0.08):
+            if area > (sh * sw * 0.06):
                 bx, by, bw, bh = cv2.boundingRect(c)
                 ar = max(bw, bh) / max(min(bw, bh), 1)
-                if 1.3 <= ar <= 2.6:
+                if 1.35 <= ar <= 2.6:
                     valid_cnts.append((area, bx, by, bw, bh))
 
-        if not valid_cnts:
-            return img, (0, 0, w, h)
+        if valid_cnts:
+            _, bx, by, bw, bh = max(valid_cnts, key=lambda x: x[0])
+            fx = int(bx / scale)
+            fy = int(by / scale)
+            fw = int(bw / scale)
+            fh = int(bh / scale)
+            pad_x = int(fw * 0.03)
+            pad_y = int(fh * 0.03)
+            x1 = max(0, fx - pad_x)
+            y1 = max(0, fy - pad_y)
+            x2 = min(w, fx + fw + pad_x)
+            y2 = min(h, fy + fh + pad_y)
+            return img[y1:y2, x1:x2], (x1, y1, x2 - x1, y2 - y1)
 
-        _, bx, by, bw, bh = max(valid_cnts, key=lambda x: x[0])
-
-        pad_x = int(bw * 0.03)
-        pad_y = int(bh * 0.03)
-        x1 = max(0, bx - pad_x)
-        y1 = max(0, by - pad_y)
-        x2 = min(w, bx + bw + pad_x)
-        y2 = min(h, by + bh + pad_y)
-
-        return img[y1:y2, x1:x2], (x1, y1, x2 - x1, y2 - y1)
+        # Fallback to general bounding box
+        return img, (0, 0, w, h)
 
     def create_verification_preview(
         self,
@@ -477,30 +505,75 @@ class PhoneBodyLocalizer:
 
         if side_lower in ["front", "back", "rear"]:
             # STRICT RULE: For front and back, DO NOT use model_detect_body_hp.pt!
-            # Use dedicated surface contouring / full panel isolation
+            # Use dedicated surface contouring / full panel isolation with HandFilter skin excision
             cropped, bbox = self.crop_focused_surface(img)
             if bbox is None:
                 bbox = (0, 0, img.shape[1], img.shape[0])
             ang = 0.0
-            conf = "SURFACE_CONTOUR (FRONT EXCLUSIVE)"
+            conf = "SURFACE_CONTOUR_NO_HANDS"
             rot = img
         else:
             # Side views: left, right, top, bottom
-            # Priority 1: YOLO Body Detector (model_detect_body_hp.pt)
-            yolo_res = self.detect_body_with_yolo(img, side_lower)
+            h, w = img.shape[:2]
+            # 1. Straighten camera tilt before detection
+            ang = self.detect_angle(img, side_lower)
+            if abs(ang) >= 0.8:
+                rot = self.rotate_image(img, ang)
+            else:
+                ang = 0.0
+                rot = img
+
+            # 2. Try YOLO Body Detector on straightened image
+            yolo_res = self.detect_body_with_yolo(rot, side_lower)
+            use_yolo = False
             if yolo_res is not None:
                 bx, by, bw, bh, yolo_conf = yolo_res
+                # Sanity check: side view profile should not be excessively wide
+                if side_lower in ['left', 'right']:
+                    if bw <= int(w * 0.45) and yolo_conf >= 0.40:
+                        use_yolo = True
+                elif side_lower in ['top', 'bottom']:
+                    if bh <= int(h * 0.45) and yolo_conf >= 0.40:
+                        use_yolo = True
+
+            if use_yolo:
                 bbox = (bx, by, bw, bh)
-                ang = 0.0  # YOLO detects the bounding box directly in native orientation
                 conf = f"YOLO_BODY_AI (Conf: {yolo_conf:.1%})"
-                rot = img
-                cropped = img[by:by+bh, bx:bx+bw]
+                cropped = rot[by:by+bh, bx:bx+bw]
             else:
-                # Priority 2: Algorithmic tilt alignment + edge scanning fallback
-                ang = self.detect_angle(img, side_lower)
-                rot = self.rotate_image(img, ang)
+                # 3. Algorithmic tilt alignment + edge scanning fallback on straightened image
                 bbox, conf = self.crop_focused_phone(rot, side_lower)
                 bx, by, bw, bh = bbox
+
+                # Boundary refinement along the thin axis using mid-strip contrast
+                gray = cv2.cvtColor(rot, cv2.COLOR_BGR2GRAY)
+                if side_lower in ['left', 'right']:
+                    mid_y1 = by + int(bh * 0.25)
+                    mid_y2 = by + int(bh * 0.75)
+                    mid_strip = gray[mid_y1:mid_y2, :]
+                    col_means = np.mean(mid_strip, axis=0)
+                    phone_cols = np.where(col_means > 40)[0]
+                    if len(phone_cols) > 0 and (phone_cols[-1] - phone_cols[0]) < bw:
+                        pad_x = max(20, int((phone_cols[-1] - phone_cols[0]) * 0.15))
+                        new_x1 = max(0, phone_cols[0] - pad_x)
+                        new_x2 = min(w, phone_cols[-1] + pad_x)
+                        bx = int(new_x1)
+                        bw = int(new_x2 - new_x1)
+                        bbox = (bx, by, bw, bh)
+                elif side_lower in ['top', 'bottom']:
+                    mid_x1 = bx + int(bw * 0.25)
+                    mid_x2 = bx + int(bw * 0.75)
+                    mid_strip = gray[:, mid_x1:mid_x2]
+                    row_means = np.mean(mid_strip, axis=1)
+                    phone_rows = np.where(row_means > 40)[0]
+                    if len(phone_rows) > 0 and (phone_rows[-1] - phone_rows[0]) < bh:
+                        pad_y = max(20, int((phone_rows[-1] - phone_rows[0]) * 0.15))
+                        new_y1 = max(0, phone_rows[0] - pad_y)
+                        new_y2 = min(h, phone_rows[-1] + pad_y)
+                        by = int(new_y1)
+                        bh = int(new_y2 - new_y1)
+                        bbox = (bx, by, bw, bh)
+
                 cropped = rot[by:by+bh, bx:bx+bw]
 
         preview = self.create_verification_preview(rot, cropped, ang, bbox, conf, side_lower)
@@ -513,3 +586,4 @@ class PhoneBodyLocalizer:
             "confidence": conf,
             "preview_img": preview
         }
+
