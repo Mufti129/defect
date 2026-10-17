@@ -48,6 +48,8 @@ weights_v3_housing_only/
 weights_v4/
 weights_v5/
 weights_v6/
+weights_v7/*.pt
+weights/phone_defect_model_v7*.pt
 
 # IDE
 .idea/
