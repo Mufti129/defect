@@ -5344,33 +5344,34 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 v7_per_grade = {
                     "Cosmetic Grade": ["Grade A (Mulus)", "Grade B (Wajar)", "Grade C (Aus Berat)", "Grade D (Pecah/Hard Damage Veto)", "Macro Average"],
                     "Support": [25, 25, 25, 25, 100],
-                    "TP": [23, 23, 21, 24, 91],
-                    "FP": [2, 2, 3, 2, 9],
-                    "FN": [2, 2, 4, 1, 9],
-                    "Precision": ["92.0%", "92.0%", "87.5%", "92.3%", "91.0%"],
-                    "Recall": ["92.0%", "92.0%", "84.0%", "96.0%", "91.0%"],
-                    "F1-Score": ["0.9200", "0.9020", "0.8571", "0.9412", "0.9096"]
+                    "TP": [5, 15, 5, 13, 38],
+                    "FP": [6, 29, 11, 16, 62],
+                    "FN": [20, 10, 20, 12, 62],
+                    "Precision": ["45.5%", "34.1%", "31.3%", "44.8%", "38.9%"],
+                    "Recall": ["20.0%", "60.0%", "20.0%", "52.0%", "38.0%"],
+                    "F1-Score": ["0.2778", "0.4348", "0.2439", "0.4815", "0.3595"]
                 }
                 st.dataframe(pd.DataFrame(v7_per_grade), use_container_width=True)
 
                 st.markdown("""
                 <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 14px; font-size: 0.80rem; color: #92400E; margin-top: 6px;">
-                    • <b>Over-Grading Rate:</b> 4.0% (Terkendali sangat aman untuk valuasi gadai)<br>
+                    • <b>Evaluasi Empiris Data Uji:</b> Dihitung riil dari 100 unit smartphone benchmark cabang (Hasil_Crop_Raw).<br>
+                    • <b>Over-Grading Rate:</b> 25.0% | <b>Under-Grading Rate:</b> 37.0%<br>
                     • <b>Critical Inversions (Grade D ↔ A):</b> 0 Unit (0.0% — Terproteksi Penuh Veto Hard Damage)<br>
-                    • <b>Unifikasi Kelas:</b> 4 kategori (scratch, chip, dent, hard_damage) menghilangkan tumpang tindih broken vs crack.
+                    • <b>Metrik Spasial YOLO Data Test (images/val):</b> mAP@50 11.82%, Precision 51.77%, Val Box Loss 1.479 (Epoch 9 Checkpoint).
                 </div>
                 """, unsafe_allow_html=True)
 
             with col_t2:
                 st.markdown("#### Matriks Kebingungan (4x4 Confusion Matrix Model V7):")
                 v7_cm_data = [
-                    [23, 1, 1, 0],
-                    [1, 23, 1, 0],
-                    [1, 2, 21, 1],
-                    [0, 0, 1, 24]
+                    [5, 16, 3, 1],
+                    [5, 15, 2, 3],
+                    [1, 7, 5, 12],
+                    [0, 6, 6, 13]
                 ]
                 st.markdown(_render_styled_cm_table(v7_cm_data, theme_color="#D97706"), unsafe_allow_html=True)
-                st.caption("Diagonal hijau menandai akurasi estimasi (91/100 unit = 91.0% True Accuracy).")
+                st.caption("Diagonal hijau menandai akurasi riil data uji (38/100 unit = 38.0% True Accuracy).")
 
             st.write("")
 
@@ -5666,33 +5667,34 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 v6_per_grade = {
                     "Cosmetic Grade": ["Grade A (Mulus)", "Grade B (Wajar)", "Grade C (Aus Berat)", "Grade D (Pecah/Veto)", "Macro Average"],
                     "Support": [25, 25, 25, 25, 100],
-                    "TP": [23, 23, 19, 24, 89],
-                    "FP": [2, 3, 3, 3, 11],
-                    "FN": [2, 2, 6, 1, 11],
-                    "Precision": ["92.0%", "88.5%", "86.4%", "88.9%", "89.0%"],
-                    "Recall": ["92.0%", "92.0%", "76.0%", "96.0%", "89.0%"],
-                    "F1-Score": ["0.9200", "0.9020", "0.8085", "0.9231", "0.8884"]
+                    "TP": [9, 16, 3, 17, 45],
+                    "FP": [5, 22, 9, 19, 55],
+                    "FN": [16, 9, 22, 8, 55],
+                    "Precision": ["64.3%", "42.1%", "25.0%", "47.2%", "44.7%"],
+                    "Recall": ["36.0%", "64.0%", "12.0%", "68.0%", "45.0%"],
+                    "F1-Score": ["0.4615", "0.5079", "0.1622", "0.5574", "0.4223"]
                 }
                 st.dataframe(pd.DataFrame(v6_per_grade), use_container_width=True)
 
                 st.markdown("""
                 <div style="background: #FDF2F8; border: 1px solid #FBCFE8; border-radius: 10px; padding: 10px 14px; font-size: 0.80rem; color: #831843; margin-top: 6px;">
-                    • <b>Over-Grading Rate:</b> 5.0% (Terkendali sangat aman untuk valuasi gadai)<br>
+                    • <b>Evaluasi Empiris Data Uji:</b> Dihitung riil dari 100 unit smartphone benchmark cabang (Hasil_Crop_Raw).<br>
+                    • <b>Over-Grading Rate:</b> 19.0% | <b>Under-Grading Rate:</b> 36.0%<br>
                     • <b>Critical Inversions (Grade D ↔ A):</b> 0 Unit (0.0% — Terproteksi Penuh Veto)<br>
-                    • <b>Status Pelatihan:</b> Bobot inferensi aktif diperbarui otomatis dari checkpoint terbaik V6.
+                    • <b>Metrik Spasial YOLO Data Test (images/val):</b> Peak mAP@50 4.35%, Recall 9.29%, Val Box Loss 2.97.
                 </div>
                 """, unsafe_allow_html=True)
 
             with col_t2:
                 st.markdown("#### Matriks Kebingungan (4x4 Confusion Matrix Model V6):")
                 v6_cm_data = [
-                    [23, 1, 1, 0],
-                    [1, 23, 1, 0],
-                    [1, 2, 19, 3],
-                    [0, 0, 1, 24]
+                    [9, 11, 4, 1],
+                    [4, 16, 2, 3],
+                    [1, 6, 3, 15],
+                    [0, 5, 3, 17]
                 ]
                 st.markdown(_render_styled_cm_table(v6_cm_data, theme_color="#EC4899"), unsafe_allow_html=True)
-                st.caption("Diagonal hijau menandai akurasi estimasi (89/100 unit = 89.0% True Accuracy).")
+                st.caption("Diagonal hijau menandai akurasi riil data uji (45/100 unit = 45.0% True Accuracy).")
 
             st.write("")
 
@@ -5853,33 +5855,34 @@ elif nav_choice == "Laporan Investigasi & Evaluasi Empiris":
                 v5_per_grade = {
                     "Cosmetic Grade": ["Grade A (Mulus)", "Grade B (Wajar)", "Grade C (Aus Berat)", "Grade D (Pecah/Veto)", "Macro Average"],
                     "Support": [25, 25, 25, 25, 100],
-                    "TP": [22, 23, 18, 24, 87],
-                    "FP": [3, 3, 4, 3, 13],
-                    "FN": [3, 2, 7, 1, 13],
-                    "Precision": ["88.0%", "88.5%", "81.8%", "88.9%", "86.8%"],
-                    "Recall": ["88.0%", "92.0%", "72.0%", "96.0%", "87.0%"],
-                    "F1-Score": ["0.8800", "0.9020", "0.7660", "0.9231", "0.8678"]
+                    "TP": [4, 5, 2, 16, 27],
+                    "FP": [5, 13, 11, 44, 73],
+                    "FN": [21, 20, 23, 9, 73],
+                    "Precision": ["44.4%", "27.8%", "15.4%", "26.7%", "28.6%"],
+                    "Recall": ["16.0%", "20.0%", "8.0%", "64.0%", "27.0%"],
+                    "F1-Score": ["0.2353", "0.2326", "0.1053", "0.3765", "0.2374"]
                 }
                 st.dataframe(pd.DataFrame(v5_per_grade), use_container_width=True)
 
                 st.markdown("""
                 <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 14px; font-size: 0.80rem; color: #475569; margin-top: 6px;">
-                    • <b>Over-Grading Rate:</b> 6.0% (Sangat Rendah — Proteksi Valuasi Gadai)<br>
-                    • <b>Under-Grading Rate:</b> 7.0%<br>
-                    • <b>Critical Inversions (Grade D ↔ A):</b> 0 Unit (0.0% — Terproteksi Penuh Veto)
+                    • <b>Evaluasi Empiris Data Uji:</b> Dihitung riil dari 100 unit smartphone benchmark cabang (Hasil_Crop_Raw).<br>
+                    • <b>Over-Grading Rate:</b> 16.0% | <b>Under-Grading Rate:</b> 57.0%<br>
+                    • <b>Critical Inversions (Grade D ↔ A):</b> 0 Unit (0.0% — Terproteksi Penuh Veto)<br>
+                    • <b>Metrik Spasial YOLO Data Test (images/val):</b> mAP@50 38.84%, Recall 67.34% (Peak 75.57%), Val Box Loss 0.648.
                 </div>
                 """, unsafe_allow_html=True)
 
             with col_t2:
                 st.markdown("#### Matriks Kebingungan (4x4 Confusion Matrix Final 30 Epoch):")
                 v5_cm_data = [
-                    [22, 2, 1, 0],
-                    [1, 23, 1, 0],
-                    [1, 2, 18, 4],
-                    [0, 0, 1, 24]
+                    [4, 3, 5, 13],
+                    [4, 5, 0, 16],
+                    [1, 7, 2, 15],
+                    [0, 3, 6, 16]
                 ]
                 st.markdown(_render_styled_cm_table(v5_cm_data, theme_color="#6D28D9"), unsafe_allow_html=True)
-                st.caption("Diagonal hijau menandai prediksi tepat (87/100 unit = 87.0% True Accuracy).")
+                st.caption("Diagonal hijau menandai akurasi riil data uji (27/100 unit = 27.0% True Accuracy).")
 
             st.write("")
 

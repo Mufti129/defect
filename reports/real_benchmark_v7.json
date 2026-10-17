@@ -1,0 +1,87 @@
+{
+  "version": "v7",
+  "weights": "weights/phone_defect_model_v7_best.pt",
+  "total_units": 100,
+  "accuracy_pct": 38.0,
+  "macro_f1": 0.3595,
+  "confusion_matrix": [
+    [
+      5,
+      16,
+      3,
+      1
+    ],
+    [
+      5,
+      15,
+      2,
+      3
+    ],
+    [
+      1,
+      7,
+      5,
+      12
+    ],
+    [
+      0,
+      6,
+      6,
+      13
+    ]
+  ],
+  "per_grade": {
+    "A": {
+      "support": 25,
+      "tp": 5,
+      "fp": 6,
+      "fn": 20,
+      "precision": 45.45,
+      "recall": 20.0,
+      "f1_score": 0.2778
+    },
+    "B": {
+      "support": 25,
+      "tp": 15,
+      "fp": 29,
+      "fn": 10,
+      "precision": 34.09,
+      "recall": 60.0,
+      "f1_score": 0.4348
+    },
+    "C": {
+      "support": 25,
+      "tp": 5,
+      "fp": 11,
+      "fn": 20,
+      "precision": 31.25,
+      "recall": 20.0,
+      "f1_score": 0.2439
+    },
+    "D": {
+      "support": 25,
+      "tp": 13,
+      "fp": 16,
+      "fn": 12,
+      "precision": 44.83,
+      "recall": 52.0,
+      "f1_score": 0.4815
+    }
+  },
+  "macro_avg": {
+    "support": 100,
+    "tp": 38,
+    "fp": 62,
+    "fn": 62,
+    "precision": 38.91,
+    "recall": 38.0,
+    "f1_score": 0.3595
+  },
+  "over_grading_count": 25,
+  "over_grading_pct": 25.0,
+  "under_grading_count": 37,
+  "under_grading_pct": 37.0,
+  "critical_inversions": 0,
+  "total_time_sec": 402.23,
+  "avg_latency_sec": 4.02
+}
