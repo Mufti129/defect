@@ -280,7 +280,21 @@ _qp = getattr(st, "query_params", {})
 if _qp.get("mode") == "mobile_done":
     _m_sid = _qp.get("session", "MCV-SESSION")
     _raw_data = _qp.get("data", "")
+    _apple_raw = _qp.get("apple", "")
     _m_rid = _qp.get("record_id", "")
+
+    if _apple_raw and AppleSysdiagnoseParser:
+        try:
+            _apple_json = json.loads(urllib.parse.unquote(_apple_raw))
+            _rep = AppleSysdiagnoseParser().parse_client_extraction(_apple_json)
+            _payload = _rep.to_unified_payload(_m_sid)
+            _payload["is_ios"] = True
+            _raw_data = json.dumps(_payload)
+            if not _m_rid:
+                _m_rid = _payload.get("record_id", f"{_m_sid}_{_payload.get('client_device_id')}")
+        except Exception:
+            pass
+
     render_mobile_completion_screen(_m_sid, _raw_data, record_id=_m_rid)
     st.stop()
 elif _qp.get("mode") in ["mobile", "diagnose"] or _qp.get("mobile") == "1":
@@ -2123,8 +2137,9 @@ elif nav_choice == "Hardware & Diagnostik Internal (ADB / CIT)":
                             if AppleSysdiagnoseParser:
                                 with st.spinner("Mengekstrak telemetri hardware Apple dalam hitungan detik..."):
                                     a_parser = AppleSysdiagnoseParser()
-                                    file_bytes = apple_manual_upload.read()
-                                    a_rep = a_parser.parse_file(file_bytes, filename=apple_manual_upload.name)
+                                    if hasattr(apple_manual_upload, "seek"):
+                                        apple_manual_upload.seek(0)
+                                    a_rep = a_parser.parse_file(apple_manual_upload, filename=apple_manual_upload.name)
                                     a_payload = a_rep.to_unified_payload(m_session)
                                     a_payload["record_id"] = f"{m_session}_{a_payload['client_device_id']}"
                                     if set_mobile_session_result:

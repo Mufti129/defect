@@ -288,6 +288,18 @@ class AppleSysdiagnoseParser:
                     pass
             return self.parse_sysdiagnose_archive(file_path_or_bytes, filename=filename)
 
+        if hasattr(file_path_or_bytes, "read"):
+            # File-like object (e.g. Streamlit UploadedFile): stream it, never copy the archive.
+            if not filename:
+                filename = str(getattr(file_path_or_bytes, "name", "") or "")
+            if filename.lower().endswith(".json"):
+                file_path_or_bytes.seek(0)
+                raw = file_path_or_bytes.read()
+                if isinstance(raw, bytes):
+                    raw = raw.decode("utf-8", errors="ignore")
+                return self.parse_diagnostic_json(json.loads(raw))
+            return self.parse_sysdiagnose_archive(file_path_or_bytes, filename=filename)
+
         return self.parse_diagnostic_json(file_path_or_bytes)
 
     def parse_diagnostic_json(self, json_data: Union[str, bytes, Dict[str, Any]]) -> "AppleDiagnosticReport":
@@ -471,13 +483,20 @@ class AppleSysdiagnoseParser:
             return self._parse_zip_archive(file_path_or_bytes)
         return self._parse_tar_archive(file_path_or_bytes, filename=filename)
 
-    def _parse_tar_archive(self, file_input: Union[str, bytes], filename: str = "") -> AppleDiagnosticReport:
+    def _parse_tar_archive(self, file_input: Any, filename: str = "") -> AppleDiagnosticReport:
         """Helper to stream-parse files inside sysdiagnose tar.gz without full disk extraction."""
-        if isinstance(file_input, bytes):
-            fileobj = io.BytesIO(file_input)
-            tar = tarfile.open(fileobj=fileobj, mode="r:*")
+        # Sequential stream mode ("r|*"): members are read strictly in order and the
+        # loop below stops early, so the large logarchive blobs at the end are never inflated.
+        if isinstance(file_input, (bytes, bytearray)):
+            tar = tarfile.open(fileobj=io.BytesIO(file_input), mode="r|*")
+        elif hasattr(file_input, "read"):
+            try:
+                file_input.seek(0)
+            except Exception:
+                pass
+            tar = tarfile.open(fileobj=file_input, mode="r|*")
         else:
-            tar = tarfile.open(file_input, mode="r:*")
+            tar = tarfile.open(file_input, mode="r|*")
 
         extracted_json = None
         sysctl_text = ""
@@ -578,7 +597,65 @@ class AppleSysdiagnoseParser:
         if extracted_json:
             return self.parse_diagnostic_json(extracted_json)
 
-        # Fallback: synthesize from logs if raw sysdiagnose did not contain formatted JSON
+        return self._build_report_from_logs(
+            sysctl_text=sysctl_text,
+            asptool_text=asptool_text,
+            battery_health_text=battery_health_text,
+            panics_text=panics_text,
+            fdr_props=self._fdr_plist_to_props(fdr_data),
+            crash_files=crash_files,
+            archive_root_dir=archive_root_dir,
+            filename=filename,
+        )
+
+    @staticmethod
+    def _fdr_plist_to_props(fdr_data: Dict[str, Any]) -> Dict[str, str]:
+        """Normalises a parsed FDRDiagnosticReport.plist into a flat props dict."""
+        props = {"serial": "", "imei": "", "mlb": "", "ap_ticket": "", "seal_date": ""}
+        if not fdr_data:
+            return props
+        props["seal_date"] = str(fdr_data.get("SealDate", ""))
+        props["ap_ticket"] = str(fdr_data.get("ApTicket", ""))
+        key_map = {"SrNm": "serial", "imei": "imei", "mlb#": "mlb"}
+        for prop in fdr_data.get("VerifiedProperties", []):
+            if isinstance(prop, dict):
+                for src, dst in key_map.items():
+                    if src in prop and isinstance(prop[src], dict) and "LiveProperty" in prop[src] and not props[dst]:
+                        props[dst] = str(prop[src]["LiveProperty"])
+        return props
+
+    def parse_client_extraction(self, data: Union[str, Dict[str, Any]]) -> AppleDiagnosticReport:
+        """
+        Builds the report from the compact telemetry summary extracted on the iPhone itself
+        by apple_sysdiag_client.js (a few KB instead of the 300-400 MB archive).
+        """
+        if isinstance(data, str):
+            data = json.loads(data)
+        if not isinstance(data, dict):
+            raise ValueError("Format ringkasan telemetri Apple tidak valid.")
+        if isinstance(data.get("diagnostic_json"), dict):
+            return self.parse_diagnostic_json(data["diagnostic_json"])
+
+        crash_files = [str(c) for c in (data.get("crashes") or [])][:25]
+        panics_text = str(data.get("panics") or "")
+        for pf in data.get("panic_files") or []:
+            panics_text += f"\nPanic crash dump: {pf}"
+        fdr = data.get("fdr") or {}
+        return self._build_report_from_logs(
+            sysctl_text=str(data.get("sysctl") or ""),
+            asptool_text=str(data.get("asptool") or ""),
+            battery_health_text=str(data.get("battery") or ""),
+            panics_text=panics_text,
+            fdr_props={k: str(fdr.get(k) or "") for k in ("serial", "imei", "mlb", "ap_ticket", "seal_date")},
+            crash_files=crash_files,
+            archive_root_dir=str(data.get("root") or ""),
+            filename=str(data.get("filename") or ""),
+        )
+
+    def _build_report_from_logs(self, sysctl_text: str, asptool_text: str, battery_health_text: str,
+                                panics_text: str, fdr_props: Dict[str, str], crash_files: List[str],
+                                archive_root_dir: str = "", filename: str = "") -> AppleDiagnosticReport:
+        """Synthesises the diagnostic report from raw sysdiagnose log contents."""
         ptype = "iPhone18,3"
         build_no = "24A437"
         os_ver = "18.0"
@@ -603,25 +680,13 @@ class AppleSysdiagnoseParser:
         dev_model = self.MODEL_PRODUCT_MAP.get(ptype, f"Apple iPhone ({ptype})")
 
         # FDR properties extraction
-        serial_full = ""
-        imei_full = ""
-        mlb_serial = ""
-        ap_trusted = False
-        seal_date = ""
+        serial_full = fdr_props.get("serial", "")
+        imei_full = fdr_props.get("imei", "")
+        mlb_serial = fdr_props.get("mlb", "")
+        ap_trusted = fdr_props.get("ap_ticket", "") == "Trusted"
+        seal_date = fdr_props.get("seal_date", "")
 
-        if fdr_data:
-            seal_date = str(fdr_data.get("SealDate", ""))
-            ap_trusted = fdr_data.get("ApTicket") == "Trusted"
-            for prop in fdr_data.get("VerifiedProperties", []):
-                if isinstance(prop, dict):
-                    if "SrNm" in prop and "LiveProperty" in prop["SrNm"]:
-                        serial_full = str(prop["SrNm"]["LiveProperty"])
-                    if "imei" in prop and "LiveProperty" in prop["imei"]:
-                        imei_full = str(prop["imei"]["LiveProperty"])
-                    if "mlb#" in prop and "LiveProperty" in prop["mlb#"]:
-                        mlb_serial = str(prop["mlb#"]["LiveProperty"])
-
-        # Masking
+        # Masking (idempotent: already-masked values from the client stay unchanged)
         serial_masked = f"{serial_full[:3]}***{serial_full[-3:]}" if len(serial_full) >= 6 else (serial_full or "D57***201H")
         imei_masked = f"{imei_full[:3]}***{imei_full[-4:]}" if len(imei_full) >= 7 else (imei_full or "355***4567")
 

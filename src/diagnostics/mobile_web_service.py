@@ -3460,103 +3460,106 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             const pBar = document.getElementById('apple-progress-bar');
             const pTxt = document.getElementById('apple-progress-text');
             const btn = document.getElementById('btn-upload-apple');
+            const file = selectedAppleFile;
 
             btn.disabled = true;
-            btn.innerText = "Mengunggah & Menganalisa...";
+            btn.innerText = "Menganalisa di iPhone...";
             btn.style.background = "#6B7280";
             pBox.style.display = "block";
             pBar.style.width = "5%";
             pBar.style.background = "#3B82F6";
-            pTxt.innerText = "Menyiapkan berkas Apple...";
+            pTxt.innerText = "Membuka berkas di iPhone (tidak perlu diunggah)...";
 
-            function showUploadError(msg) {
+            function showAppleError(msg) {
                 pTxt.innerText = "Gagal: " + msg;
                 pBar.style.background = "#EF4444";
                 btn.disabled = false;
                 btn.style.display = "block";
-                btn.innerText = "Coba Unggah Ulang";
+                btn.innerText = "Coba Lagi";
                 btn.style.background = "#10B981";
             }
 
             try {
-                if (selectedAppleFile.name.endsWith('.json')) {
-                    const reader = new FileReader();
-                    reader.onload = async function(e) {
-                        try {
-                            pBar.style.width = "65%";
-                            pTxt.innerText = "Mengurai struktur EEPROM & BMS Apple...";
-                            const jsonText = e.target.result;
-                            const res = await fetch('/api/upload_sysdiagnose?session=' + encodeURIComponent(sessionId) + '&filename=' + encodeURIComponent(selectedAppleFile.name), {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: jsonText
-                            });
-                            const result = await res.json();
-                            if (result.status === 'success') {
-                                renderAppleResult(result);
-                            } else {
-                                showUploadError(result.message || "Gagal mengurai JSON Apple.");
-                            }
-                        } catch(err) {
-                            showUploadError(err.message);
-                        }
-                    };
-                    reader.readAsText(selectedAppleFile);
+                let summary;
+                const lower = file.name.toLowerCase();
+                if (lower.endsWith('.json')) {
+                    const text = await file.text();
+                    let obj;
+                    try { obj = JSON.parse(text); } catch (e) { throw new Error("Berkas JSON tidak valid."); }
+                    summary = { source: 'client_js', filename: file.name, diagnostic_json: obj };
+                } else if (lower.endsWith('.zip')) {
+                    throw new Error("Format .zip belum didukung di HP. Gunakan berkas sysdiagnose .tar.gz asli atau unggah lewat kasir.");
                 } else {
-                    const xhr = new XMLHttpRequest();
-                    const uploadUrl = '/api/upload_sysdiagnose?session=' + encodeURIComponent(sessionId) + '&filename=' + encodeURIComponent(selectedAppleFile.name);
-                    xhr.open('POST', uploadUrl, true);
-                    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-                    xhr.timeout = 180000;
-
-                    xhr.upload.onprogress = function(evt) {
-                        if (evt.lengthComputable) {
-                            const pct = Math.round((evt.loaded / evt.total) * 100);
-                            pBar.style.width = Math.min(pct, 95) + '%';
-                            const mbLoaded = (evt.loaded / (1024 * 1024)).toFixed(1);
-                            const mbTotal = (evt.total / (1024 * 1024)).toFixed(1);
-                            if (pct < 100) {
-                                pTxt.innerText = "Mengunggah berkas: " + pct + "% (" + mbLoaded + " MB / " + mbTotal + " MB)...";
-                            } else {
-                                pTxt.innerText = "Mengurai telemetri hardware Apple (asptool, baterai, panic log)...";
-                            }
-                        }
-                    };
-
-                    xhr.onload = function() {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            try {
-                                const result = JSON.parse(xhr.responseText);
-                                if (result.status === 'success') {
-                                    renderAppleResult(result);
-                                } else {
-                                    showUploadError(result.message || 'Gagal memproses data Apple.');
-                                }
-                            } catch(err) {
-                                showUploadError('Format respon server tidak valid.');
-                            }
-                        } else {
-                            let msg = 'Gagal memproses berkas Apple (HTTP ' + xhr.status + ').';
-                            try {
-                                const errObj = JSON.parse(xhr.responseText);
-                                if (errObj.message) msg = errObj.message;
-                            } catch(_) {}
-                            showUploadError(msg);
-                        }
-                    };
-
-                    xhr.onerror = function() {
-                        showUploadError('Koneksi terputus saat pengunggahan berkas.');
-                    };
-
-                    xhr.ontimeout = function() {
-                        showUploadError('Batas waktu unggah habis (timeout). Silakan periksa koneksi Wi-Fi.');
-                    };
-
-                    xhr.send(selectedAppleFile);
+                    if (!window.AppleSysdiagClient) throw new Error("Mesin analisa belum termuat. Muat ulang halaman.");
+                    summary = await window.AppleSysdiagClient.extract(file, function (p) {
+                        const pct = Math.min(90, 5 + Math.round((p.entries / 260) * 85));
+                        pBar.style.width = pct + '%';
+                        pTxt.innerText = "Menganalisa di iPhone: " + p.entries + " berkas log diperiksa (" +
+                            p.compressedMB.toFixed(0) + " MB dibaca, " + (p.elapsedMs / 1000).toFixed(1) + " dtk)...";
+                    });
+                    renderAppleLocalSummary(window.AppleSysdiagClient.summarize(summary), summary);
                 }
-            } catch(e) {
-                showUploadError(e.message);
+
+                pBar.style.width = "95%";
+                pBar.style.background = "#10B981";
+                pTxt.innerText = "Analisa selesai" + (summary.elapsed_ms ? " dalam " + (summary.elapsed_ms / 1000).toFixed(1) + " detik" : "") +
+                    ". Mengirim ringkasan ke kasir...";
+
+                let encoded = encodeURIComponent(JSON.stringify(summary));
+                if (encoded.length > 60000 && summary.diagnostic_json && summary.diagnostic_json.layout) {
+                    delete summary.diagnostic_json.layout;
+                    encoded = encodeURIComponent(JSON.stringify(summary));
+                }
+                if (encoded.length > 60000) throw new Error("Ringkasan terlalu besar untuk dikirim. Gunakan unggah lewat kasir.");
+
+                let targetBase = injectedAppBase;
+                if (!targetBase || targetBase.startsWith("__")) {
+                    targetBase = window.location.origin + window.location.pathname;
+                }
+                const submitUrl = targetBase + (targetBase.includes('?') ? '&' : '?') +
+                    'mode=mobile_done&session=' + encodeURIComponent(sessionId) + '&apple=' + encoded;
+
+                const doneLink = document.getElementById('done-redirect-btn');
+                if (doneLink) { doneLink.href = submitUrl; }
+                btn.style.display = "none";
+
+                setTimeout(() => {
+                    let navigated = false;
+                    try {
+                        if (window.top && window.top !== window) {
+                            window.top.location.href = submitUrl;
+                            navigated = true;
+                        }
+                    } catch (err) { /* cross-origin iframe: fall back below */ }
+                    if (!navigated) {
+                        try { window.location.href = submitUrl; } catch (e) {}
+                    }
+                }, 900);
+            } catch (e) {
+                showAppleError(e && e.message ? e.message : String(e));
+            }
+        }
+
+        function renderAppleLocalSummary(s, raw) {
+            const card = document.getElementById('apple-result-card');
+            if (!card) return;
+            card.style.display = 'block';
+            const set = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+            set('app-val-model', 'Apple iPhone' + (s.build ? ' (Build ' + s.build + ')' : ''));
+            set('app-val-bat', s.soh !== null ? s.soh + '% (' + (s.soh >= 80 ? 'PASS' : 'PERLU SERVIS') + ')' : '-');
+            set('app-val-cycle', 'Dihitung di kasir');
+            set('app-val-display', s.apTicket === 'Trusted' ? 'FDR Trusted (segel pabrik valid)' : 'FDR belum terverifikasi');
+            set('app-val-storage', 'NAND Apple' + (s.grownBad !== null ? ' | Bad block baru: ' + s.grownBad : ''));
+            set('app-val-hours', s.poh !== null ? s.poh + ' jam' : '-');
+            set('app-val-stability', 'Stabilitas: ' + s.crashCount + ' crash log | ' + (s.panic ? 'PERINGATAN KERNEL PANIC' : 'Nol Panic (Stabil)'));
+            const badge = document.getElementById('apple-res-badge');
+            if (badge) {
+                const ok = s.apTicket === 'Trusted' && !s.panic && (s.grownBad === null || s.grownBad === 0);
+                badge.innerText = ok ? 'TERVERIFIKASI' : 'PERLU PEMERIKSAAN';
+                badge.className = ok ? 'badge badge-pass' : 'badge badge-danger';
+            }
+            if (s.soh !== null && typeof updateBatteryLevel === 'function') {
+                try { updateBatteryLevel(s.soh); } catch (e) {}
             }
         }
 
@@ -3818,11 +3821,39 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
 
 
 
+_APPLE_CLIENT_JS_CACHE = None
+
+def get_apple_client_js() -> str:
+    """Loads and caches the client-side Apple sysdiagnose decompressor and tar parser JS."""
+    global _APPLE_CLIENT_JS_CACHE
+    if _APPLE_CLIENT_JS_CACHE is None:
+        try:
+            js_path = os.path.join(os.path.dirname(__file__), "apple_sysdiag_client.js")
+            if os.path.exists(js_path):
+                with open(js_path, "r", encoding="utf-8") as f:
+                    _APPLE_CLIENT_JS_CACHE = f.read()
+            else:
+                _APPLE_CLIENT_JS_CACHE = ""
+        except Exception:
+            _APPLE_CLIENT_JS_CACHE = ""
+    return _APPLE_CLIENT_JS_CACHE
+
+
 def get_mobile_diagnostic_html(session_id: str, app_base_url: str = "") -> str:
-    """Returns the full mobile HTML diagnostic suite with session and base URL injected."""
+    """Returns the full mobile HTML diagnostic suite with session, base URL, and Apple client JS injected."""
     html = HTML_MOBILE_DIAGNOSTIC_PAGE
     html = html.replace("__SESSION_ID__", session_id)
     html = html.replace("__APP_BASE_URL__", app_base_url or "")
+
+    client_js = get_apple_client_js()
+    if client_js:
+        script_block = f"<script>\n{client_js}\n</script>\n"
+        if "<!-- APPLE_SYSDIAG_CLIENT_SCRIPT -->" in html:
+            html = html.replace("<!-- APPLE_SYSDIAG_CLIENT_SCRIPT -->", script_block)
+        elif "<script>" in html:
+            # Prepend before the first <script> tag so AppleSysdiagClient is defined globally
+            html = html.replace("<script>", f"{script_block}<script>", 1)
+
     return html
 
 
