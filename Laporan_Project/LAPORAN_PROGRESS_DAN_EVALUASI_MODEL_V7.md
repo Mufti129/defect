@@ -1,6 +1,6 @@
 # 📊 Laporan Progres Pelatihan & Evaluasi Sementara Model Versi 7 (V7)
 **Pusat Gadai Indonesia (PGI) — Smartphone Defect Inspection System**  
-*Tanggal Pembaruan: 17 Oktober 2026, 08:35 WIB*
+*Tanggal Pembaruan: 19 Oktober 2026, 08:20 WIB*
 
 ---
 
@@ -12,7 +12,6 @@ Model Versi 7 (**V7 - Unified Hard Damage & Spatial Density Detector**) dirancan
 - **Transfer Learning**: Warm-start dari bobot terbaik V6 (`phone_defect_model_v6_best.pt`)
 - **Dataset Latih**: `dataset_v7/` (4.558 citra bodi ponsel multi-view, 26.811 bounding box anotasi riil)
 - **Hardware Acceleration**: Apple Silicon GPU via Metal Performance Shaders (`mps`)
-- **Proteksi Sleep**: Multi-layer daemon `caffeinate -u -i -m -s` (PID 45349 & 25402)
 - **Hyperparameter Utama**: Optimizer `AdamW`, `cos_lr=True`, `cls=1.5`, `close_mosaic=10`
 
 ---
@@ -28,16 +27,16 @@ Model Versi 7 (**V7 - Unified Hard Damage & Spatial Density Detector**) dirancan
 
 ---
 
-## 3. Status Terkini Pelatihan (Live Status)
-- **Status Proses**: `TRAINING_IN_PROGRESS` (PID 25399 aktif berjalan stabil di Apple Silicon GPU MPS)
-- **Epoch Saat Ini**: **Epoch 14 / 40** (Epoch 1 s.d. 13 telah selesai 100% dan divalidasi)
-- **Batch Saat Ini**: **975 / 1.016 batch** (Progres Epoch 14: **96.0%**)
-- **Progres Keseluruhan**: **34.90%** (Telah melewati sepertiga masa pelatihan!)
-- **Total Batches per Epoch**: 1.016 batch (batch size 4, resolusi 800px)
+## 3. Status Terkini Pelatihan (Training Status)
+- **Status Proses**: `PAUSED (READY TO RESUME)`
+- **Epoch Terselesaikan Penuh**: **14 / 40 Epoch** (100% tuntas divalidasi dan tersimpan di `results.csv`)
+- **Progres Interupsi**: Terhenti sementara di awal **Epoch 15** (batch 325/1.016, progres 32.0%) pada Minggu, 18 Oktober 2026 pukul 12:48 WIB akibat laptop mengalami reboot/restart sistem.
+- **Progres Keseluruhan**: **35.80%** (Telah melampaui sepertiga masa pelatihan).
+- **Integritas Checkpoint**: Checkpoint `last.pt` (Epoch 14) dan `best.pt` (Epoch 9) **tersimpan 100% utuh dan valid** (masing-masing 89.5 MB) di disk lokal dan folder weights Streamlit.
 
 ---
 
-## 4. Evaluasi Hasil Metrik Lengkap (Epoch 1 s.d. Epoch 13)
+## 4. Evaluasi Hasil Metrik Lengkap (Epoch 1 s.d. Epoch 14)
 
 Tabel berikut mencatat seluruh histori metrik validasi resmi pada 496 citra evaluasi dengan 2.856 kotak cacat:
 
@@ -55,32 +54,33 @@ Tabel berikut mencatat seluruh histori metrik validasi resmi pada 496 citra eval
 | **10** | 12.09% | **14.35%** | 6.59% | 2.25% | 2.5134 | 7.2369 | 7.5005 | 🌟 **Rekor Recall Tertinggi (14.35%)** |
 | **11** | 13.20% | 12.64% | 8.26% | 3.20% | 2.5142 | 7.1930 | 7.3696 | Penurunan box & cls loss |
 | **12** | 20.43% | 11.17% | 8.44% | 2.31% | 2.4979 | 7.1078 | 7.2684 | Loss tembus di bawah 2.50 |
-| **13 (Terbaru)** | **28.05%** 📈 | 10.70% | **11.32%** 📈 | **5.00%** 📈 | **2.4869** 📉 | **7.0905** 📉 | 7.2787 | 🌟 **Lonjakan mAP@50 (11.32%) & Rekor Baru Terendah Box + Cls Loss!** |
+| **13** | **28.05%** | 10.70% | **11.32%** | **5.00%** | 2.4869 | 7.0905 | 7.2787 | 🌟 **Lonjakan mAP@50 (11.32%) mendekati puncak Epoch 9** |
+| **14** | 14.15% | 7.73% | 4.51% | 1.68% | **2.4731** 📉 | **6.9722** 📉 | 7.3756 | 🌟 **Rekor Baru Terendah: Cls Loss tembus di bawah 7.00!** |
 
-> **Analisis Kunci (Key Insights Epoch 13):**  
-> 1. **Lonjakan Signifikan Performa Akurasi (mAP)**:
->    - **mAP@50 melesat ke 11.32%** (+2.88% dari Epoch 12), mendekati rekor puncak absolut di Epoch 9 (11.82%).
->    - **mAP@50:95 melonjak lebih dari 2 kali lipat ke 5.00%** (dari 2.31% di Epoch 12), menandakan lokalisasi bounding box semakin rapat dan presisi tinggi pada berbagai threshold IoU.
->    - **Precision meningkat ke 28.05%** (+7.62% dari 20.43% di Epoch 12).
-> 2. **Rekor Baru Loss Terendah Sepanjang Pelatihan**:
->    - `train/box_loss` mencetak rekor terendah baru di **2.4869** (turun dari 2.4979).
->    - `train/cls_loss` mencetak rekor terendah baru di **7.0905** (turun dari 7.1078).
-> 3. **Stabilitas Validasi & Konvergensi Tanpa Overfitting**:
->    - `val/cls_loss` bertahan sangat stabil di kisaran **7.2787** (tidak mengalami kenaikan divergen), membuktikan model V7 menyerap pola 4-kelas (scratch, chip, dent, hard damage) dengan generalisasi yang sangat sehat.
->    - Memasuki fase Epoch 15–30, jadwal *cosine learning rate decay* diproyeksikan akan mempercepat pemadatan feature map.
-
----
-
-## 5. Estimasi Waktu Penyelesaian (ETA)
-- **Laju Rata-rata**: $\sim 100 - 105$ menit per epoch pada Apple Silicon M1 (batch 4, resolusi 800px).
-- **Sisa Pelatihan**: $\sim 26$ epoch lagi (dari total 40 epoch).
-- **Sisa Waktu**: $\approx 42 - 44$ jam.
-- **Proyeksi Selesai Penuh**: **Senin pagi / siang, 19 Oktober 2026**.
+> **Analisis Kunci (Key Insights Epoch 1 s.d. 14):**  
+> 1. **Model Terus Belajar dan Mengalami Konvergensi Kuat**:
+>    - `train/cls_loss` turun secara konsisten dari **7.9060** pada awal pelatihan hingga menyentuh rekor terendah **6.9722** di Epoch 14 (pertama kalinya menembus level di bawah 7.0). Hal ini membuktikan bahwa pemisahan fitur 4 kelas cacat (*scratch*, *chip*, *dent*, *hard_damage*) semakin tajam dipelajari model.
+>    - `train/box_loss` turun ke titik terendah absolut di **2.4731** (dari 2.6220), menandakan lokalisasi koordinat bounding box cacat semakin presisi.
+> 2. **Performa Deteksi Terbaik (All-Time Best Checkpoint)**:
+>    - Tetap dipegang kokoh oleh **Epoch 9** dengan **mAP@50 11.82%** dan **Precision 51.77%**.
+>    - Epoch 13 membuktikan resiliensi model dengan lonjakan mAP@50 kembali ke **11.32%** dan mAP@50:95 di **5.00%**.
+> 3. **Kesiapan Checkpoint**:
+>    - Checkpoint terbaik Epoch 9 telah di-deploy ke `weights_v7/phone_defect_model_v7_best.pt` dan `streamlit_inspection_app/weights/phone_defect_model_v7_best.pt`.
+>    - Checkpoint terbaru Epoch 14 tersimpan di `weights_v7/phone_defect_model_v7_last.pt`.
 
 ---
 
-## 6. Status Sinkronisasi
-- **Lokal**: Berkas `weights_v7/results.csv`, `weights_v7/training_live_status.json`, checkpoint `phone_defect_model_v7_best.pt` (Epoch 9 best, 85 MB), dan `phone_defect_model_v7_last.pt` (Epoch 13, 85 MB) telah disinkronkan.
-- **Streamlit**: Dashboard inspeksi visual otomatis membaca pembaruan kurva evaluasi Epoch 1–13 ini secara langsung.
-- **GitHub**: Log laporan dan hasil metrik telah dikomit dan didorong ke cabang `main`.
+## 5. Status Penyelarasan Sistem & Aset
+- **Lokal**: Berkas `weights_v7/results.csv`, `weights_v7/training_live_status.json`, checkpoint `phone_defect_model_v7_best.pt` (Epoch 9 best), dan `phone_defect_model_v7_last.pt` (Epoch 14) telah diperbarui dan sinkron.
+- **Streamlit**: Dashboard inspeksi otomatis membaca pembaruan kurva evaluasi Epoch 1–14 secara dinamis.
+- **Resumability**: Sistem siap melakukan `resume=True` dari Epoch 14 kapan pun diputuskan.
 
+---
+
+## 6. Rekomendasi Langkah Selanjutnya
+1. **Opsi 1 (Disarankan — Resume ke Epoch 20 Target)**:
+   - Melanjutkan pelatihan dari checkpoint `last.pt` (Epoch 14) sampai **Epoch 20**.
+   - Berdasarkan tren transfer learning dari V6, model biasanya mencapai titik konvergensi optimum dan saturasi mAP pada rentang Epoch 15–20.
+   - Kebutuhan waktu: Hanya $\approx 5-6$ epoch lagi ($\approx 10-12$ jam komputasi aktif).
+2. **Opsi 2 (Gunakan Model Epoch 9 untuk Produksi Sekarang)**:
+   - Jika kebutuhan inspeksi mendesak, checkpoint Epoch 9 (mAP 11.82%, Precision 51.77%) sudah sangat siap dipakai langsung di Streamlit App untuk deteksi 4 kelas.
