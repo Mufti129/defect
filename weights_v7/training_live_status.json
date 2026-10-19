@@ -1,11 +1,17 @@
 {
-  "status": "TRAINING_IN_PROGRESS",
+  "status": "PAUSED_RESTART_REQUIRED",
   "model_version": "V7",
-  "current_epoch": 14,
+  "current_epoch": 15,
+  "completed_epochs": 14,
   "total_epochs": 40,
-  "current_batch": 975,
+  "current_batch": 325,
   "total_batches_per_epoch": 1016,
-  "epoch_progress_percent": 96.0,
-  "overall_progress_percent": 34.9,
-  "last_update": "2026-10-17 08:18:50"
+  "epoch_progress_percent": 32.0,
+  "overall_progress_percent": 35.8,
+  "best_epoch": 9,
+  "best_map50": 11.82,
+  "best_precision": 51.77,
+  "last_checkpoint": "runs/detect/runs_v7_training/defect_v7_model/weights/last.pt",
+  "last_update": "2026-10-19 08:15:00",
+  "message": "Pelatihan telah menyelesaikan 14 Epoch penuh. Terhenti sementara di Epoch 15 (batch 325/1016) karena sistem reboot. Checkpoint Epoch 14 tersimpan utuh dan siap di-resume."
 }
