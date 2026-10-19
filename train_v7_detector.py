@@ -254,6 +254,12 @@ def train_model_v7(
         except Exception:
             pass
 
+    def on_train_start(trainer):
+        if epochs and getattr(trainer, "epochs", None) != epochs:
+            print(f" [TARGET OVERRIDE] Menyesuaikan total epoch pelatihan dari {trainer.epochs} ke {epochs}")
+            trainer.epochs = epochs
+
+    model.add_callback("on_train_start", on_train_start)
     model.add_callback("on_train_batch_end", on_train_batch_end)
     model.add_callback("on_train_epoch_end", on_train_epoch_end)
     model.add_callback("on_fit_epoch_end", on_fit_epoch_end)
