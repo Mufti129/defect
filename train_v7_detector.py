@@ -68,7 +68,8 @@ def train_model_v7(
     device: str = None,
     project: str = "runs_v7_training",
     name: str = "defect_v7_model",
-    auto_prepare: bool = False
+    auto_prepare: bool = False,
+    resume: bool = False
 ):
     enable_anti_sleep()
 
@@ -113,7 +114,24 @@ def train_model_v7(
     print(f" • Run Directory      : {project}/{name}")
     print("=" * 75 + "\n")
 
-    model = YOLO(base_model)
+    if resume:
+        candidates = [
+            os.path.join("runs", "detect", project, name, "weights", "last.pt"),
+            os.path.join(project, name, "weights", "last.pt"),
+            os.path.join(STATUS_DIR, "phone_defect_model_v7_last.pt")
+        ]
+        ckpt = None
+        for c in candidates:
+            if os.path.exists(c):
+                ckpt = c
+                break
+        if not ckpt:
+            print("[ERROR] Checkpoint last.pt tidak ditemukan untuk resume.")
+            sys.exit(1)
+        print(f" [RESUME] Melanjutkan pelatihan dari checkpoint: {ckpt}")
+        model = YOLO(ckpt)
+    else:
+        model = YOLO(base_model)
     status_file = os.path.join(STATUS_DIR, "training_live_status.json")
 
     batch_counter = {"current": 0, "last_epoch": -1}
@@ -240,40 +258,47 @@ def train_model_v7(
     model.add_callback("on_train_epoch_end", on_train_epoch_end)
     model.add_callback("on_fit_epoch_end", on_fit_epoch_end)
 
-    results = model.train(
-        data=data_yaml,
-        epochs=epochs,
-        imgsz=imgsz,
-        batch=batch_size,
-        device=device,
-        project=project,
-        name=name,
-        optimizer="AdamW",
-        lr0=0.001,
-        lrf=0.01,
-        cos_lr=True,
-        weight_decay=0.0005,
-        warmup_epochs=3.0,
-        warmup_momentum=0.8,
-        degrees=15.0,
-        translate=0.08,
-        scale=0.35,
-        fliplr=0.5,
-        flipud=0.0,
-        mosaic=1.0,
-        copy_paste=0.30,
-        cls=1.5,
-        close_mosaic=10,
-        hsv_h=0.015,
-        hsv_s=0.5,
-        hsv_v=0.4,
-        save=True,
-        save_period=5,
-        deterministic=False,
-        verbose=True
-    )
+    if resume:
+        results = model.train(resume=True)
+    else:
+        results = model.train(
+            data=data_yaml,
+            epochs=epochs,
+            imgsz=imgsz,
+            batch=batch_size,
+            device=device,
+            project=project,
+            name=name,
+            optimizer="AdamW",
+            lr0=0.001,
+            lrf=0.01,
+            cos_lr=True,
+            weight_decay=0.0005,
+            warmup_epochs=3.0,
+            warmup_momentum=0.8,
+            degrees=15.0,
+            translate=0.08,
+            scale=0.35,
+            fliplr=0.5,
+            flipud=0.0,
+            mosaic=1.0,
+            copy_paste=0.30,
+            cls=1.5,
+            close_mosaic=10,
+            hsv_h=0.015,
+            hsv_s=0.5,
+            hsv_v=0.4,
+            save=True,
+            save_period=5,
+            deterministic=False,
+            verbose=True
+        )
 
     best_weights_src = os.path.join(project, name, "weights", "best.pt")
+    if not os.path.exists(best_weights_src):
+        alt_best = os.path.join("runs", "detect", project, name, "weights", "best.pt")
+        if os.path.exists(alt_best):
+            best_weights_src = alt_best
     if os.path.exists(best_weights_src):
         import shutil
         target_v7 = os.path.join(STATUS_DIR, "phone_defect_model_v7_best.pt")
@@ -312,6 +337,7 @@ if __name__ == "__main__":
     parser.add_argument("--project", type=str, default="runs_v7_training", help="Direktori hasil run")
     parser.add_argument("--name", type=str, default="defect_v7_model", help="Nama subdirektori eksperimen")
     parser.add_argument("--prepare", action="store_true", help="Otomatis bangun dataset_v7 sebelum train")
+    parser.add_argument("--resume", action="store_true", help="Lanjutkan pelatihan dari checkpoint last.pt terakhir")
 
     args = parser.parse_args()
 
@@ -323,5 +349,6 @@ if __name__ == "__main__":
         device=args.device,
         project=args.project,
         name=args.name,
-        auto_prepare=args.prepare
+        auto_prepare=args.prepare,
+        resume=args.resume
     )
