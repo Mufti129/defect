@@ -1,0 +1,106 @@
+{
+  "timestamp": "2026-10-19 09:02:14",
+  "total_indexed_images": 67011,
+  "total_storage_mb": 37835.35,
+  "target_threshold": 50000,
+  "is_50k_exceeded": true,
+  "download_status": {
+    "filename": "semua_crop.zip.crdownload",
+    "status": "IN_PROGRESS",
+    "size_mb": 1520.69,
+    "is_ready": false,
+    "path": "/Users/macbookair/Downloads/semua_crop.zip.crdownload"
+  },
+  "repositories": [
+    {
+      "name": "Cropped 1024px Collection",
+      "path": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/cropped_new_1024",
+      "exists": true,
+      "total_images": 33946,
+      "estimated_units": 6621,
+      "size_mb": 4789.76,
+      "grades": {
+        "grade_A": 0,
+        "grade_B": 0,
+        "grade_C": 0,
+        "grade_D": 0,
+        "unassigned": 33946
+      }
+    },
+    {
+      "name": "Hasil Crop Raw Repository",
+      "path": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/Hasil_Crop_Raw",
+      "exists": true,
+      "total_images": 9549,
+      "estimated_units": 1841,
+      "size_mb": 5550.83,
+      "grades": {
+        "grade_A": 0,
+        "grade_B": 0,
+        "grade_C": 0,
+        "grade_D": 0,
+        "unassigned": 9549
+      }
+    },
+    {
+      "name": "Raw Images Store",
+      "path": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/raw_images",
+      "exists": true,
+      "total_images": 9560,
+      "estimated_units": 1841,
+      "size_mb": 22321.72,
+      "grades": {
+        "grade_A": 0,
+        "grade_B": 0,
+        "grade_C": 0,
+        "grade_D": 0,
+        "unassigned": 9560
+      }
+    },
+    {
+      "name": "Model V7 Training Dataset",
+      "path": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/dataset_v7/images",
+      "exists": true,
+      "total_images": 4558,
+      "estimated_units": 911,
+      "size_mb": 870.66,
+      "grades": {
+        "grade_A": 0,
+        "grade_B": 0,
+        "grade_C": 0,
+        "grade_D": 0,
+        "unassigned": 4558
+      }
+    },
+    {
+      "name": "V5 Full Corpus",
+      "path": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/dataset_v5_full/images",
+      "exists": true,
+      "total_images": 7459,
+      "estimated_units": 1491,
+      "size_mb": 3267.92,
+      "grades": {
+        "grade_A": 0,
+        "grade_B": 0,
+        "grade_C": 0,
+        "grade_D": 0,
+        "unassigned": 7459
+      }
+    },
+    {
+      "name": "Submodule Demo Samples",
+      "path": "/Users/macbookair/Documents/Project Defect Detections/TES_CROP_HP/streamlit_inspection_app/demo_samples",
+      "exists": true,
+      "total_images": 1939,
+      "estimated_units": 380,
+      "size_mb": 1034.46,
+      "grades": {
+        "grade_A": 0,
+        "grade_B": 0,
+        "grade_C": 0,
+        "grade_D": 0,
+        "unassigned": 1939
+      }
+    }
+  ]
+}
