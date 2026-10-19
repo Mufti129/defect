@@ -286,6 +286,31 @@ class GradingEngine:
         probs = {k: round(v / p_sum, 4) for k, v in probs.items()}
 
         defects_dict_list = [d.to_dict() for d in all_defects]
+        grading_method = "RULE_OF_THUMB_V7_UNIFIED_4CLASS"
+
+        # Check if 24-feature ML Aggregator V7 is available and no hard veto triggered
+        if not is_veto and self.ml_aggregator is not None and getattr(self.ml_aggregator, "model", None) is not None:
+            try:
+                feats24 = self.ml_aggregator.extract_features_v7(
+                    defects_detail=defects_dict_list,
+                    class_counts=class_counts,
+                    total_dpi=total_dpi,
+                    frame_dpi=frame_dpi,
+                    bottom_back_dpi=bottom_back_dpi,
+                    total_views_count=len(view_images)
+                )
+                if getattr(self.ml_aggregator, "feature_dim", 0) == 24:
+                    ml_pred_probs = self.ml_aggregator.model.predict_proba(feats24.reshape(1, -1))[0]
+                    ml_idx = int(np.argmax(ml_pred_probs))
+                    ml_grade = ["A", "B", "C", "D"][ml_idx]
+                    confidence = float(ml_pred_probs[ml_idx])
+                    probs = {g: round(float(ml_pred_probs[i]), 4) for i, g in enumerate(["A", "B", "C", "D"])}
+                    grading_method = "ML_AGGREGATOR_V7_RANDOM_FOREST_24F"
+                    grade = ml_grade
+                    reasons.append(f"Model ML Aggregator V7 (Confidence {confidence*100:.1f}%) memprediksi Grade {grade}.")
+            except Exception as e:
+                pass
+
         elapsed_sec = round(time.time() - start_time, 3)
 
         return {
@@ -293,7 +318,7 @@ class GradingEngine:
             "final_grade": grade,
             "grade_confidence": round(confidence, 4),
             "grade_probabilities": probs,
-            "grading_method": "RULE_OF_THUMB_V7_UNIFIED_4CLASS",
+            "grading_method": grading_method,
             "is_veto_triggered": is_veto,
             "total_dpi": round(total_dpi, 2),
             "frame_dpi": round(frame_dpi, 2),

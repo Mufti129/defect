@@ -85,10 +85,12 @@ class DefectDetector:
         conf_thresholds: Optional[Dict[str, float]] = None,
         tile_size: int = 1024,
         overlap_ratio: float = 0.20,
-        device: str = "cpu"
+        device: str = "cpu",
+        enable_heuristics: bool = False
     ):
         self.weights_path = weights_path
         self.conf_thresholds = conf_thresholds or DEFAULT_CONF_THRESHOLDS
+        self.enable_heuristics = enable_heuristics
         if device is None or device == "cpu":
             try:
                 import torch
@@ -215,8 +217,10 @@ class DefectDetector:
             all_defects.extend(yolo_defs)
 
         # 2. Geometric anomaly detection for fine micro-scratches, chips, and housing defects
-        heur_defs = self._detect_with_heuristics(img, view_side, scale_mm, inspection_mask, hand_mask)
-        all_defects.extend(heur_defs)
+        # Only run heuristics if explicitly enabled or as fallback when no custom defect model is active
+        if self.enable_heuristics or (self.model is None or not self.is_custom_defect_model):
+            heur_defs = self._detect_with_heuristics(img, view_side, scale_mm, inspection_mask, hand_mask)
+            all_defects.extend(heur_defs)
 
         raw_defects = self._nms_defects(all_defects)
 

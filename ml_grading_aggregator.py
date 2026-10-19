@@ -41,6 +41,33 @@ FEATURE_NAMES = [
     "flawless_flag"
 ]
 
+FEATURE_NAMES_V7 = [
+    "total_defects",
+    "scratch_count",
+    "dent_count",
+    "chip_count",
+    "hard_damage_count",
+    "total_area_mm2",
+    "max_defect_length_mm",
+    "max_defect_area_mm2",
+    "frame_defect_count",
+    "frame_area_mm2",
+    "frame_max_length_mm",
+    "frame_dpi",
+    "bottom_back_defect_count",
+    "bottom_back_area_mm2",
+    "bottom_back_dpi",
+    "total_dpi",
+    "flawless_flag",
+    "scratch_density_per_cm2",
+    "dent_cluster_count",
+    "cross_view_penetration",
+    "max_box_area_ratio",
+    "hard_damage_veto_flag",
+    "dent_severity_index",
+    "chip_spread_ratio"
+]
+
 GRADES = ["A", "B", "C", "D"]
 GRADE_TO_ID = {"A": 0, "B": 1, "C": 2, "D": 3}
 ID_TO_GRADE = {0: "A", 1: "B", 2: "C", 3: "D"}
@@ -49,11 +76,13 @@ ID_TO_GRADE = {0: "A", 1: "B", 2: "C", 3: "D"}
 class MLGradingAggregator:
     """
     Multivariate Machine Learning Classifier for Cosmetic Smartphone Grading (Housing-Only).
+    Supports both Legacy 18-Feature models and V7 24-Feature models.
     """
     def __init__(self, model_path: Optional[str] = None):
         self.model_path = model_path or MODEL_WEIGHTS_PATH
         self.model: Optional[Any] = None
         self.feature_names = FEATURE_NAMES
+        self.feature_dim = len(FEATURE_NAMES)
         self._load_model()
 
     def _load_model(self):
@@ -62,9 +91,13 @@ class MLGradingAggregator:
                 data = joblib.load(self.model_path)
                 if isinstance(data, dict) and "model" in data:
                     self.model = data["model"]
+                    if "feature_names" in data:
+                        self.feature_names = data["feature_names"]
+                    self.feature_dim = data.get("feature_dim", len(self.feature_names))
                 else:
                     self.model = data
-                print(f"[MLGradingAggregator] Loaded model from: {self.model_path}")
+                    self.feature_dim = 18
+                print(f"[MLGradingAggregator] Loaded model from: {self.model_path} (dim: {self.feature_dim})")
             except Exception as e:
                 print(f"[MLGradingAggregator] Could not load model: {e}")
                 self.model = None
@@ -114,6 +147,88 @@ class MLGradingAggregator:
             round(bottom_back_dpi, 2),
             round(total_dpi, 2),
             1.0 if len(housing_defects) == 0 else 0.0
+        ]
+        return np.array(features, dtype=np.float32)
+
+    @classmethod
+    def extract_features_v7(
+        cls,
+        defects_detail: List[Dict],
+        class_counts: Dict[str, int],
+        total_dpi: float,
+        frame_dpi: float,
+        bottom_back_dpi: float,
+        total_views_count: int = 5
+    ) -> np.ndarray:
+        """
+        Extracts 24-dimensional spatial and density feature vector for Model V7.
+        """
+        housing_defects = [d for d in defects_detail if d.get("view_side") != "front"]
+        frame_defects = [d for d in housing_defects if d.get("view_side") in ["left", "right", "top"]]
+        bottom_back_defects = [d for d in housing_defects if d.get("view_side") in ["bottom", "back"]]
+
+        c_counts = {"scratch": 0, "chip": 0, "dent": 0, "hard_damage": 0}
+        sides_with_defects = set()
+        sides_with_dent = set()
+        sides_with_chip = set()
+
+        for d in housing_defects:
+            raw_c = d.get("class_name", "scratch").lower()
+            if raw_c in ["broken", "crack"]:
+                c_name = "hard_damage"
+            elif raw_c in c_counts:
+                c_name = raw_c
+            else:
+                c_name = "scratch"
+            c_counts[c_name] += 1
+            side = d.get("view_side", "back")
+            sides_with_defects.add(side)
+            if c_name == "dent":
+                sides_with_dent.add(side)
+            if c_name == "chip":
+                sides_with_chip.add(side)
+
+        total_area = sum(d.get("area_mm2", 0.0) for d in housing_defects)
+        max_len = max([d.get("length_mm", 0.0) for d in housing_defects], default=0.0)
+        max_area = max([d.get("area_mm2", 0.0) for d in housing_defects], default=0.0)
+
+        frame_area = sum(d.get("area_mm2", 0.0) for d in frame_defects)
+        frame_max_len = max([d.get("length_mm", 0.0) for d in frame_defects], default=0.0)
+        bottom_back_area = sum(d.get("area_mm2", 0.0) for d in bottom_back_defects)
+
+        scratch_density = c_counts["scratch"] / 120.0
+        dent_clusters = float(len(sides_with_dent))
+        cross_view_penetration = float(len(sides_with_defects)) / max(1.0, float(total_views_count))
+        max_box_area_ratio = min(1.0, max_area / 4000.0)
+        hard_damage_veto = 1.0 if c_counts["hard_damage"] > 0 else 0.0
+        dent_severity = float(c_counts["dent"]) * max_len
+        chip_spread_ratio = float(len(sides_with_chip)) / 4.0
+
+        features = [
+            float(len(housing_defects)),
+            float(c_counts["scratch"]),
+            float(c_counts["dent"]),
+            float(c_counts["chip"]),
+            float(c_counts["hard_damage"]),
+            round(total_area, 3),
+            round(max_len, 3),
+            round(max_area, 3),
+            float(len(frame_defects)),
+            round(frame_area, 3),
+            round(frame_max_len, 3),
+            round(frame_dpi, 2),
+            float(len(bottom_back_defects)),
+            round(bottom_back_area, 3),
+            round(bottom_back_dpi, 2),
+            round(total_dpi, 2),
+            1.0 if len(housing_defects) == 0 else 0.0,
+            round(scratch_density, 4),
+            dent_clusters,
+            round(cross_view_penetration, 3),
+            round(max_box_area_ratio, 4),
+            hard_damage_veto,
+            round(dent_severity, 2),
+            round(chip_spread_ratio, 3)
         ]
         return np.array(features, dtype=np.float32)
 
