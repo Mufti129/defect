@@ -27,6 +27,10 @@ dataset_v5_pilot/
 dataset_v6/
 dataset_v7/images/
 dataset_v7/labels/
+dataset_v8/images/
+dataset_v8/labels/
+cropped_new_1024/
+samples_1024_preview/
 dataset_yolo_seg/
 archive_legacy/
 uploaded_inspections/
