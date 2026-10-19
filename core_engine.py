@@ -45,7 +45,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
         "badge": "TRAINING IN PROGRESS (V7)",
         "badge_color": "#F59E0B",
         "yolo_file": "phone_defect_model_v7_best.pt",
-        "ml_file": "ml_grading_model_v3.joblib",
+        "ml_file": "ml_grading_model_v7.joblib",
         "arch": "YOLOv8s Detect (800x800, 11.2M Params — Transfer Fine-Tuned dari V6 Best)",
         "dataset": "dataset_v7 (4.558 Citra Bodi / 26.811 Bounding Box Riil)",
         "focus": "Housing & Bezel 4-Kelas (Scratch, Chip, Dent, Hard Damage)",
@@ -225,11 +225,24 @@ class StreamlitInspectionEngine:
             if yolo_path is None:
                 yolo_path = os.path.join(weights_dir, yolo_filename)
 
-        ml_path = os.path.join(weights_dir, ml_filename)
-        if not os.path.exists(ml_path):
-            alt_ml = os.path.join(weights_dir, "ml_grading_model.joblib")
-            if os.path.exists(alt_ml):
-                ml_path = alt_ml
+        ml_candidates = [
+            os.path.join(weights_dir, ml_filename),
+            os.path.join(str(CURRENT_DIR), "weights", ml_filename),
+            os.path.join(str(PARENT_DIR), "weights", ml_filename),
+            os.path.join(str(CURRENT_DIR), "weights_v7", ml_filename),
+            os.path.join(str(PARENT_DIR), "weights_v7", ml_filename),
+            os.path.join(weights_dir, "ml_grading_model_v3.joblib"),
+            os.path.join(weights_dir, "ml_grading_model.joblib"),
+            os.path.join(str(CURRENT_DIR), "weights", "ml_grading_model_v3.joblib"),
+            os.path.join(str(PARENT_DIR), "weights", "ml_grading_model_v3.joblib"),
+        ]
+        ml_path = None
+        for cand_ml in ml_candidates:
+            if os.path.exists(cand_ml):
+                ml_path = cand_ml
+                break
+        if ml_path is None:
+            ml_path = os.path.join(weights_dir, ml_filename)
 
         print(f"[InspectionEngine] Initializing Model {version.upper()}: {self.config['name']}")
         print(f"                   YOLO: {yolo_path}")
