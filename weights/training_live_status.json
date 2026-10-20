@@ -12,6 +12,6 @@
   "best_map50": 11.82,
   "best_precision": 51.77,
   "last_checkpoint": "runs/detect/runs_v7_training/defect_v7_model/weights/last.pt",
-  "last_update": "2026-10-19 08:15:00",
+  "last_update": "2026-10-20 08:00:00",
   "message": "Pelatihan telah menyelesaikan 14 Epoch penuh. Terhenti sementara di Epoch 15 (batch 325/1016) karena sistem reboot. Checkpoint Epoch 14 tersimpan utuh dan siap di-resume."
 }
