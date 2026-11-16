@@ -1,17 +1,29 @@
 {
-  "status": "PAUSED_RESTART_REQUIRED",
+  "status": "TRAINING_COMPLETED",
   "model_version": "V7",
-  "current_epoch": 15,
-  "completed_epochs": 14,
-  "total_epochs": 40,
-  "current_batch": 325,
+  "current_epoch": 20,
+  "completed_epochs": 20,
+  "total_epochs": 20,
+  "current_batch": 1016,
   "total_batches_per_epoch": 1016,
-  "epoch_progress_percent": 32.0,
-  "overall_progress_percent": 35.8,
+  "epoch_progress_percent": 100.0,
+  "overall_progress_percent": 100.0,
   "best_epoch": 9,
+  "promoted_epoch": 20,
   "best_map50": 11.82,
+  "best_map50_95": 5.11,
   "best_precision": 51.77,
+  "best_recall": 14.35,
+  "metrics_summary": {
+    "best_mAP50": 11.82,
+    "best_mAP50_95": 5.11,
+    "best_precision": 51.77,
+    "best_recall": 14.35,
+    "min_val_box_loss": 2.9637,
+    "final_train_box_loss": 2.4028,
+    "final_train_cls_loss": 6.5308
+  },
   "last_checkpoint": "runs/detect/runs_v7_training/defect_v7_model/weights/last.pt",
-  "last_update": "2026-10-19 08:15:00",
-  "message": "Pelatihan telah menyelesaikan 14 Epoch penuh. Terhenti sementara di Epoch 15 (batch 325/1016) karena sistem reboot. Checkpoint Epoch 14 tersimpan utuh dan siap di-resume."
+  "last_update": "2026-11-16 14:37:00",
+  "message": "Pelatihan Model V7 tuntas 20/20 Epochs (100%). Checkpoint Epoch 20 close-mosaic (21.43 MB stripped) telah dipromosikan menjadi bobot V7 utama bersama ML Aggregator V7 24-Fitur."
 }

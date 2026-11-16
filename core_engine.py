@@ -40,17 +40,17 @@ import tempfile
 MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
     "v7": {
         "id": "v7",
-        "name": "Model Versi 7 (Unified Hard Damage & Spatial Density Detector — YOLOv8s)",
-        "short_name": "Versi 7 (YOLOv8s 800px)",
-        "badge": "TRAINING IN PROGRESS (V7)",
-        "badge_color": "#F59E0B",
+        "name": "Model Versi 7 (Unified Hard Damage & Spatial Density Detector — YOLOv8s + ML 24-Fitur)",
+        "short_name": "Versi 7 (YOLOv8s 800px + ML 24F)",
+        "badge": "FINAL PRODUKSI V7 (TUNTAS 20 EPOCHS)",
+        "badge_color": "#10B981",
         "yolo_file": "phone_defect_model_v7_best.pt",
         "ml_file": "ml_grading_model_v7.joblib",
-        "arch": "YOLOv8s Detect (800x800, 11.2M Params — Transfer Fine-Tuned dari V6 Best)",
+        "arch": "YOLOv8s Detect (800x800, 11.2M Params) + Random Forest 24-Fitur Spasial",
         "dataset": "dataset_v7 (4.558 Citra Bodi / 26.811 Bounding Box Riil)",
         "focus": "Housing & Bezel 4-Kelas (Scratch, Chip, Dent, Hard Damage)",
-        "status": "Pelatihan 40 Epochs Sedang Berjalan (Auto-Sync Real-Time)",
-        "description": "Model generasi ke-7 dengan arsitektur terpadu 4-kelas cacat (scratch, chip, dent, hard_damage) pada resolusi tinggi 800x800 px. Di-fine-tune dari bobot V6 dengan loss rebalancing untuk menangani kerusakan struktural/hard damage berat."
+        "status": "Tuntas 20 Epochs (Best mAP50 11.82%, Precision 51.77%, ML 24-Fitur Recall A 90.0%)",
+        "description": "Model generasi ke-7 dengan arsitektur terpadu 4-kelas cacat (scratch, chip, dent, hard_damage) pada resolusi tinggi 800x800 px dipadukan dengan ML Aggregator 24-Fitur Spasial (0% Inversi Kritis)."
     },
     "model_tambahan": {
         "id": "model_tambahan",
@@ -595,7 +595,8 @@ class StreamlitInspectionEngine:
         cv2.putText(banner, stat_line, (165, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (210, 210, 210), 1)
 
         breakdown = report.get("defect_breakdown", {})
-        breakdown_str = f"Dent: {breakdown.get('dent', 0)} | Scratch: {breakdown.get('scratch', 0)} | Chip: {breakdown.get('chip', 0)} | Crack: {breakdown.get('crack', 0)} | Broken: {breakdown.get('broken', 0)}"
+        hard_dmg = breakdown.get('hard_damage', 0) + breakdown.get('crack', 0) + breakdown.get('broken', 0)
+        breakdown_str = f"Scratch: {breakdown.get('scratch', 0)} | Chip: {breakdown.get('chip', 0)} | Dent: {breakdown.get('dent', 0)} | Hard Damage/Crack: {hard_dmg}"
         cv2.putText(banner, breakdown_str, (165, 105), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 180, 180), 1)
 
         # Combine banner and collage

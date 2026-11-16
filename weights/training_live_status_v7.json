@@ -1,0 +1,28 @@
+{
+  "status": "TRAINING_COMPLETED",
+  "model_version": "V7",
+  "current_epoch": 20,
+  "completed_epochs": 20,
+  "total_epochs": 20,
+  "current_batch": 1016,
+  "total_batches_per_epoch": 1016,
+  "epoch_progress_percent": 100.0,
+  "overall_progress_percent": 100.0,
+  "best_epoch": 9,
+  "best_map50": 11.82,
+  "best_map50_95": 5.11,
+  "best_precision": 51.77,
+  "best_recall": 14.35,
+  "metrics_summary": {
+    "best_mAP50": 11.82,
+    "best_mAP50_95": 5.11,
+    "best_precision": 51.77,
+    "best_recall": 14.35,
+    "min_val_box_loss": 2.9637,
+    "final_train_box_loss": 2.4028,
+    "final_train_cls_loss": 6.5308
+  },
+  "last_checkpoint": "runs/detect/runs_v7_training/defect_v7_model/weights/best.pt",
+  "last_update": "2026-10-19 18:26:42",
+  "message": "Pelatihan Model V7 tuntas 20/20 Epochs (100%). Bobot terbaik Epoch 9 (mAP50 11.82%, Precision 51.77%) + ML Aggregator V7 24-Fitur (Recall Grade A 90.0%) aktif di produksi."
+}

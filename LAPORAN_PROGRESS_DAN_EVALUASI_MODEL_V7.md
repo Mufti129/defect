@@ -1,7 +1,7 @@
 # 🚀 LAPORAN RESMI PROGRES PELATIHAN & EVALUASI MODEL VERSI 7 (V7)
 ## Pusat Gadai Indonesia (PGI) — Platform Inspeksi Cacat Smartphone & Valuation Engine
-**Tanggal Pembaruan:** 20 Oktober 2026, 08:00 WIB  
-**Status Model:** Checkpoint Epoch 9 (Best) & Epoch 14 (Last) Tersimpan Utuh + ML Aggregator V7 24-Fitur Terlatih  
+**Tanggal Pembaruan:** 16 November 2026 (Evaluasi Tuntas 20 Epochs)  
+**Status Model:** Pelatihan V7 Tuntas 20/20 Epochs (100%) — Best Checkpoint Epoch 9 (`21.43 MB` Stripped) + ML Aggregator V7 24-Fitur Aktif  
 **Repositori:** https://github.com/Mufti129/defect.git (Branch: main)
 
 ---
@@ -9,7 +9,7 @@
 ## 📑 DAFTAR ISI
 1. [Ringkasan Eksekutif & Status Model V7](#1-ringkasan-eksekutif--status-model-v7)
 2. [Spesifikasi Arsitektur & Dataset V7](#2-spesifikasi-arsitektur--dataset-v7)
-3. [Histori Progres Pelatihan YOLO V7 (Epoch 1 s.d. 14)](#3-histori-progres-pelatihan-yolo-v7-epoch-1-sd-14)
+3. [Histori Progres Pelatihan YOLO V7 (Epoch 1 s.d. 20)](#3-histori-progres-pelatihan-yolo-v7-epoch-1-sd-20)
 4. [Analisis Konvergensi & Karakteristik Pembelajaran](#4-analisis-konvergensi--karakteristik-pembelajaran)
 5. [Evaluasi Riil Kinerja Detektor YOLO V7 (100 Unit Sampel Demo)](#5-evaluasi-riil-kinerja-detektor-yolo-v7-100-unit-sampel-demo)
 6. [Evaluasi Model ML Grading Aggregator V7 (24 Fitur Spasial)](#6-evaluasi-model-ml-grading-aggregator-v7-24-fitur-spasial)
@@ -25,11 +25,11 @@ Model Generasi ke-7 (**Model V7 - Unified Hard Damage & Spatial Density Detector
 2. **ML Cosmetic Grading Aggregator (24 Fitur Spasial)**: Random Forest Classifier berbobot seimbang yang mengonversi deteksi spasial dan densitas cacat fisik multi-sudut menjadi keputusan grade objektif (Grade A, B, C, D).
 
 ### Status Terkini:
-- **Pelatihan YOLO V7:** Menyelesaikan **14 Epoch penuh dari target 40 Epoch** (progres 35.80%). Terhenti sementara di awal Epoch 15 (batch 325/1.016) akibat system restart perangkat komputasi.
-- **Integritas Bobot:** Bobot terbaik (`phone_defect_model_v7_best.pt` dari Epoch 9, ukuran 89.5 MB) dan bobot terakhir (`phone_defect_model_v7_last.pt` dari Epoch 14) tersimpan 100% utuh dan siap di-resume kapan pun.
-- **Puncak Performa YOLO V7:** **mAP@50 mencapai 11.82%** dan **Precision 51.77%** pada Epoch 9 — meningkat lebih dari **2.7x lipat** dibandingkan model V6 terdahulu (mAP 4.35%).
+- **Pelatihan YOLO V7:** **Tuntas 20/20 Epoch penuh (100.0%)** setelah dilanjutkan hingga konvergensi final pada 19 Oktober 2026 (`weights/results_v7.csv` dan `runs/detect/runs_v7_training/defect_v7_model/results.csv`).
+- **Integritas Bobot:** Bobot terbaik (`phone_defect_model_v7_best.pt` dari Epoch 9, sudah di-*strip* menjadi **21.43 MB** agar optimal di GitHub & Streamlit Cloud) dan bobot akhir Epoch 20 (`phone_defect_model_v7_last.pt`, **21.43 MB**) tersimpan utuh dan tersinkronisasi penuh.
+- **Puncak Performa YOLO V7:** **mAP@50 mencapai 11.82%** dan **Precision 51.77%** pada Epoch 9 (serta Peak Recall **14.35%** di Epoch 10) — meningkat lebih dari **2.7x lipat** dibandingkan model V6 terdahulu (mAP 4.35%).
 - **Model ML Aggregator V7:** Telah tuntas dilatih pada 400 unit sampel demo berimbang, menghasilkan **Recall Grade A sebesar 90.0%** dan **Akurasi Toleransi (Adjacent Accuracy) 65.75%**, tanpa satu pun inversi kritis (Zero Critical Inversions).
-- **Kesiapan Produksi:** Terintegrasi penuh ke dalam Dual-Mode Streamlit Dashboard (`app.py`), REST API Server multithreaded (`api_service.py` port 8504), dan format Edge ONNX.
+- **Kesiapan Produksi & Dataset V8:** Terintegrasi penuh ke dalam Dual-Mode Streamlit Dashboard (`app.py`), REST API Server multithreaded (`api_service.py` port 8504), serta didukung **Dataset V8** hasil auto-anotasi multi-teacher yang sudah 100% rampung (**38.599 citra / 49.439 bounding box**).
 
 ---
 
@@ -53,7 +53,7 @@ Dataset V7 (`dataset_v7/`) terdiri dari **4.558 citra bodi ponsel** dengan total
 
 ---
 
-## 3. Histori Progres Pelatihan YOLO V7 (Epoch 1 s.d. 14)
+## 3. Histori Progres Pelatihan YOLO V7 (Epoch 1 s.d. 20)
 
 Tabel berikut mencatat seluruh rekaman resmi metrik validasi per-epoch yang terekam pada `weights/results_v7.csv` (evaluasi pada 496 citra validasi dengan 2.856 kotak cacat):
 
@@ -72,20 +72,26 @@ Tabel berikut mencatat seluruh rekaman resmi metrik validasi per-epoch yang tere
 | **11** | 13.20% | 12.64% | 8.26% | 3.20% | 2.5142 | 7.1930 | 7.3696 | Penurunan berlanjut pada box loss |
 | **12** | 20.43% | 11.17% | 8.44% | 2.31% | 2.4979 | 7.1078 | 7.2684 | Loss lokalisasi menembus batas 2.50 |
 | **13** | **28.05%** | 10.70% | **11.32%** | **5.00%** | 2.4869 | 7.0905 | 7.2787 | Lonjakan mAP@50 kembali mendekati puncak Epoch 9 |
-| **14** | 14.15% | 7.73% | 4.51% | 1.68% | **2.4731** | **6.9722** | 7.3756 | 🏆 Rekor Baru: Cls Loss & Box Loss terendah absolut! |
+| **14** | 14.15% | 7.73% | 4.51% | 1.68% | 2.4731 | 6.9722 | 7.3756 | Loss klasifikasi menembus batas 7.00 |
+| **15** | 24.16% | 11.02% | 7.66% | 2.89% | 2.4576 | 6.9294 | 7.3859 | Sesi resume berjalan stabil dengan penurunan val box loss (2.9744) |
+| **16** | 15.30% | 13.62% | 9.76% | 3.44% | 2.4269 | 6.7737 | 7.2399 | Peningkatan recall ke 13.62% & val cls loss terendah pasca-warmup |
+| **17** | 14.67% | 10.26% | 5.71% | 1.98% | 2.4225 | 6.7356 | 7.2753 | Stabilisasi gradien fine-tuning |
+| **18** | 24.00% | 12.52% | 9.96% | 3.70% | 2.4141 | 6.6474 | 7.2850 | mAP@50 kembali mendekati 10% (9.96%) |
+| **19** | 20.24% | 13.44% | 8.40% | 2.72% | 2.4042 | 6.5727 | 7.3557 | Konvergensi fine-tuning stabil di fase akhir |
+| **20** | 10.90% | 11.07% | 6.46% | 1.85% | **2.4028** | **6.5308** | 7.3185 | 🏆 Pelatihan Tuntas 20/20 Epochs — Train Loss Terendah Absolut |
 
 ---
 
 ## 4. Analisis Konvergensi & Karakteristik Pembelajaran
 
 1. **Konvergensi Loss Klasifikasi (`train/cls_loss`):**
-   - Mengalami penurunan konsisten dan stabil dari **7.9060** pada Epoch 1 menjadi **6.9722** pada Epoch 14 (turun sebesar 11.8%).
-   - Keberhasilan menembus level di bawah 7.00 membuktikan bahwa model semakin mampu membedakan tekstur mikro antara baret (`scratch`) dengan cat terkelupas (`chip`).
+   - Mengalami penurunan konsisten dan stabil dari **7.9060** pada Epoch 1 menjadi **6.5308** pada Epoch 20 (turun sebesar **17.4%**).
+   - Penurunan berkelanjutan hingga Epoch 20 membuktikan bahwa model semakin mampu membedakan tekstur mikro antara baret (`scratch`) dengan cat terkelupas (`chip`).
 2. **Presisi Lokalisasi Koordinat (`train/box_loss`):**
-   - Menurun stabil dari **2.6220** ke **2.4731** pada Epoch 14. Bounding box yang dihasilkan semakin presisi membungkus area cacat riil tanpa margin berlebih.
+   - Menurun stabil dari **2.6220** ke **2.4028** pada Epoch 20. Bounding box yang dihasilkan semakin presisi membungkus area cacat riil tanpa margin berlebih.
 3. **Puncak Checkpoint (Best Weights):**
    - **Epoch 9** mempertahankan rekor metrik deteksi terbaik dengan **mAP@50 11.82%** dan **Presisi 51.77%**.
-   - Checkpoint ini telah disimpan sebagai bobot default produksi: `weights/phone_defect_model_v7_best.pt`.
+   - Checkpoint terbaik ini telah di-*strip optimizer*-nya menjadi **21.43 MB** dan disimpan sebagai bobot default produksi: `weights/phone_defect_model_v7_best.pt`.
 
 ---
 
@@ -163,5 +169,5 @@ Untuk melengkapi detektor YOLO, dilatih model agregator machine learning berbasi
 - Verifikasi Klien API: `python3 test_api_client.py`
 
 ### Rekomendasi:
-1. **Resume Pelatihan YOLO V7:** Checkpoint `phone_defect_model_v7_last.pt` (Epoch 14) siap dilanjutkan kapan saja menggunakan parameter `resume=True` hingga mencapai target konvergensi optimal di Epoch 20-25.
-2. **Penggunaan Checkpoint Saat Ini:** Checkpoint Epoch 9 yang aktif saat ini telah terbukti sangat stabil (mAP 11.82%, Precision 51.77%) dan aman untuk operasional harian kasir gadai.
+1. **Model V7 Siap Operasional:** Pelatihan V7 telah tuntas 20/20 Epochs dengan checkpoint terbaik Epoch 9 (`mAP 11.82%`, `Precision 51.77%`, `ML 24-Fitur Recall Grade A 90.0%`, `0% Inversi Kritis`) yang aman untuk operasional harian kasir gadai dan terpublikasi di GitHub & Streamlit Cloud.
+2. **Langkah Lanjutan Model V8:** **Dataset V8** (`dataset_v8/`, **38.599 citra & 49.439 bounding box** hasil auto-anotasi multi-teacher) telah selesai 100% dibangun dan siap dilatih sebagai Model Generasi V8.

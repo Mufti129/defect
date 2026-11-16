@@ -34,10 +34,10 @@ import numpy as np
 
 BASE_DIR = Path(__file__).resolve().parent
 APP_DIR = BASE_DIR / "streamlit_inspection_app"
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from core_engine import StreamlitInspectionEngine, MODEL_REGISTRY
 from pricing_engine import SMARTPHONE_BASELINE_PRICES, calculate_valuation

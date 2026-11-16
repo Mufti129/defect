@@ -61,13 +61,25 @@ weights/phone_defect_model_v7*.pt
 *.swp
 *.swo
 
-# Collected Session Images
+# Collected Session Images & Local Workspace Build/Report Artifacts
 data/collected_data/
 streamlit_inspection_app/data/collected_data/
 sample_card_output.jpg
-weights/model_tambahan.pt
-weights/model_detect_body_hp.pt
+aligned_test.apk
+build_apk_output/
+cropped_new_1024_report.csv
+cropped_v2_report.csv
+Laporan_Project/*.docx
+Laporan_Project/hourly_*.json
+Laporan_Project/*.log
+catatan perbaikan model/
+data anotasi box defect hp/
+
+# Whitelist Stripped Production Weights (<50MB for GitHub & Streamlit Cloud)
+!weights/phone_defect_model_v7_best.pt
 !weights/phone_defect_model_v6_best.pt
 !weights/phone_defect_model_v5_best.pt
 !weights/phone_defect_model_v4.pt
 !weights/phone_defect_model.pt
+!weights/model_detect_body_hp.pt
+!weights/model_tambahan.pt

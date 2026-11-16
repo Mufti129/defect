@@ -84,25 +84,17 @@ class HardwareDefectDisambiguator:
             aspect_ratio = max(dbx2 - dbx1, dby2 - dby1) / max(min(dbx2 - dbx1, dby2 - dby1), 1)
 
             # --- RULE 1: PHYSICAL MATERIAL GUARD ---
-            # Side frames (bottom, top, left, right) are metal/plastic; cannot have crystalline glass shatter ('broken'/'crack')
+            # Preserve severe structural damage ('hard_damage', 'broken') on all sides so Tier-1 Grade D Veto remains intact.
+            # Only reclassify low-confidence, highly elongated 'crack' lines on metal/plastic side frames into 'scratch'.
             if view_side in ["bottom", "top", "left", "right"]:
-                if d_cls in ["broken", "crack"]:
-                    if aspect_ratio >= 2.2:
-                        defect.class_name = "scratch"
-                        audit_log.append({
-                            "action": "reclassified_material",
-                            "from": d_cls,
-                            "to": "scratch",
-                            "reason": "Linear defect on metal/plastic frame converted to scratch"
-                        })
-                    else:
-                        defect.class_name = "chip"
-                        audit_log.append({
-                            "action": "reclassified_material",
-                            "from": d_cls,
-                            "to": "chip",
-                            "reason": "Chassis impact defect converted from broken to chip"
-                        })
+                if d_cls == "crack" and aspect_ratio >= 3.5 and getattr(defect, "confidence", 1.0) < 0.30:
+                    defect.class_name = "scratch"
+                    audit_log.append({
+                        "action": "reclassified_material",
+                        "from": d_cls,
+                        "to": "scratch",
+                        "reason": "Low-confidence linear crack on metal/plastic frame converted to scratch"
+                    })
 
             # Check overlap against all detected hardware components on this view
             is_suppressed = False

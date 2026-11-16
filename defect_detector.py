@@ -13,7 +13,7 @@ Features:
 import os
 import sys
 import math
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass, asdict
 import cv2
 import numpy as np
@@ -28,24 +28,26 @@ except ImportError:
     from hardware_locator import HardwareComponentLocator
     from hardware_defect_analyzer import HardwareDefectDisambiguator
 
-DEFECT_CLASSES = ["dent", "broken", "scratch", "chip", "crack"]
+DEFECT_CLASSES = ["dent", "broken", "scratch", "chip", "crack", "hard_damage"]
 
 # Defect visual color palette (BGR for OpenCV)
 CLASS_COLORS = {
-    "dent": (0, 165, 255),      # Orange
-    "broken": (0, 0, 255),      # Red
-    "scratch": (255, 255, 0),   # Cyan
-    "chip": (255, 0, 255),      # Magenta
-    "crack": (0, 0, 200),       # Dark Red / Crimson
+    "dent": (0, 165, 255),         # Orange
+    "broken": (0, 0, 255),         # Red
+    "hard_damage": (0, 0, 255),    # Red
+    "scratch": (255, 255, 0),      # Cyan
+    "chip": (255, 0, 255),         # Magenta
+    "crack": (0, 0, 200),          # Dark Red / Crimson
 }
 
 # Per-class confidence thresholds to optimize precision and recall
 DEFAULT_CONF_THRESHOLDS = {
-    "scratch": 0.15,  # Calibrated for micro hairline scratches
-    "crack": 0.15,    # Critical structural defect
-    "chip": 0.15,     # Corner notch & rim chip
-    "dent": 0.18,     # Metal body dent
-    "broken": 0.15,   # Structural fractures / heavy chips
+    "scratch": 0.14,      # Calibrated for micro hairline scratches
+    "dent": 0.14,         # Metal body dent
+    "chip": 0.22,         # Suppresses Grade A false positives while catching rim chips
+    "crack": 0.16,        # Critical structural defect
+    "broken": 0.18,       # Structural fractures
+    "hard_damage": 0.18,  # Unified structural fractures / glass shatter
 }
 
 # Standard phone dimension reference for pixel-to-millimeter scaling
@@ -86,11 +88,13 @@ class DefectDetector:
         tile_size: int = 1024,
         overlap_ratio: float = 0.20,
         device: str = "cpu",
-        enable_heuristics: bool = False
+        enable_heuristics: bool = False,
+        enable_aux_fusion: bool = True
     ):
         self.weights_path = weights_path
         self.conf_thresholds = conf_thresholds or DEFAULT_CONF_THRESHOLDS
         self.enable_heuristics = enable_heuristics
+        self.enable_aux_fusion = enable_aux_fusion
         if device is None or device == "cpu":
             try:
                 import torch
@@ -99,6 +103,9 @@ class DefectDetector:
                 device = "cpu"
         self.device = device
         self.model = None
+        self._aux_v5_model = None
+        self._aux_tambahan_model = None
+        self._aux_loaded = False
         self.hand_filter = HandFilter()
         self.spatial_scaler = SpatialScaler()
         self.hardware_locator = HardwareComponentLocator()
@@ -112,6 +119,7 @@ class DefectDetector:
 
         self.weights_path = weights_path
         self.is_custom_defect_model = False
+        self.is_v7_model = bool(weights_path and "v7" in os.path.basename(str(weights_path)).lower())
 
         if weights_path and os.path.exists(weights_path):
             try:
@@ -139,6 +147,65 @@ class DefectDetector:
         else:
             if weights_path:
                 print(f"[DefectDetector] Weights '{weights_path}' not found. Using heuristic/demo mode.")
+
+    def _ensure_v7_auxiliary_models(self):
+        """Lazy-loads V5 (scratch/dent specialist) and model_tambahan (Hard Damage specialist) for V7 fusion."""
+        if self._aux_loaded or not self.is_v7_model or not self.enable_aux_fusion:
+            return
+        self._aux_loaded = True
+        try:
+            from ultralytics import YOLO
+        except ImportError:
+            return
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(os.path.dirname(base_dir)) if os.path.basename(base_dir) == "detection" else os.path.dirname(base_dir)
+
+        v5_candidates = [
+            os.path.join(base_dir, "weights", "phone_defect_model_v5_best.pt"),
+            os.path.join(base_dir, "weights_v5", "phone_defect_model_v5_best.pt"),
+            os.path.join(parent_dir, "weights", "phone_defect_model_v5_best.pt"),
+        ]
+        for p in v5_candidates:
+            if os.path.exists(p):
+                try:
+                    self._aux_v5_model = YOLO(p)
+                    if self.device in ["mps", "cuda"]:
+                        self._aux_v5_model.predict(np.zeros((320, 320, 3), dtype=np.uint8), imgsz=320, verbose=False, device=self.device)
+                    print(f"[DefectDetector] V7 Auxiliary Scratch/Dent Specialist loaded: {p}")
+                    break
+                except Exception:
+                    self._aux_v5_model = None
+
+        tambahan_candidates = [
+            os.path.join(base_dir, "weights", "model_tambahan.pt"),
+            os.path.join(base_dir, "model_tambahan.pt"),
+            os.path.join(parent_dir, "weights", "model_tambahan.pt"),
+        ]
+        for p in tambahan_candidates:
+            if os.path.exists(p):
+                try:
+                    self._aux_tambahan_model = YOLO(p)
+                    if self.device in ["mps", "cuda"]:
+                        self._aux_tambahan_model.predict(np.zeros((320, 320, 3), dtype=np.uint8), imgsz=320, verbose=False, device=self.device)
+                    print(f"[DefectDetector] V7 Auxiliary Hard-Damage Specialist loaded: {p}")
+                    break
+                except Exception:
+                    self._aux_tambahan_model = None
+
+    def _build_active_conf_map(self, conf_threshold: Optional[float]) -> Dict[str, float]:
+        """Builds calibrated asymmetric per-class confidence thresholds."""
+        if conf_threshold is None:
+            return dict(self.conf_thresholds or DEFAULT_CONF_THRESHOLDS)
+        base = float(conf_threshold)
+        return {
+            "scratch": max(0.10, round(base * 0.70, 4)),
+            "dent": max(0.10, round(base * 0.70, 4)),
+            "crack": max(0.12, round(base * 0.85, 4)),
+            "broken": max(0.12, round(base * 0.85, 4)),
+            "hard_damage": max(0.12, round(base * 0.85, 4)),
+            "chip": max(0.15, round(base * 1.15, 4)),
+        }
 
     def _estimate_scale(self, img_shape: Tuple[int, int], view_side: str) -> float:
         """
@@ -196,7 +263,7 @@ class DefectDetector:
     ) -> List[DefectInstance]:
         """
         Runs defect detection on a single image.
-        Uses SAHI tiling, Dynamic Spatial Scaling, and HandFilter masking.
+        Uses 800px native inference, Dynamic Spatial Scaling, crop-aware filtering, and V7 auxiliary fusion.
         """
         img = cv2.imread(img_path)
         if img is None:
@@ -205,15 +272,27 @@ class DefectDetector:
         h, w = img.shape[:2]
         scale_mm, calib_mode, H = self.spatial_scaler.calculate_scale_mm(img, view_side)
 
+        # Detect whether image is already tightly cropped to phone body
+        is_pre_cropped = (
+            (max(h, w) / max(1, min(h, w)) >= 1.8)
+            or any(k in str(img_path) for k in ["demo_samples", "Hasil_Crop_Raw", "cropped_new_1024", "dataset_v", "stage1_crop"])
+        )
+
         inspection_mask = None
         hand_mask = None
-        if filter_hands:
+        if filter_hands and not is_pre_cropped:
             inspection_mask, hand_mask = self.hand_filter.generate_inspection_mask(img, view_side)
 
         all_defects = []
         # 1. Detect with custom YOLO segmentation or detection model
         if self.model is not None and self.is_custom_defect_model:
-            yolo_defs = self._detect_with_yolo(img, view_side, scale_mm, inspection_mask, hand_mask, conf_threshold=conf_threshold)
+            yolo_defs = self._detect_with_yolo(
+                img, view_side, scale_mm,
+                inspection_mask=inspection_mask,
+                hand_mask=hand_mask,
+                conf_threshold=conf_threshold,
+                is_pre_cropped=is_pre_cropped
+            )
             all_defects.extend(yolo_defs)
 
         # 2. Geometric anomaly detection for fine micro-scratches, chips, and housing defects
@@ -232,64 +311,78 @@ class DefectDetector:
 
         return validated_defects
 
-    def _detect_with_yolo(
+    @staticmethod
+    def _map_yolo_class_name(model_obj: Any, cls_id: int) -> str:
+        """Maps raw YOLO class names uniformly while distinguishing V7 hard_damage vs legacy broken."""
+        names_dict = getattr(model_obj, "names", None)
+        if isinstance(names_dict, dict) and cls_id in names_dict:
+            raw_name = str(names_dict[cls_id]).lower().strip()
+            has_hard_damage_cls = any("hard_damage" in str(v).lower() or "hard damage" in str(v).lower() for v in names_dict.values())
+            if "scratch" in raw_name or "lecet" in raw_name or "gores" in raw_name:
+                return "scratch"
+            elif "chip" in raw_name or "sompal" in raw_name or "cuil" in raw_name:
+                return "chip"
+            elif "hard_damage" in raw_name or "hard damage" in raw_name or ("damage" in raw_name and has_hard_damage_cls):
+                return "hard_damage"
+            elif "damage" in raw_name or "broken" in raw_name or "pecah" in raw_name or "rusak" in raw_name:
+                return "broken"
+            elif "crack" in raw_name or "retak" in raw_name:
+                return "crack"
+            elif "dent" in raw_name or "penyok" in raw_name or "bengkok" in raw_name:
+                return "dent"
+            return raw_name
+        if cls_id in range(len(DEFECT_CLASSES)):
+            return DEFECT_CLASSES[cls_id]
+        return "scratch"
+
+    def _predict_yolo_single_model(
         self,
+        model_obj: Any,
         img: np.ndarray,
+        sub_regions: List[Tuple[int, int, int, int]],
         view_side: str,
         scale_mm: float,
+        active_conf: Dict[str, float],
+        imgsz: int = 800,
+        allowed_classes: Optional[set] = None,
+        is_pre_cropped: bool = False,
         inspection_mask: Optional[np.ndarray] = None,
         hand_mask: Optional[np.ndarray] = None,
-        conf_threshold: Optional[float] = None
     ) -> List[DefectInstance]:
-        """
-        Fast high-resolution inference supporting both YOLO segmentation masks and detection boxes.
-        """
+        """Runs inference for a single YOLO model over prepared sub-regions with spatial filtering."""
         h, w = img.shape[:2]
-        # For tall images, inspect in two overlapping halves only if extremely tall (>2400px)
-        if h > 2400:
-            mid = h // 2
-            overlap = int(h * 0.10)
-            sub_regions = [
-                (0, 0, w, mid + overlap),
-                (0, max(0, mid - overlap), w, h)
-            ]
+        if allowed_classes:
+            relevant_vals = [active_conf.get(c, 0.15) for c in allowed_classes]
+            min_conf = max(0.04, min(relevant_vals))
         else:
-            sub_regions = [(0, 0, w, h)]
+            min_conf = max(0.04, min(active_conf.values()))
 
-        # Determine active thresholds
-        if conf_threshold is not None:
-            active_conf = {c: float(conf_threshold) for c in DEFECT_CLASSES}
-        else:
-            active_conf = self.conf_thresholds or DEFAULT_CONF_THRESHOLDS
-
-        min_conf = max(0.04, min(active_conf.values()))
-
-        # High-performance 640px inference resolution (25x faster throughput on CPU/MPS)
-        imgsz = 640
-
-        all_defects = []
+        defects_out: List[DefectInstance] = []
         for x1, y1, x2, y2 in sub_regions:
             sub_img = img[y1:y2, x1:x2]
             h_sub, w_sub = sub_img.shape[:2]
             max_d = max(h_sub, w_sub)
-            if max_d > 640:
-                scale_yolo = 640.0 / max_d
-                infer_img = cv2.resize(sub_img, (int(w_sub * scale_yolo), int(h_sub * scale_yolo)), interpolation=cv2.INTER_AREA)
+            if max_d > imgsz:
+                scale_yolo = float(imgsz) / max_d
+                infer_img = cv2.resize(
+                    sub_img,
+                    (max(1, int(w_sub * scale_yolo)), max(1, int(h_sub * scale_yolo))),
+                    interpolation=cv2.INTER_AREA
+                )
             else:
                 scale_yolo = 1.0
                 infer_img = sub_img
 
-            results = self.model.predict(
+            results = model_obj.predict(
                 infer_img,
-                imgsz=640,
+                imgsz=imgsz,
                 conf=min_conf,
-                max_det=50,
+                max_det=60,
                 retina_masks=False,
                 verbose=False,
                 device=self.device
             )
             for res in results:
-                # Support both instance segmentation (masks) and object detection (boxes)
                 has_masks = (res.masks is not None and len(res.masks) > 0)
                 has_boxes = (res.boxes is not None and len(res.boxes) > 0)
                 if not has_masks and not has_boxes:
@@ -299,27 +392,11 @@ class DefectDetector:
                 for i in range(num_items):
                     cls_id = int(res.boxes.cls[i].item())
                     conf = float(res.boxes.conf[i].item())
-                    
-                    if isinstance(getattr(self.model, "names", None), dict) and cls_id in self.model.names:
-                        raw_name = str(self.model.names[cls_id]).lower().strip()
-                        if "scratch" in raw_name or "lecet" in raw_name or "gores" in raw_name:
-                            cls_name = "scratch"
-                        elif "chip" in raw_name or "sompal" in raw_name or "cuil" in raw_name:
-                            cls_name = "chip"
-                        elif "damage" in raw_name or "broken" in raw_name or "pecah" in raw_name or "rusak" in raw_name:
-                            cls_name = "broken"
-                        elif "crack" in raw_name or "retak" in raw_name:
-                            cls_name = "crack"
-                        elif "dent" in raw_name or "penyok" in raw_name or "bengkok" in raw_name:
-                            cls_name = "dent"
-                        else:
-                            cls_name = raw_name
-                    elif cls_id in range(len(DEFECT_CLASSES)):
-                        cls_name = DEFECT_CLASSES[cls_id]
-                    else:
-                        cls_name = "scratch"
+                    cls_name = self._map_yolo_class_name(model_obj, cls_id)
 
-                    # Filter by per-class confidence threshold
+                    if allowed_classes is not None and cls_name not in allowed_classes:
+                        continue
+
                     if conf < active_conf.get(cls_name, 0.15):
                         continue
 
@@ -332,13 +409,13 @@ class DefectDetector:
                         bx1, by1, bw, bh = cv2.boundingRect(pts_np)
                     else:
                         box = res.boxes.xyxy[i].cpu().numpy()
-                        bx1 = int(box[0] / scale_yolo + x1)
-                        by1 = int(box[1] / scale_yolo + y1)
-                        bx2 = int(box[2] / scale_yolo + x1)
-                        by2 = int(box[3] / scale_yolo + y1)
+                        bx1 = max(0, int(box[0] / scale_yolo + x1))
+                        by1 = max(0, int(box[1] / scale_yolo + y1))
+                        bx2 = min(w, int(box[2] / scale_yolo + x1))
+                        by2 = min(h, int(box[3] / scale_yolo + y1))
                         bw = max(1, bx2 - bx1)
                         bh = max(1, by2 - by1)
-                        global_polygon = [(bx1, by1), (bx2, by1), (bx2, by2), (bx1, by2)]
+                        global_polygon = [(bx1, by1), (bx1 + bw, by1), (bx1 + bw, by1 + bh), (bx1, by1 + bh)]
 
                     # Hardware Feature Filter: Drop standard USB charging port at bottom view center
                     rel_cx = (bx1 + bw / 2.0) / max(w, 1)
@@ -346,16 +423,18 @@ class DefectDetector:
                     if view_side == "bottom" and 0.40 <= rel_cx <= 0.60 and 0.30 <= rel_cy <= 0.70:
                         continue
 
-                    # Spatial Background Filter for raw/uncropped photos:
-                    # In side view (left/right), the phone is vertically oriented in the central corridor
-                    if view_side in ["left", "right"] and (rel_cx < 0.12 or rel_cx > 0.88 or rel_cy < 0.05 or rel_cy > 0.95):
-                        continue
+                    # Spatial Background Filter: relaxed on pre-cropped body images so corner/end defects survive
+                    if view_side in ["left", "right"]:
+                        if is_pre_cropped:
+                            if rel_cx < 0.02 or rel_cx > 0.98:
+                                continue
+                        else:
+                            if rel_cx < 0.12 or rel_cx > 0.88 or rel_cy < 0.05 or rel_cy > 0.95:
+                                continue
 
-                    # Filter out candidate if it falls on human hands/fingers
                     if hand_mask is not None and self.hand_filter.is_defect_on_hand(global_polygon, hand_mask, threshold_ratio=0.25):
                         continue
 
-                    # Filter out if completely outside phone body
                     if inspection_mask is not None:
                         crop_mask = inspection_mask[by1:by1+bh, bx1:bx1+bw]
                         if crop_mask.size > 0 and np.mean(crop_mask) < 45:
@@ -364,7 +443,7 @@ class DefectDetector:
                     metrics = self.spatial_scaler.measure_polygon_metrics(global_polygon, scale_mm)
                     bbox = (bx1, by1, bx1 + bw, by1 + bh)
 
-                    defect = DefectInstance(
+                    defects_out.append(DefectInstance(
                         class_name=cls_name,
                         confidence=conf,
                         bbox=bbox,
@@ -375,10 +454,64 @@ class DefectDetector:
                         length_mm=metrics["length_mm"],
                         view_side=view_side,
                         relative_location=self._get_location_name(bbox, w, h)
-                    )
-                    all_defects.append(defect)
+                    ))
+        return defects_out
 
-        return self._nms_defects(all_defects)
+    def _detect_with_yolo(
+        self,
+        img: np.ndarray,
+        view_side: str,
+        scale_mm: float,
+        inspection_mask: Optional[np.ndarray] = None,
+        hand_mask: Optional[np.ndarray] = None,
+        conf_threshold: Optional[float] = None,
+        is_pre_cropped: bool = False
+    ) -> List[DefectInstance]:
+        """
+        High-resolution 800px YOLO inference with calibrated per-class thresholds and V7 Multi-Specialist Fusion.
+        """
+        h, w = img.shape[:2]
+        if h > 2400:
+            mid = h // 2
+            overlap = int(h * 0.10)
+            sub_regions = [
+                (0, 0, w, mid + overlap),
+                (0, max(0, mid - overlap), w, h)
+            ]
+        else:
+            sub_regions = [(0, 0, w, h)]
+
+        active_conf = self._build_active_conf_map(conf_threshold)
+        imgsz = 800
+
+        all_defects = self._predict_yolo_single_model(
+            self.model, img, sub_regions, view_side, scale_mm, active_conf,
+            imgsz=imgsz, allowed_classes=None, is_pre_cropped=is_pre_cropped,
+            inspection_mask=inspection_mask, hand_mask=hand_mask
+        )
+
+        # Multi-Specialist Auxiliary Fusion for Model V7 (V5 scratch/dent + model_tambahan hard_damage)
+        if self.is_v7_model and self.enable_aux_fusion:
+            self._ensure_v7_auxiliary_models()
+            if self._aux_v5_model is not None:
+                v5_defs = self._predict_yolo_single_model(
+                    self._aux_v5_model, img, sub_regions, view_side, scale_mm, active_conf,
+                    imgsz=800, allowed_classes={"scratch", "dent"}, is_pre_cropped=is_pre_cropped,
+                    inspection_mask=inspection_mask, hand_mask=hand_mask
+                )
+                all_defects.extend(v5_defs)
+
+            if self._aux_tambahan_model is not None:
+                hd_conf = dict(active_conf)
+                hd_conf["hard_damage"] = max(0.32, active_conf.get("hard_damage", 0.18))
+                tambahan_defs = self._predict_yolo_single_model(
+                    self._aux_tambahan_model, img, sub_regions, view_side, scale_mm, hd_conf,
+                    imgsz=800, allowed_classes={"hard_damage"}, is_pre_cropped=is_pre_cropped,
+                    inspection_mask=inspection_mask, hand_mask=hand_mask
+                )
+                all_defects.extend(tambahan_defs)
+
+        return self._nms_defects(all_defects, iou_thresh=0.45)
 
     def _detect_with_heuristics(
         self,
@@ -578,6 +711,7 @@ class DefectDetector:
     ) -> List[DefectInstance]:
         """
         Suppresses dense periodic parallel micro-scratches caused by ESD glove fabrics or table textures.
+        Never drops structural or localized defects (chip, dent, hard_damage, broken, crack).
         """
         if len(defects) < min_cluster_size:
             return defects
@@ -586,9 +720,11 @@ class DefectDetector:
         drop_indices = set()
 
         for i in range(len(defects)):
+            if defects[i].class_name != "scratch":
+                continue
             cluster = [i]
             for j in range(len(defects)):
-                if i != j:
+                if i != j and defects[j].class_name == "scratch":
                     dist = float(np.hypot(centers[i][0] - centers[j][0], centers[i][1] - centers[j][1]))
                     if dist < max_dist:
                         cluster.append(j)
@@ -674,7 +810,7 @@ class DefectDetector:
             cv2.rectangle(annotated, (bx1, by1), (bx2, by2), color, -1)
             cv2.rectangle(annotated, (bx1, by1), (bx2, by2), (20, 20, 20), 1)
 
-            text_color = (255, 255, 255) if d.class_name in ["crack", "broken", "dent"] else (15, 15, 15)
+            text_color = (255, 255, 255) if d.class_name in ["crack", "broken", "hard_damage", "dent"] else (15, 15, 15)
             cv2.putText(
                 annotated,
                 label,
