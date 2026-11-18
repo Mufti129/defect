@@ -359,7 +359,7 @@ class StreamlitInspectionEngine:
         stage1_meta = {}
         inspected_views = {}
 
-        if use_stage1_crop:
+        if use_stage1_crop and not is_curated:
             stage1_temp_dir = tempfile.mkdtemp(prefix="stage1_crop_")
             for side, p in view_images.items():
                 if not os.path.exists(p):

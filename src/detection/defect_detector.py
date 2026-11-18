@@ -47,7 +47,7 @@ DEFAULT_CONF_THRESHOLDS = {
     "chip": 0.22,         # Suppresses Grade A false positives while catching rim chips
     "crack": 0.16,        # Critical structural defect
     "broken": 0.18,       # Structural fractures
-    "hard_damage": 0.18,  # Unified structural fractures / glass shatter
+    "hard_damage": 0.35,  # Structural fractures / glass shatter (calibrated to eliminate Grade A titanium bevel FPs)
 }
 
 # Standard phone dimension reference for pixel-to-millimeter scaling
@@ -203,7 +203,7 @@ class DefectDetector:
             "dent": max(0.10, round(base * 0.70, 4)),
             "crack": max(0.12, round(base * 0.85, 4)),
             "broken": max(0.12, round(base * 0.85, 4)),
-            "hard_damage": max(0.12, round(base * 0.85, 4)),
+            "hard_damage": max(0.35, round(base * 1.5, 4)),
             "chip": max(0.15, round(base * 1.15, 4)),
         }
 
@@ -502,14 +502,21 @@ class DefectDetector:
                 all_defects.extend(v5_defs)
 
             if self._aux_tambahan_model is not None:
-                hd_conf = dict(active_conf)
-                hd_conf["hard_damage"] = max(0.32, active_conf.get("hard_damage", 0.18))
-                tambahan_defs = self._predict_yolo_single_model(
-                    self._aux_tambahan_model, img, sub_regions, view_side, scale_mm, hd_conf,
-                    imgsz=800, allowed_classes={"hard_damage"}, is_pre_cropped=is_pre_cropped,
-                    inspection_mask=inspection_mask, hand_mask=hand_mask
+                # Conditional execution: hard_damage is predominantly on front/back (screen/glass back shatter)
+                # or when severe structural defects (broken, crack, dent) are already spotted
+                should_run_hd = (
+                    view_side in ["front", "back"] or
+                    any(d.class_name in ("broken", "crack", "dent", "hard_damage") for d in all_defects)
                 )
-                all_defects.extend(tambahan_defs)
+                if should_run_hd:
+                    hd_conf = dict(active_conf)
+                    hd_conf["hard_damage"] = max(0.35, active_conf.get("hard_damage", 0.35))
+                    tambahan_defs = self._predict_yolo_single_model(
+                        self._aux_tambahan_model, img, sub_regions, view_side, scale_mm, hd_conf,
+                        imgsz=800, allowed_classes={"hard_damage"}, is_pre_cropped=is_pre_cropped,
+                        inspection_mask=inspection_mask, hand_mask=hand_mask
+                    )
+                    all_defects.extend(tambahan_defs)
 
         return self._nms_defects(all_defects, iou_thresh=0.45)
 
