@@ -26,6 +26,11 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 
 BASE_DIR = Path(__file__).resolve().parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+from ml_grading_aggregator import FEATURE_NAMES_V7, MLGradingAggregator
+
 DEMO_DIR = BASE_DIR / "streamlit_inspection_app" / "demo_samples"
 if not DEMO_DIR.exists():
     DEMO_DIR = BASE_DIR / "demo_samples"
@@ -34,47 +39,14 @@ WEIGHTS_DIR = BASE_DIR / "streamlit_inspection_app" / "weights"
 V7_WEIGHTS_DIR = BASE_DIR / "weights_v7"
 CACHE_FILE = BASE_DIR / "reports" / "v7_ml_400_units_defects_cache.json"
 
-FEATURE_NAMES_V7 = [
-    "total_defects",
-    "scratch_count",
-    "dent_count",
-    "chip_count",
-    "hard_damage_count",
-    "total_area_mm2",
-    "max_defect_length_mm",
-    "max_defect_area_mm2",
-    "frame_defect_count",
-    "frame_area_mm2",
-    "frame_max_length_mm",
-    "frame_dpi",
-    "bottom_back_defect_count",
-    "bottom_back_area_mm2",
-    "bottom_back_dpi",
-    "total_dpi",
-    "flawless_flag",
-    "scratch_density_per_cm2",
-    "dent_cluster_count",
-    "cross_view_penetration",
-    "max_box_area_ratio",
-    "hard_damage_veto_flag",
-    "dent_severity_index",
-    "chip_spread_ratio"
-]
-
 GRADES = ["A", "B", "C", "D"]
 GRADE_TO_ID = {"A": 0, "B": 1, "C": 2, "D": 3}
 ID_TO_GRADE = {0: "A", 1: "B", 2: "C", 3: "D"}
 
 def extract_24_features(unit_defects: List[Dict], total_views_count: int = 5) -> np.ndarray:
+    """Computes V7 DPI terms and delegates 24-feature extraction to MLGradingAggregator (DRY)."""
     housing_defects = [d for d in unit_defects if d.get("view_side") != "front"]
-    frame_defects = [d for d in housing_defects if d.get("view_side") in ["left", "right", "top"]]
-    bottom_back_defects = [d for d in housing_defects if d.get("view_side") in ["bottom", "back"]]
-
     c_counts = {"scratch": 0, "chip": 0, "dent": 0, "hard_damage": 0}
-    sides_with_defects = set()
-    sides_with_dent = set()
-    sides_with_chip = set()
-
     total_dpi = 0.0
     frame_dpi = 0.0
     bottom_back_dpi = 0.0
@@ -84,21 +56,9 @@ def extract_24_features(unit_defects: List[Dict], total_views_count: int = 5) ->
 
     for d in housing_defects:
         raw_c = d.get("class_name", "scratch").lower()
-        if raw_c in ["broken", "crack"]:
-            c_name = "hard_damage"
-        elif raw_c in c_counts:
-            c_name = raw_c
-        else:
-            c_name = "scratch"
-
+        c_name = "hard_damage" if raw_c in ["broken", "crack"] else (raw_c if raw_c in c_counts else "scratch")
         c_counts[c_name] += 1
         side = d.get("view_side", "back")
-        sides_with_defects.add(side)
-        if c_name == "dent":
-            sides_with_dent.add(side)
-        if c_name == "chip":
-            sides_with_chip.add(side)
-
         l_mm = float(d.get("length_mm", 0.0))
         size_f = max(1.0, l_mm / 3.0)
         p = severity_weights.get(c_name, 1.0) * zone_weights.get(side, 1.0) * size_f
@@ -108,50 +68,14 @@ def extract_24_features(unit_defects: List[Dict], total_views_count: int = 5) ->
         else:
             bottom_back_dpi += p
 
-    total_area = sum(d.get("area_mm2", 0.0) for d in housing_defects)
-    max_len = max([d.get("length_mm", 0.0) for d in housing_defects], default=0.0)
-    max_area = max([d.get("area_mm2", 0.0) for d in housing_defects], default=0.0)
-
-    frame_area = sum(d.get("area_mm2", 0.0) for d in frame_defects)
-    frame_max_len = max([d.get("length_mm", 0.0) for d in frame_defects], default=0.0)
-    bottom_back_area = sum(d.get("area_mm2", 0.0) for d in bottom_back_defects)
-
-    # Typical smartphone housing total surface area is approx 120 cm2
-    scratch_density = c_counts["scratch"] / 120.0
-    dent_clusters = float(len(sides_with_dent))
-    cross_view_penetration = float(len(sides_with_defects)) / max(1.0, float(total_views_count))
-    max_box_area_ratio = min(1.0, max_area / 4000.0)
-    hard_damage_veto = 1.0 if c_counts["hard_damage"] > 0 else 0.0
-    dent_severity = float(c_counts["dent"]) * max_len
-    chip_spread_ratio = float(len(sides_with_chip)) / 4.0
-
-    features = [
-        float(len(housing_defects)),
-        float(c_counts["scratch"]),
-        float(c_counts["dent"]),
-        float(c_counts["chip"]),
-        float(c_counts["hard_damage"]),
-        round(total_area, 3),
-        round(max_len, 3),
-        round(max_area, 3),
-        float(len(frame_defects)),
-        round(frame_area, 3),
-        round(frame_max_len, 3),
-        round(frame_dpi, 2),
-        float(len(bottom_back_defects)),
-        round(bottom_back_area, 3),
-        round(bottom_back_dpi, 2),
-        round(total_dpi, 2),
-        1.0 if len(housing_defects) == 0 else 0.0,
-        round(scratch_density, 4),
-        dent_clusters,
-        round(cross_view_penetration, 3),
-        round(max_box_area_ratio, 4),
-        hard_damage_veto,
-        round(dent_severity, 2),
-        round(chip_spread_ratio, 3)
-    ]
-    return np.array(features, dtype=np.float32)
+    return MLGradingAggregator.extract_features_v7(
+        defects_detail=unit_defects,
+        class_counts=c_counts,
+        total_dpi=total_dpi,
+        frame_dpi=frame_dpi,
+        bottom_back_dpi=bottom_back_dpi,
+        total_views_count=total_views_count
+    )
 
 def collect_or_load_dataset() -> Tuple[np.ndarray, np.ndarray, List[str]]:
     # Check cache
@@ -191,7 +115,9 @@ def collect_or_load_dataset() -> Tuple[np.ndarray, np.ndarray, List[str]]:
             continue
         unit_dirs = sorted([d for d in g_path.iterdir() if d.is_dir() and not d.name.startswith(".")])
         print(f"          Processing {len(unit_dirs)} units for {g_folder}...")
-        for u_dir in unit_dirs:
+        for idx, u_dir in enumerate(unit_dirs):
+            if (idx + 1) % 20 == 0 or idx == 0 or (idx + 1) == len(unit_dirs):
+                print(f"            [{g_folder}] Unit {idx+1}/{len(unit_dirs)}: {u_dir.name}")
             unit_defects = []
             views_found = 0
             for s in valid_sides:
@@ -296,9 +222,12 @@ def train_and_evaluate():
     final_model.fit(X, y)
 
     # Save artifacts
+    ROOT_WEIGHTS_DIR = BASE_DIR / "weights"
+    ROOT_WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
     WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
     V7_WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
 
+    dest_root = ROOT_WEIGHTS_DIR / "ml_grading_model_v7.joblib"
     dest_streamlit = WEIGHTS_DIR / "ml_grading_model_v7.joblib"
     dest_v7 = V7_WEIGHTS_DIR / "ml_grading_model_v7.joblib"
 
@@ -314,9 +243,11 @@ def train_and_evaluate():
         "per_grade_recall": recalls
     }
 
+    joblib.dump(model_payload, dest_root)
     joblib.dump(model_payload, dest_streamlit)
     joblib.dump(model_payload, dest_v7)
     print(f"\n[Saved] Final ML Model V7 saved to:")
+    print(f"  -> {dest_root}")
     print(f"  -> {dest_streamlit}")
     print(f"  -> {dest_v7}")
 

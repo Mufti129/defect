@@ -134,10 +134,10 @@ if __name__ == '__main__':
     if v_to_run == 'v6':
         run_eval_for_model('v6', 'weights/phone_defect_model_v6_best.pt')
     elif v_to_run == 'v7':
-        run_eval_for_model('v7', 'weights/phone_defect_model_v7_best.pt')
+        run_eval_for_model('v7', 'weights/phone_defect_model_v7_best.pt', ml_path='weights/ml_grading_model_v7.joblib')
     elif v_to_run == 'v5':
         run_eval_for_model('v5', 'weights/phone_defect_model_v5_best.pt')
     elif v_to_run == 'all':
         run_eval_for_model('v5', 'weights/phone_defect_model_v5_best.pt')
         run_eval_for_model('v6', 'weights/phone_defect_model_v6_best.pt')
-        run_eval_for_model('v7', 'weights/phone_defect_model_v7_best.pt')
+        run_eval_for_model('v7', 'weights/phone_defect_model_v7_best.pt', ml_path='weights/ml_grading_model_v7.joblib')

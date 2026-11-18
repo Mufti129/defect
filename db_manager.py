@@ -13,12 +13,15 @@ import os
 import json
 import sqlite3
 import shutil
+import threading
 from pathlib import Path
 from datetime import datetime
 from contextlib import contextmanager
 from typing import Dict, Any, List, Optional, Tuple
 import cv2
 import pandas as pd
+
+_SNAPSHOT_LOCK = threading.Lock()
 
 CURRENT_DIR = Path(__file__).resolve().parent
 DATA_DIR = CURRENT_DIR / "data"
@@ -78,8 +81,11 @@ class InspectionDBManager:
 
     @contextmanager
     def _get_connection(self):
-        conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0, check_same_thread=False)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA busy_timeout=10000;")
         try:
             yield conn
         finally:
@@ -155,22 +161,41 @@ class InspectionDBManager:
                 except Exception as e:
                     print(f"[InspectionDBManager] Warning during snapshot restore: {e}")
 
-    def dump_snapshot(self):
-        """Dumps all database records into permanent JSON and CSV snapshot files."""
+    def _write_snapshot_files(self):
+        """Exports all database records to permanent JSON and CSV snapshot files."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM inspection_records ORDER BY id ASC;")
+            rows = [dict(r) for r in cursor.fetchall()]
+
+        with open(SNAPSHOT_PATH, "w", encoding="utf-8") as f:
+            json.dump(rows, f, indent=2, ensure_ascii=False)
+
+        if rows:
+            df = pd.DataFrame(rows)
+            df.to_csv(SNAPSHOT_CSV_PATH, index=False)
+
+    def _dump_snapshot_worker(self):
+        """Internal non-blocking worker for background snapshot export."""
+        if not _SNAPSHOT_LOCK.acquire(blocking=False):
+            return
         try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM inspection_records ORDER BY id ASC;")
-                rows = [dict(r) for r in cursor.fetchall()]
-
-            with open(SNAPSHOT_PATH, "w", encoding="utf-8") as f:
-                json.dump(rows, f, indent=2, ensure_ascii=False)
-
-            if rows:
-                df = pd.DataFrame(rows)
-                df.to_csv(SNAPSHOT_CSV_PATH, index=False)
+            self._write_snapshot_files()
         except Exception as e:
             print(f"[InspectionDBManager] Warning dumping snapshot: {e}")
+        finally:
+            _SNAPSHOT_LOCK.release()
+
+    def dump_snapshot(self, async_mode: bool = True):
+        """Dumps all database records into permanent JSON and CSV snapshot files."""
+        if async_mode:
+            threading.Thread(target=self._dump_snapshot_worker, daemon=True).start()
+            return
+        with _SNAPSHOT_LOCK:
+            try:
+                self._write_snapshot_files()
+            except Exception as e:
+                print(f"[InspectionDBManager] Warning dumping snapshot: {e}")
 
     def save_record(
         self,
@@ -211,20 +236,23 @@ class InspectionDBManager:
         if raw_views:
             for side, p in raw_views.items():
                 if os.path.exists(p):
-                    shutil.copy2(p, raw_dir / f"{side}.jpg")
-                    views_saved.append(side)
+                    safe_side = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(side)) or "view"
+                    shutil.copy2(p, raw_dir / f"{safe_side}.jpg")
+                    views_saved.append(safe_side)
 
         # 2. Save cropped views (Stage 1)
         if cropped_views:
             for side, p in cropped_views.items():
                 if os.path.exists(p):
-                    shutil.copy2(p, crop_dir / f"{side}.jpg")
+                    safe_side = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(side)) or "view"
+                    shutil.copy2(p, crop_dir / f"{safe_side}.jpg")
 
         # 3. Save annotated views
         if annotated_views_bgr:
             for side, img in annotated_views_bgr.items():
                 if img is not None:
-                    cv2.imwrite(str(ann_dir / f"{side}.jpg"), img)
+                    safe_side = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(side)) or "view"
+                    cv2.imwrite(str(ann_dir / f"{safe_side}.jpg"), img)
 
         # 4. Save composite collage card
         if card_bgr is not None:

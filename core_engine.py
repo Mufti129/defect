@@ -11,6 +11,8 @@ Provides a unified interface for the Streamlit web application to run:
 
 import os
 import sys
+import shutil
+import threading
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
 import cv2
@@ -279,8 +281,29 @@ class StreamlitInspectionEngine:
         self.guardrail = ObjectGuardrail()
         self.db_manager = InspectionDBManager()
         self.last_stage1_previews = {}
+        self._infer_lock = threading.RLock()
 
     def run_unit_inspection(
+        self,
+        unit_id: str,
+        view_images: Dict[str, str],
+        conf_threshold: Optional[float] = None,
+        use_stage1_crop: bool = True,
+        is_golden_sample: bool = False
+    ) -> Tuple[Dict[str, Any], np.ndarray, Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+        """
+        Thread-safe entrypoint for running complete evaluation across all provided views.
+        """
+        with self._infer_lock:
+            return self._run_unit_inspection_impl(
+                unit_id=unit_id,
+                view_images=view_images,
+                conf_threshold=conf_threshold,
+                use_stage1_crop=use_stage1_crop,
+                is_golden_sample=is_golden_sample,
+            )
+
+    def _run_unit_inspection_impl(
         self,
         unit_id: str,
         view_images: Dict[str, str],
@@ -358,76 +381,81 @@ class StreamlitInspectionEngine:
         stage1_previews = {}
         stage1_meta = {}
         inspected_views = {}
+        stage1_temp_dir = None
 
-        if use_stage1_crop and not is_curated:
-            stage1_temp_dir = tempfile.mkdtemp(prefix="stage1_crop_")
-            for side, p in view_images.items():
-                if not os.path.exists(p):
-                    continue
-                img = cv2.imread(p)
-                if img is None:
-                    continue
-                crop_res = self.phone_localizer.localize_and_crop(img, side)
-                crop_path = os.path.join(stage1_temp_dir, f"{side}.jpg")
-                cv2.imwrite(crop_path, crop_res["cropped_img"])
-                inspected_views[side] = crop_path
-                stage1_previews[side] = crop_res["preview_img"]
-                stage1_meta[side] = {
-                    "bbox": list(crop_res["bbox"]),
-                    "tilt_angle": float(round(crop_res["tilt_angle"], 2)),
-                    "confidence": str(crop_res["confidence"]),
-                    "crop_resolution": f"{crop_res['cropped_img'].shape[1]}x{crop_res['cropped_img'].shape[0]}"
-                }
-        else:
-            inspected_views = view_images
-
-        # Run grading on clean inspected views
-        report = self.grading_engine.evaluate_phone_unit(
-            unit_id,
-            inspected_views,
-            conf_threshold=conf_threshold,
-            version=self.version
-        )
-
-        # Inject model metadata & Stage 1 results
-        report["status"] = "SUCCESS"
-        report["is_valid_phone"] = True
-        report["model_version"] = self.version
-        report["model_name"] = self.config["name"]
-        report["model_arch"] = self.config["arch"]
-        report["model_status"] = self.config["status"]
-        report["stage1_enabled"] = use_stage1_crop
-        report["stage1_meta"] = stage1_meta
-        if conf_threshold is not None:
-            report["conf_threshold_used"] = conf_threshold
-
-        # Generate collage card in memory reusing precomputed defects
-        card_bgr, annotated_views = self.generate_card_image(
-            report,
-            inspected_views,
-            conf_threshold=conf_threshold
-        )
-        # Clean internal objects to ensure JSON serializability
-        report.pop("_defect_instances_by_view", None)
-        self.last_stage1_previews = stage1_previews
-
-        # Save successful inspection record and images to persistent database bank
         try:
-            self.db_manager.save_record(
-                unit_id=unit_id,
-                model_version=self.version,
-                model_name=self.config["name"],
-                is_valid_phone=True,
-                report=report,
-                raw_views=view_images,
-                cropped_views=inspected_views if use_stage1_crop else None,
-                annotated_views_bgr=annotated_views,
-                card_bgr=card_bgr
-            )
-        except Exception as e:
-            print(f"[InspectionEngine] Warning: Could not save record to database: {e}")
+            if use_stage1_crop and not is_curated:
+                stage1_temp_dir = tempfile.mkdtemp(prefix="stage1_crop_")
+                for side, p in view_images.items():
+                    if not os.path.exists(p):
+                        continue
+                    img = cv2.imread(p)
+                    if img is None:
+                        continue
+                    crop_res = self.phone_localizer.localize_and_crop(img, side)
+                    crop_path = os.path.join(stage1_temp_dir, f"{side}.jpg")
+                    cv2.imwrite(crop_path, crop_res["cropped_img"])
+                    inspected_views[side] = crop_path
+                    stage1_previews[side] = crop_res["preview_img"]
+                    stage1_meta[side] = {
+                        "bbox": list(crop_res["bbox"]),
+                        "tilt_angle": float(round(crop_res["tilt_angle"], 2)),
+                        "confidence": str(crop_res["confidence"]),
+                        "crop_resolution": f"{crop_res['cropped_img'].shape[1]}x{crop_res['cropped_img'].shape[0]}"
+                    }
+            else:
+                inspected_views = view_images
 
-        return report, card_bgr, annotated_views, stage1_previews
+            # Run grading on clean inspected views
+            report = self.grading_engine.evaluate_phone_unit(
+                unit_id,
+                inspected_views,
+                conf_threshold=conf_threshold,
+                version=self.version
+            )
+
+            # Inject model metadata & Stage 1 results
+            report["status"] = "SUCCESS"
+            report["is_valid_phone"] = True
+            report["model_version"] = self.version
+            report["model_name"] = self.config["name"]
+            report["model_arch"] = self.config["arch"]
+            report["model_status"] = self.config["status"]
+            report["stage1_enabled"] = bool(use_stage1_crop and not is_curated)
+            report["stage1_meta"] = stage1_meta
+            if conf_threshold is not None:
+                report["conf_threshold_used"] = conf_threshold
+
+            # Generate collage card in memory reusing precomputed defects
+            card_bgr, annotated_views = self.generate_card_image(
+                report,
+                inspected_views,
+                conf_threshold=conf_threshold
+            )
+            # Clean internal objects to ensure JSON serializability
+            report.pop("_defect_instances_by_view", None)
+            self.last_stage1_previews = stage1_previews
+
+            # Save successful inspection record and images to persistent database bank
+            try:
+                self.db_manager.save_record(
+                    unit_id=unit_id,
+                    model_version=self.version,
+                    model_name=self.config["name"],
+                    is_valid_phone=True,
+                    report=report,
+                    raw_views=view_images,
+                    cropped_views=inspected_views if stage1_temp_dir is not None else None,
+                    annotated_views_bgr=annotated_views,
+                    card_bgr=card_bgr
+                )
+            except Exception as e:
+                print(f"[InspectionEngine] Warning: Could not save record to database: {e}")
+
+            return report, card_bgr, annotated_views, stage1_previews
+        finally:
+            if stage1_temp_dir is not None:
+                shutil.rmtree(stage1_temp_dir, ignore_errors=True)
 
     def _create_guardrail_card(
         self,

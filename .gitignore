@@ -61,7 +61,11 @@ weights/phone_defect_model_v7*.pt
 *.swp
 *.swo
 
-# Collected Session Images & Local Workspace Build/Report Artifacts
+# Collected Session Images & Local Workspace Build/Report Artifacts & Private Keys
+*.pem
+*.key
+*.jks
+*.keystore
 data/collected_data/
 streamlit_inspection_app/data/collected_data/
 sample_card_output.jpg

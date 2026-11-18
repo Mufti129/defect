@@ -27,7 +27,11 @@ from .mobile_web_service import (
 from .diagnostic_db import DiagnosticDatabase
 from .model_lookup import lookup_commercial_model, COMMERCIAL_DEVICE_DATABASE
 from .apple_sysdiagnose_parser import AppleSysdiagnoseParser, AppleDiagnosticReport
-from .pdf_certificate import generate_unified_inspection_pdf, generate_apple_diagnostic_certificate_pdf
+try:
+    from .pdf_certificate import generate_unified_inspection_pdf, generate_apple_diagnostic_certificate_pdf
+except ImportError:
+    generate_unified_inspection_pdf = None
+    generate_apple_diagnostic_certificate_pdf = None
 
 __all__ = [
     "DeviceManager",

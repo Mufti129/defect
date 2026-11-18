@@ -54,7 +54,7 @@ def test_inspect():
             
     payload = {
         "unit_id": f"TEST-{first_unit.name}",
-        "model_version": "v6",
+        "model_version": "v7",
         "conf_threshold": 0.20,
         "views": views,
         "device_info": {

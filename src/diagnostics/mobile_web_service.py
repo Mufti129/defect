@@ -10,6 +10,9 @@ Collects battery health, multi-touch digitizer dead-zones, motion sensors,
 and acoustic feedback, streaming results directly to the Streamlit session.
 """
 
+import os
+import re
+import html as html_lib
 import socket
 import threading
 import json
@@ -29,9 +32,31 @@ except ImportError:
 # Global thread-safe session result registry
 _SESSION_RESULTS: Dict[str, Dict[str, Any]] = {}
 _SESSION_DEVICES: Dict[str, list] = {}
+_SESSION_LOCK = threading.RLock()
 _SERVER_INSTANCE: Optional[HTTPServer] = None
 _SERVER_THREAD: Optional[threading.Thread] = None
 _SERVER_PORT = 8503
+SESSION_TTL_SEC = 3600
+MAX_ACTIVE_SESSIONS = 500
+MAX_DIAGNOSTIC_SUBMIT_BYTES = 5 * 1024 * 1024  # 5 MB limit
+
+
+def _sanitize_session_id(raw_id: Any) -> str:
+    """Allows only alphanumeric, hyphen, and underscore characters (max 64 chars)."""
+    cleaned = re.sub(r"[^a-zA-Z0-9_\-]", "", str(raw_id or ""))[:64]
+    return cleaned or "MCV-MOBILE"
+
+
+def _evict_expired_sessions() -> None:
+    """Removes expired session entries from memory to prevent unbounded growth (caller holds _SESSION_LOCK)."""
+    now = time.time()
+    expired = [
+        sid for sid, data in list(_SESSION_RESULTS.items())
+        if now - float(data.get("received_at", now)) > SESSION_TTL_SEC
+    ]
+    for sid in expired:
+        _SESSION_RESULTS.pop(sid, None)
+        _SESSION_DEVICES.pop(sid, None)
 
 
 def get_local_lan_ip() -> str:
@@ -326,7 +351,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             </div>
             <div style="margin-top: 8px; display: flex; gap: 8px;">
                 <button type="button" id="btn-toggle-charging" onclick="toggleChargingState()" style="flex: 1; background: #131B2E; color: #38BDF8; border: 1px solid #2563EB; padding: 8px; border-radius: 6px; font-size: 0.74rem; font-weight: 700; cursor: pointer;">
-                    🔌 Status: Lepas Charger (Klik untuk Ganti ke Sedang Mengisi)
+                    Status: Lepas Charger (Klik untuk Ganti ke Sedang Mengisi)
                 </button>
             </div>
         </div>
@@ -357,7 +382,7 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
     <div class="card" id="card-apple-sysdiagnose" style="border: 1px solid #38BDF8; background: linear-gradient(135deg, #0B132B 0%, #172554 100%);">
         <div class="card-title">
             <span style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.1rem; color: #38BDF8;"></span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
                 <span style="color: #F8FAFC;">Uji Khusus Apple iPhone (Sysdiagnose &amp; Deep Hardware)</span>
             </span>
             <span class="badge badge-info" id="apple-badge">APPLE IOS</span>
@@ -711,10 +736,10 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
 
             <div style="display: flex; gap: 6px; margin-bottom: 8px;">
                 <button type="button" id="btn-cam-rear" onclick="startCameraTest('environment')" style="flex: 1; background: #1E293B; color: #38BDF8; border: 1px solid #0284C7; padding: 8px; border-radius: 6px; font-weight: 700; font-size: 0.74rem; cursor: pointer;">
-                    📸 Buka Kamera Belakang
+                    Buka Kamera Belakang
                 </button>
                 <button type="button" id="btn-cam-front" onclick="startCameraTest('user')" style="flex: 1; background: #1E293B; color: #38BDF8; border: 1px solid #0284C7; padding: 8px; border-radius: 6px; font-weight: 700; font-size: 0.74rem; cursor: pointer;">
-                    🤳 Buka Kamera Depan
+                    Buka Kamera Depan
                 </button>
             </div>
 
@@ -870,10 +895,10 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
         <!-- Floating Scroll Helper Buttons -->
         <div style="position: fixed; right: 8px; top: 66px; display: flex; flex-direction: column; gap: 6px; z-index: 2147483647;">
             <button type="button" onclick="scrollModalDown()" style="background: rgba(15, 23, 42, 0.9); color: #38BDF8; border: 1.5px solid #0284C7; padding: 7px 11px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">
-                ⬇️ Scroll Bawah
+                Scroll Bawah
             </button>
             <button type="button" onclick="scrollModalUp()" style="background: rgba(15, 23, 42, 0.9); color: #38BDF8; border: 1.5px solid #0284C7; padding: 7px 11px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.6);">
-                ⬆️ Scroll Atas
+                Scroll Atas
             </button>
         </div>
 
@@ -2320,12 +2345,12 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
             const btn = document.getElementById('btn-toggle-charging');
             const lbl = document.getElementById('bat-charging');
             if (batteryData.charging) {
-                if (btn) btn.innerText = '⚡ Status: Sedang Mengisi Daya (Klik untuk Lepas)';
+                if (btn) btn.innerText = 'Status: Sedang Mengisi Daya (Klik untuk Lepas)';
                 if (btn) btn.style.borderColor = '#10B981';
                 if (btn) btn.style.color = '#34D399';
                 if (lbl) lbl.innerText = 'Mengisi Daya';
             } else {
-                if (btn) btn.innerText = '🔌 Status: Lepas Charger (Klik untuk Ganti ke Sedang Mengisi)';
+                if (btn) btn.innerText = 'Status: Lepas Charger (Klik untuk Ganti ke Sedang Mengisi)';
                 if (btn) btn.style.borderColor = '#2563EB';
                 if (btn) btn.style.color = '#38BDF8';
                 if (lbl) lbl.innerText = 'Lepas Charger';
@@ -2361,12 +2386,12 @@ HTML_MOBILE_DIAGNOSTIC_PAGE = r"""<!DOCTYPE html>
                     const cBtn = document.getElementById('btn-toggle-charging');
                     const cLbl = document.getElementById('bat-charging');
                     if (bat.charging) {
-                        if (cBtn) cBtn.innerText = '⚡ Status: Sedang Mengisi Daya (Terdeteksi Otomatis)';
+                        if (cBtn) cBtn.innerText = 'Status: Sedang Mengisi Daya (Terdeteksi Otomatis)';
                         if (cBtn) cBtn.style.borderColor = '#10B981';
                         if (cBtn) cBtn.style.color = '#34D399';
                         if (cLbl) cLbl.innerText = 'Mengisi Daya';
                     } else {
-                        if (cBtn) cBtn.innerText = '🔌 Status: Lepas Charger (Terdeteksi Otomatis)';
+                        if (cBtn) cBtn.innerText = 'Status: Lepas Charger (Terdeteksi Otomatis)';
                         if (cBtn) cBtn.style.borderColor = '#2563EB';
                         if (cBtn) cBtn.style.color = '#38BDF8';
                         if (cLbl) cLbl.innerText = 'Lepas Charger';
@@ -3748,8 +3773,8 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path in ["/", "/diagnose", "/index.html"]:
             qs = parse_qs(url.query)
-            sess_id = qs.get("session", ["MCV-MOBILE"])[0]
-            # Inject session ID into HTML
+            sess_id = _sanitize_session_id(qs.get("session", ["MCV-MOBILE"])[0])
+            # Inject sanitized session ID into HTML
             rendered_html = get_mobile_diagnostic_html(sess_id)
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -3777,13 +3802,41 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path in ["/api/submit", "/api/submit_diagnostic"]:
             qs = parse_qs(url.query)
-            session_id = qs.get("session", ["SESSION-DEFAULT"])[0]
+            raw_session = qs.get("session", ["SESSION-DEFAULT"])[0]
+            session_id = _sanitize_session_id(raw_session or "SESSION-DEFAULT")
 
-            content_length = int(self.headers.get("Content-Length", 0))
+            try:
+                content_length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": "Invalid Content-Length"}).encode("utf-8"))
+                return
+
+            if content_length <= 0:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": "Missing JSON request body"}).encode("utf-8"))
+                return
+
+            if content_length > MAX_DIAGNOSTIC_SUBMIT_BYTES:
+                self.send_response(413)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": "Payload exceeds 5MB limit"}).encode("utf-8"))
+                return
+
             post_data = self.rfile.read(content_length)
 
             try:
                 payload = json.loads(post_data.decode("utf-8"))
+                if not isinstance(payload, dict):
+                    raise ValueError("Payload must be a JSON object")
                 payload["received_at"] = time.time()
                 set_mobile_session_result(session_id, payload)
 
@@ -3800,7 +3853,13 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
-                self.wfile.write(json.dumps({"status": "success", "session": session_id}).encode("utf-8"))
+                self.wfile.write(json.dumps({
+                    "status": "success",
+                    "session": session_id,
+                    "integrity_verified": payload.get("integrity_verified", False),
+                    "client_tamper_detected": payload.get("client_tamper_detected", False),
+                    "server_verified_valuation": payload.get("server_verified_valuation")
+                }).encode("utf-8"))
             except Exception as e:
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json")
@@ -3810,7 +3869,7 @@ class DiagnosticHTTPRequestHandler(BaseHTTPRequestHandler):
 
         elif url.path in ["/api/upload_sysdiagnose", "/api/upload_apple"]:
             qs = parse_qs(url.query)
-            session_id = qs.get("session", ["SESSION-DEFAULT"])[0]
+            session_id = _sanitize_session_id(qs.get("session", ["SESSION-DEFAULT"])[0])
             filename = qs.get("filename", ["sysdiagnose.tar.gz"])[0]
 
             content_length = int(self.headers.get("Content-Length", 0))
@@ -3956,10 +4015,12 @@ def get_apple_client_js() -> str:
 
 
 def get_mobile_diagnostic_html(session_id: str, app_base_url: str = "") -> str:
-    """Returns the full mobile HTML diagnostic suite with session, base URL, and Apple client JS injected."""
+    """Returns the full mobile HTML diagnostic suite with sanitized session, base URL, and Apple client JS injected."""
+    safe_session = html_lib.escape(_sanitize_session_id(session_id), quote=True)
+    safe_base_url = html_lib.escape(str(app_base_url or ""), quote=True)
     html = HTML_MOBILE_DIAGNOSTIC_PAGE
-    html = html.replace("__SESSION_ID__", session_id)
-    html = html.replace("__APP_BASE_URL__", app_base_url or "")
+    html = html.replace("__SESSION_ID__", safe_session)
+    html = html.replace("__APP_BASE_URL__", safe_base_url)
 
     client_js = get_apple_client_js()
     if client_js:
@@ -3973,35 +4034,116 @@ def get_mobile_diagnostic_html(session_id: str, app_base_url: str = "") -> str:
     return html
 
 
+def _reverify_server_valuation(payload: Dict[str, Any]) -> None:
+    """
+    Recomputes authoritative smartphone valuation on the server side using
+    pricing_engine.calculate_valuation to prevent client-side tampering.
+    """
+    brand = payload.get("brand")
+    model = payload.get("model") or payload.get("device_model")
+    if not (brand and model):
+        payload.setdefault("integrity_verified", False)
+        return
+
+    try:
+        try:
+            from pricing_engine import calculate_valuation
+        except ImportError:
+            import sys
+            from pathlib import Path
+            _root = str(Path(__file__).resolve().parent.parent.parent)
+            if _root not in sys.path:
+                sys.path.insert(0, _root)
+            from pricing_engine import calculate_valuation
+
+        storage = str(payload.get("confirmed_rom") or payload.get("storage") or "128GB")
+        cosmetic_grade = str(payload.get("cosmetic_grade") or "B").upper()
+
+        sec_audit = payload.get("security_audit") or {}
+        disp_vis = payload.get("display_visual") or {}
+        if sec_audit.get("cloud_unlocked") is False or sec_audit.get("no_emi_lock") is False:
+            cosmetic_grade = "D"
+        if disp_vis.get("color_purity") == "line_defect":
+            cosmetic_grade = "D"
+
+        raw_hw = payload.get("hardware_health_percent", payload.get("health_score", 95.0))
+        hw_health = max(0.0, min(100.0, float(raw_hw)))
+
+        authoritative_val = calculate_valuation(
+            brand=str(brand),
+            model=str(model),
+            storage=storage,
+            cosmetic_grade=cosmetic_grade,
+            hardware_health_percent=hw_health
+        )
+        payload["server_verified_valuation"] = authoritative_val
+
+        client_val = payload.get("valuation")
+        auth_pricing = authoritative_val["pricing"]
+        auth_grade = authoritative_val["grading"]["cosmetic_grade"]
+        if isinstance(client_val, dict):
+            client_loan = client_val.get("recommendedLoan")
+            if client_loan is not None and int(client_loan) != int(auth_pricing["recommended_loan"]):
+                payload["client_tamper_detected"] = True
+            else:
+                payload.setdefault("client_tamper_detected", False)
+            client_val["baseline"] = auth_pricing["baseline_market_price"]
+            client_val["fairMarket"] = auth_pricing["fair_market_value"]
+            client_val["recommendedLoan"] = auth_pricing["recommended_loan"]
+            client_val["minLoan"] = auth_pricing["loan_range_min"]
+            client_val["maxLoan"] = auth_pricing["loan_range_max"]
+            client_val["effectiveGrade"] = auth_grade
+
+        payload["cosmetic_grade"] = auth_grade
+        payload["integrity_verified"] = True
+    except Exception as e:
+        print(f"[MobileWebService] Warning during valuation re-verification: {e}")
+        payload.setdefault("integrity_verified", False)
+
+
 def set_mobile_session_result(session_id: str, payload: Dict[str, Any]) -> None:
-    """Registers a diagnostic result for a given session ID and preserves multi-device history."""
+    """Registers a diagnostic result for a given session ID, re-verifies valuation, evicts expired/oldest sessions, and preserves multi-device history."""
     global _SESSION_RESULTS, _SESSION_DEVICES
-    payload["received_at"] = time.time()
-    _SESSION_RESULTS[session_id] = payload
+    clean_sid = _sanitize_session_id(session_id)
+    _reverify_server_valuation(payload)
 
-    if session_id not in _SESSION_DEVICES:
-        _SESSION_DEVICES[session_id] = []
+    with _SESSION_LOCK:
+        _evict_expired_sessions()
+        while len(_SESSION_RESULTS) >= MAX_ACTIVE_SESSIONS and clean_sid not in _SESSION_RESULTS:
+            oldest_sid = next(iter(_SESSION_RESULTS))
+            _SESSION_RESULTS.pop(oldest_sid, None)
+            _SESSION_DEVICES.pop(oldest_sid, None)
 
-    rec_id = payload.get("record_id") or payload.get("client_device_id")
-    updated = False
-    for idx, d in enumerate(_SESSION_DEVICES[session_id]):
-        if (rec_id and (d.get("record_id") == rec_id or d.get("client_device_id") == rec_id)) or \
-           (d.get("client_device_id") and d.get("client_device_id") == payload.get("client_device_id")):
-            _SESSION_DEVICES[session_id][idx] = payload
-            updated = True
-            break
-    if not updated:
-        _SESSION_DEVICES[session_id].append(payload)
+        payload["received_at"] = time.time()
+        _SESSION_RESULTS[clean_sid] = payload
+
+        if clean_sid not in _SESSION_DEVICES:
+            _SESSION_DEVICES[clean_sid] = []
+
+        rec_id = payload.get("record_id") or payload.get("client_device_id")
+        updated = False
+        for idx, d in enumerate(_SESSION_DEVICES[clean_sid]):
+            if (rec_id and (d.get("record_id") == rec_id or d.get("client_device_id") == rec_id)) or \
+               (d.get("client_device_id") and d.get("client_device_id") == payload.get("client_device_id")):
+                _SESSION_DEVICES[clean_sid][idx] = payload
+                updated = True
+                break
+        if not updated:
+            _SESSION_DEVICES[clean_sid].append(payload)
 
 
 def get_mobile_session_result(session_id: str) -> Optional[Dict[str, Any]]:
     """Retrieves the latest diagnostic result for a given session ID."""
-    return _SESSION_RESULTS.get(session_id)
+    clean_sid = _sanitize_session_id(session_id)
+    with _SESSION_LOCK:
+        return _SESSION_RESULTS.get(clean_sid) or _SESSION_RESULTS.get(session_id)
 
 
 def get_mobile_session_devices(session_id: str) -> list:
     """Retrieves all devices submitted under a given session ID."""
-    return _SESSION_DEVICES.get(session_id, [])
+    clean_sid = _sanitize_session_id(session_id)
+    with _SESSION_LOCK:
+        return list(_SESSION_DEVICES.get(clean_sid) or _SESSION_DEVICES.get(session_id, []))
 
 
 def generate_qr_for_url(target_url: str):
@@ -4099,17 +4241,17 @@ class MobileDiagnosticWebService:
 
     def get_received_result(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Retrieves results submitted by the mobile device for the given session."""
-        return _SESSION_RESULTS.get(session_id)
+        return get_mobile_session_result(session_id)
 
     def get_all_received_devices(self, session_id: str) -> list:
         """Retrieves all devices submitted under this session ID."""
-        return _SESSION_DEVICES.get(session_id, [])
+        return get_mobile_session_devices(session_id)
 
     def inject_simulated_mobile_result(self, session_id: str, brand: str = "Oppo", model: str = "A18") -> Dict[str, Any]:
         """Injects a simulated mobile test payload for demo purposes."""
         is_apple = brand.lower() in ["apple", "iphone"]
         payload = {
-            "session_id": session_id,
+            "session_id": _sanitize_session_id(session_id),
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "user_agent": f"Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X)" if is_apple else f"Mozilla/5.0 (Linux; Android 14; {brand} {model}) AppleWebKit/537.36 Mobile Safari/537.36",
             "is_ios": is_apple,
@@ -4139,5 +4281,5 @@ class MobileDiagnosticWebService:
             "model": model,
             "device_model": f"{brand} {model}"
         }
-        _SESSION_RESULTS[session_id] = payload
+        set_mobile_session_result(session_id, payload)
         return payload

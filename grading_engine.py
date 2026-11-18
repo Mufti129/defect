@@ -309,7 +309,7 @@ class GradingEngine:
                     grade = ml_grade
                     reasons.append(f"Model ML Aggregator V7 (Confidence {confidence*100:.1f}%) memprediksi Grade {grade}.")
             except Exception as e:
-                pass
+                print(f"[GradingEngine] Warning: ML Aggregator V7 fallback to Rule-of-Thumb: {e}")
 
         elapsed_sec = round(time.time() - start_time, 3)
 
